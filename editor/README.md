@@ -6,7 +6,7 @@ browser, online or off.
 
 `build.py` puts the parts below together into **`story-editor.html`**. That file is *packed*: the whole editor is stored
 compressed with LZMA (as base64 text) inside a tiny page that unpacks itself when it is opened and checks a hash of the result first, so it
-is under half the size on disk (224 KB for a 536 KB editor) and works from a file or any web server. The packer and decoder in `lzma/`
+is under half the size on disk (277 KB for a 635 KB editor) and works from a file or any web server. The page tries a 4 KB WebAssembly unpacker first (12 to 48 ms sooner in the four test browsers) and uses the JavaScript one when the browser will not run WebAssembly. The packer and decoders in `lzma/`
 are copied from [JS-modules](https://github.com/lfcfoundry/JS-modules) (`tools/lzma-pack`, `modules/lzma-decode`). Two companions are written beside it: `story-editor.plain.html` (the same editor, readable; the size budgets and
 the checks that read the text use it) and `story-editor.artifact.html` (the same page without its `<html>`/`<head>`, for hosts that
 wrap it). Edit the parts, never the built files.
@@ -49,7 +49,7 @@ build; raise the ceiling in `BUDGETS` (build.py) on purpose, with a reason, or t
 | `ui1-state.js` … `ui5-app.js` | Part 3, the editor screens, wrapped in one function: state and undo; widgets; Write; Map; Items, Check and Play; the speed report (`ui4-speed.js`); File menu, guide and start-up. |
 | `ui.css`, `game.css` | Editor styles; game styles (used by the Play tab and exports). All colors are tokens with light and dark values. |
 | `contract.mjs` | The test that ties the checker to the game. `build.py` runs it before every build and stops if it fails (see Design notes). |
-| `lzma/` | The LZMA packer (`lzma_pack.py`, Python standard library) and decoder (`lzma-decode.js`) that pack the editor itself; copied from JS-modules. |
+| `lzma/` | The LZMA packer (`lzma_pack.py`, Python standard library), the decoder (`lzma-decode.js`) and the WebAssembly decoder (`wasm/`: the C source, its build script and `lzma-decode.wasm`) that pack the editor itself; copied from JS-modules. |
 | `build-game.mjs` | Builds the pieces exported games are made from: the rules and core player, one code piece and one style piece per optional feature, each minified by esbuild from the very functions the Play tab runs. |
 | `minify.mjs` | Shrinks the editor's own script and styles (comments and spacing only) for the finished file. |
 | `budget.mjs` | Measures the size budget (see Building). |
