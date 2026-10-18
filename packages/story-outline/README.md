@@ -15,6 +15,10 @@ Cold night (bad ending)
 Hall (good ending)
 ```
 
+## Why it exists
+
+People already plan a branching story as a list: a page name, and under it the choices that lead on. This package turns such a list into pages and choices with no syntax to learn, so a plot sketched in a chat, a notes app or a script can become a story straight away. It is the reader behind **File → Paste an outline…** in the Story Editor, cut out so other tools, chat helpers and scripts can start a story from a list. Twee 3 and Ink are also plain text but each has its own syntax; [How it differs from what exists](#how-it-differs-from-what-exists) says how.
+
 ## Install
 
 Copy `dist/story-outline.mjs` (ES module) or `dist/story-outline.global.js` (`<script>`, defines `StoryOutline`), or the smaller `dist/story-outline.min.mjs` / `dist/story-outline.min.global.js`, or:
@@ -98,6 +102,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- Twee 3 and Ink are named only for comparison; no code, text or data was copied from them.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

@@ -8,6 +8,12 @@ An exact checker for **branching stories that have things in them**: items you c
 
 Zero dependencies. One file. Runs in Node 18+ and in browsers. It is the checker inside a single-file story editor, taken out so you can use it alone, and it is tested to give **exactly the editor's answers** (see Tests).
 
+How it works, in one line: it does not follow links, it searches every combination of items, numbers and dice that a player could be in (see "How it works" below).
+
+## Why it exists
+
+Link checkers see arrows, but an author's real question is whether there is a *way*: given the key you must pick up first and the number that must be high enough, can anyone reach this ending? Story engines run a story but, as far as this project knows, do not ship an exhaustive "can this ending ever happen?" analysis over items, numbers and dice. This checker exists to give that answer exactly, with a reason in plain words when the answer is no. It was cut out of the Story Editor so it can be used alone, and it is tested to give exactly the editor's answers. [How it differs from what exists](#how-it-differs-from-what-exists) names the closest tools.
+
 ## Install
 
 Nothing to install. Copy one file from this folder: `dist/story-check.mjs` (ES module) or `dist/story-check.global.js` (a plain `<script>`, defines `StoryCheck`). For a smaller download use `dist/story-check.min.mjs` or `dist/story-check.min.global.js`: the same code with the names shortened (about 40% smaller; gzipped about 20% smaller). Or load it straight from GitHub:
@@ -102,6 +108,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- Twine's broken-link markers and the story engines Ink, ChoiceScript and Yarn Spinner are named only for comparison; no code was copied from them.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

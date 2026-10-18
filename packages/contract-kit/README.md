@@ -4,6 +4,10 @@ A **guide**, with a small helper (under 300 lines, no dependencies), for a probl
 
 It is the pattern behind the Story Editor's build-stopping contract test ([`editor/contract.mjs`](../../editor/contract.mjs)), written down without the story parts. Node 18+. The core (`contract-kit/core`: everything except `guarded`) imports nothing from Node and also runs in browsers, Deno and Bun; the guide applies to any language.
 
+## Why it exists
+
+Many projects have two pieces of code that must always agree, such as a fast analyzer and the slow real thing, and nothing tells them when they drift apart. This kit exists to write down the arrangement the Story Editor uses to stop that: a slow, obvious second implementation, random inputs fed to both, a table of every field that forces the analyzer to learn about new features, and a time limit. The helper is small (under 300 lines) so that it is easy to read and copy; [How it differs from what exists](#how-it-differs-from-what-exists) compares it with the property-testing libraries.
+
 ## The idea in plain words
 
 1. **Make a second, simple implementation on purpose.** The fast or clever one (the checker) is the one you ship. The second one is slow and obvious: it just plays the game out, move by move, using the real rules. It never has to be fast, so it can be so simple that you trust it.
@@ -139,6 +143,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- Differential testing and property-style random inputs are established methods; fast-check, Hypothesis and QuickCheck are named only for comparison. The shrinking step is described as in the spirit of the delta-debugging method of Zeller and Hildebrandt. No code was copied from any of them.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

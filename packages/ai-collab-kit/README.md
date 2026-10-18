@@ -2,18 +2,20 @@
 
 A written **process** for a person and an AI assistant building software together, taken from how the Story Editor in this repository was built: one human who is not a programmer, one AI session after another, many rounds, and a result that is small, checked and shipped. It is not code. It is the part that made the code trustworthy.
 
+## Why it exists
+
+The expensive mistakes in AI-assisted building are not typos. They are a feature that quietly stopped working, a "tested" claim that tested nothing, a fix that broke the neighbor, a size that crept up, and a session that could not tell what the last one did. The habits in the guide each remove one of those, and each is cheap: a table that lists every field, a test that compares two implementations, a size ceiling that fails the build, a log with one line per check.
+
+## What is in it
+
+*Tested in:* nothing to run; these are documents.
+
 | File | For | What it is |
 |---|---|---|
 | [GUIDE.md](GUIDE.md) | both | The ten habits, the testing and speed recipes, the pitfalls we hit, and a checklist for a new project. Everything in it was done and measured here; where something was not re-checked it says so. |
 | [templates/AGENTS.template.md](templates/AGENTS.template.md) | AI | A starting `AGENTS.md` (or `CLAUDE.md`) for your own repository: how to work, an always / ask first / never tier, cost habits, how to hand over. |
 | [templates/TASKS.template.md](templates/TASKS.template.md) | both | A task board that several sessions can share without stepping on each other. |
 | [templates/session-brief.template.md](templates/session-brief.template.md) | human | What to tell a fresh AI session in the first message, in two minutes. |
-
-## Why a process and not a tool
-
-The expensive mistakes in AI-assisted building are not typos. They are a feature that quietly stopped working, a "tested" claim that tested nothing, a fix that broke the neighbor, a size that crept up, and a session that could not tell what the last one did. The habits in the guide each remove one of those, and each is cheap: a table that lists every field, a test that compares two implementations, a size ceiling that fails the build, a log with one line per check.
-
-*Tested in:* nothing to run; these are documents.
 
 ## How to use it
 
@@ -26,6 +28,11 @@ Related, in this repository: the [editor's QA suites](../../editor/qa/README.md)
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), from how the Story Editor in this repository was built.
+- Everything in it was done and measured in this project; where something was not re-checked, the text says so.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

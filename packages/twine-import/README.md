@@ -6,6 +6,10 @@ Most converters keep only the links. This one also reads the story's **own code*
 
 It was part of story-format until 2026-10-17. It is its own package now so that people who only want the story data model do not pay for the importer (story-format got about 59% smaller when it left).
 
+## Why it exists
+
+Most converters keep only a Twine story's links, so a story that uses variables and tests arrives as a pile of text with its rules gone. This importer reads the story's own code as well, so its items, conditions and numbers can survive the move into a [story-format](../story-format/README.md) story, and it says in plain words what could not. It is its own package (it was part of story-format until 2026-10-17) so that people who only want the data model do not pay for the importer: story-format got about 59% smaller when it left.
+
 ## Install
 
 Copy `dist/twine-import.mjs` (ES module) or `dist/twine-import.global.js` (`<script>`, defines `TwineImport`), or the smaller `dist/twine-import.min.mjs` / `dist/twine-import.min.global.js`, or:
@@ -100,6 +104,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- It reads the *file formats* of Twine (Twine 2 HTML, Twee 3, Twine 1) and the code of SugarCube and Harlowe. No source code, text or data was copied from Twine or any story format. The licenses of those projects as checked on 2026-10-14, and the note that "Twine" is a registered trademark of the Interactive Fiction Technology Foundation, are in [NOTICE.md](../../NOTICE.md).
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

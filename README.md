@@ -1,12 +1,15 @@
 # Story Editor
 
-Write interactive "choose your own path" stories without touching code. Add pages and choices, let the editor check that every path
-works, see your story as a map, and turn each story into one small game file that anyone can play in a browser, online or offline.
+A single-file, offline editor for interactive "choose your own path" stories. You add pages and choices in your browser, the editor checks that every page and ending can really be reached, shows your story as a map, and turns each story into one small game file that anyone can play in a browser, online or offline. This is a beta.
+
+**How it does it:** the whole editor is one HTML file (stored compressed inside a tiny page that unpacks itself) that runs entirely in your browser. Your story is kept in your browser's own storage as you type and nothing is sent anywhere. The checker is plain JavaScript that tries every combination of items, numbers and dice a player could be in, and **Export** builds the game page from your story and zips it.
 
 **Open the editor:** https://lfcfoundry.github.io/story-editor/
 (or download `index.html` from this page and double-click it; nothing needs installing).
 
-MIT License · Copyright (c) 2026 LFC Foundry (see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)). This is a beta.
+## Why it exists
+
+Writing a branching story is easy; knowing that it works is hard. A choice can lead nowhere, an ending can need a key nobody can pick up, a dice check can make a page impossible to reach, and a plain text file warns you about none of it. The Story Editor exists so that someone who does not program can write such a story, be told in plain words what is wrong with it, and hand the result to a reader as one small file with no server, account or install. How it differs from Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md). Its pieces are also cut out as small packages (next section) so people and AI helpers can read, check and play the same stories from code.
 
 ## Code you can reuse
 
@@ -84,13 +87,19 @@ editor does (roughly Chrome/Edge 80, Firefox 74, iOS 13.4 for games; Chrome/Edge
 
 **Browsers used to test each release.** Each row of [docs/CHANGELOG.md](docs/CHANGELOG.md) ends with "Tested in": the browsers and versions behind that build, or "not recorded" where the run did not write them down. The latest editor build was tested on Firefox 157.0.1, Chromium 141.0.7390.37 (Playwright's bundled build) and Chromium 153.0.8010.0 (not ungoogled), which were the browsers available then. From 2026-10-17 the standing rule is Firefox 158, ungoogled Chromium 155 and WebKitGTK 2.52.6 (GNOME Web 46.5), one at a time. No run on those three is recorded yet.
 
-## Fonts
-
-The Inter Tight typeface is used under the SIL Open Font License (it is not covered by the MIT License; see NOTICE.md).
-
 ## More from LFC Foundry
 
 - [Apple Press](https://github.com/JNFoo/apple-press): a clicker game for kids ([play](https://jnfoo.github.io/apple-press/))
 - [Fancy, the Banana](https://github.com/lfcfoundry/fancy-banana): a one-tap flying-banana arcade game ([play](https://lfcfoundry.github.io/fancy-banana/))
 - [Pineapple Defense](https://github.com/JNFoo/pineapple-defense): a flick-to-throw pineapples-at-penguins game ([play](https://jnfoo.github.io/pineapple-defense/))
 - [JS-modules](https://github.com/lfcfoundry/JS-modules): small dependency-free pieces for single-file browser games ([demos](https://lfcfoundry.github.io/JS-modules/))
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)). Forged by LFC Foundry ([github.com/lfcfoundry](https://github.com/lfcfoundry)).
+- Written by JNFoo with AI assistance (Claude, by Anthropic). The packages are cut from the editor's own sources and contain no third-party source code.
+- **Typeface:** Inter Tight, © 2016 The Inter Project Authors (https://github.com/rsms/inter), under the SIL Open Font License 1.1. The font files keep that license and are not covered by the MIT License.
+- **Packer and decoder:** the LZMA packer and decoder in `editor/lzma/` are copied from the sibling [JS-modules](https://github.com/lfcfoundry/JS-modules) repository (`tools/lzma-pack`, `modules/lzma-decode`).
+- **Twine and its story formats:** File → Import Twine… reads the *file formats* of Twine, SugarCube and Harlowe. No code, text or data was copied from them; their licenses (checked 2026-10-14) and the trademark notes are in [NOTICE.md](NOTICE.md). Twine, Ink, Yarn Spinner and ChoiceScript are compared from their public documentation in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md).
+- **Sample story:** "The Keeper's Light" is an original story by JNFoo, included under the MIT License.
+- **Tools you install yourself** keep their own licenses and are not part of this repository: esbuild, Prettier, Zopfli, Puppeteer, Playwright and the test browsers.

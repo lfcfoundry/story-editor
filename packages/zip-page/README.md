@@ -13,6 +13,10 @@ $ node bin/zip-page.mjs game.html game.zip.html
 22,219 bytes -> 15,774 bytes (71%)
 ```
 
+## Why it exists
+
+A single HTML file is easiest to share, but a bigger one is slower to send and store. This tool shrinks one page into a page that unzips itself, so the result is still just one file that works from `file://` and offline. It is the Node and JavaScript route with no install; the very smallest files come from the sibling [JS-modules](https://github.com/lfcfoundry/JS-modules) tools (Zopfli and LZMA), which it points to. It also includes a small readable inflater so browsers without `DecompressionStream` can still open a zipped page.
+
 ## How a zipped page works
 
 The output is a tiny page: the zipped original as a block of base64 text, and a short script that decodes it, inflates it with `DecompressionStream('deflate-raw')` (or the built-in inflater), and replaces the document with the original. Opening costs a few milliseconds.
@@ -55,6 +59,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- `zipInflate` implements DEFLATE as specified in RFC 1951; its tests compare it with Node's zlib. The Zopfli and LZMA tools in JS-modules are named, not included.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry
