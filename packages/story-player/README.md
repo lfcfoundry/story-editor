@@ -9,6 +9,10 @@ Turns a story into **one offline HTML file** that plays in any browser, and play
 
 The page is made of the story data, the rules, a small player and its stylesheet. A game carries **only the features its story uses**: no dice code if there are no dice checks, no Back button code if the author did not turn it on. It makes no network requests and says so in a Content-Security-Policy tag. Zero dependencies; Node 18+ or any modern browser.
 
+## Why it exists
+
+A story should reach a reader as one small file that opens anywhere, with no server, no network and no tracking. Twine and Ink can publish playable pages too, usually with a runtime of tens or hundreds of kilobytes; these pages are small because they carry only what the story uses. The same rule functions also run in the checker and in `createSession`, so a bot, a test or an AI helper plays by exactly the rules the game uses and cannot disagree with it. This package is the Story Editor's game builder, cut out so it can be used without the editor.
+
 ## Install
 
 Copy `dist/story-player.mjs` (ES module) or `dist/story-player.global.js` (`<script>`, defines `StoryPlayer`), or:
@@ -110,6 +114,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- When a game embeds a typeface it is Inter Tight, © 2016 The Inter Project Authors (https://github.com/rsms/inter), under the SIL Open Font License 1.1 (see [NOTICE.md](../../NOTICE.md)); the font keeps that license and is not covered by the MIT License. Twine and Ink are named only for comparison.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

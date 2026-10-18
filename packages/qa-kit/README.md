@@ -13,6 +13,10 @@ no `CloseWatcher`, a 447 px smallest window, one browser per context) is listed 
 
 Both are plain CommonJS, a few hundred lines, no build step. MIT license.
 
+## Why it exists
+
+The Story Editor's test suites were written once against Playwright's call style, but Playwright drives only its own patched Firefox, which is not the Firefox people run and trails the stock releases. qa-kit exists so the same suites run on stock Firefox (through Puppeteer's WebDriver BiDi) and on WebKitGTK as well as Chromium, and so the suites can be run in tiers with one log per suite and one summary. It was cut out of the editor's test setup so other projects can reuse it.
+
 ## What the Firefox part is, and is not
 
 Be clear about what you are getting: this is **not a new browser driver**.
@@ -120,3 +124,8 @@ node --test test/
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
 
 Copyright (c) 2026 LFC Foundry. MIT License.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- All the real work of driving Firefox is Puppeteer's, and Chromium is driven by Playwright; qa-kit adds the call surface on top. `src/webkit-driver.js` is a copy of the `tools/webkit-driver` module (1.1.0) from the sibling [JS-modules](https://github.com/lfcfoundry/JS-modules) repository. Firefox, Chromium, WebKitGTK and GNOME Web are third-party programs with their own licenses and are not included.

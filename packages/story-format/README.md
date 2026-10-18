@@ -6,6 +6,10 @@ A story is pages with choices. On top of that, it can have **things the player c
 
 It is the model inside a single-file story editor, cut out so that **people and AI helpers can read and write stories as JSON** and use the same tools the editor uses.
 
+## Why it exists
+
+Stories written for Twine, Ink, Yarn Spinner or ChoiceScript live in formats made for their own tools and, mostly, their own scripting languages. This format has **no scripting**: every rule is data (conditions, gives and takes, number changes, dice checks). That is what lets [story-check](../story-check/README.md) explore every possibility exactly, and lets AI helpers write stories without writing programs. It was cut out of the Story Editor so that people and AI helpers can read and write the same stories as JSON and use the same tools the editor uses. [How it differs from what exists](#how-it-differs-from-what-exists) below names the closest projects.
+
 ## Install
 
 Copy `dist/story-format.mjs` (ES module) or `dist/story-format.global.js` (`<script>`, defines `StoryFormat`), or the smaller `dist/story-format.min.mjs` / `dist/story-format.min.global.js` (the same code with the names shortened: about 40% smaller, about 20% smaller gzipped), or:
@@ -148,6 +152,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- Twine, Ink, Yarn Spinner and ChoiceScript are named only for comparison, from each project's public documentation (the sources are listed in [docs/FORMAT-COMPARISON.md](../../docs/FORMAT-COMPARISON.md)). No code, text or data was copied from them, and their names belong to their owners.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

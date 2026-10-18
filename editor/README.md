@@ -11,6 +11,12 @@ are copied from [JS-modules](https://github.com/lfcfoundry/JS-modules) (`tools/l
 the checks that read the text use it) and `story-editor.artifact.html` (the same page without its `<html>`/`<head>`, for hosts that
 wrap it). Edit the parts, never the built files.
 
+## Why it exists
+
+This folder holds the one set of sources the whole project is made from: the Story Editor, its game player and the packages under `../packages/` are all generated from here, so there is one copy to maintain. It is built as plain parts joined into a single file, because the aim is software a person can keep, copy and open by double-click: no install, no server, no account, no network. Why the project exists at all is in the [top-level README](../README.md); the reasons behind the choices below (the packed file, the size budgets, the exact checker, one rule set shared by the editor and its games) are in [docs/FOUNDATION.md](../docs/FOUNDATION.md).
+
+## How exported games are made
+
 Exported games are zipped by the Export button (`zipPage` in `core.js`; the browser's own `CompressionStream`; the browser can
 zip but has no LZMA compressor, so games do not use LZMA). A browser without `DecompressionStream` still opens them: the page carries a small unzipper
 (`zipInflate`), which `contract.mjs` checks against zlib's output on every build. "Show the code" in the Export box shows the
@@ -196,3 +202,10 @@ is delivered. The build itself already runs the contract test, the font check, t
 
 Stories autosave in the browser. Save (Ctrl+S) writes a `.story.json` file; in Chrome and Edge the editor
 remembers that file and writes straight to it afterwards. Firefox and Safari download a copy instead.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see [LICENSE](../LICENSE) and [NOTICE.md](../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic).
+- **Packer and decoder:** `lzma/` is copied from [JS-modules](https://github.com/lfcfoundry/JS-modules) (`tools/lzma-pack`, `modules/lzma-decode`).
+- **Typeface:** Inter Tight in `fonts/`, © 2016 The Inter Project Authors (https://github.com/rsms/inter), under the SIL Open Font License 1.1 (`fonts/InterTight-OFL.txt`); it keeps that license.
+- **Build tools** (esbuild, Prettier, optional Zopfli) and the **test tools** (Puppeteer, Playwright and the browsers) keep their own licenses and are not part of this repository; see [NOTICE.md](../NOTICE.md).

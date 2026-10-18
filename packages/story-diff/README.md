@@ -2,7 +2,11 @@
 
 Says **in plain words what one edit did to a story**, for a story in [story-format](../story-format/README.md): `Add page “The Cellar”`, `Rename page “Start” to “The shore”`, `Delete a choice on “Hall”`, `Change the start page`. Made for Undo buttons ("Undo: Delete page “The Cellar”"), history lists, autosave logs, and AI helpers that need to explain what they just changed. Zero dependencies; Node 18+ or browsers. About 4 KB minified.
 
-It is the one-line label the Story Editor shows on its Undo and Redo buttons, cut out so other tools can use it.
+It is the one-line label the Story Editor shows on its Undo and Redo buttons, cut out so other tools can use it. How it works, in one line: `describeChange(before, after)` compares the two copies of the story and gives one label for the first kind of change it finds between them (see "What it says, and what it does not").
+
+## Why it exists
+
+An Undo button that only says "Undo" does not tell you what you would lose. One that says "Undo: Delete page “The Cellar”" does. General JSON diff tools list changed paths and values; this gives the sentence a writer can read, for this story model only. It exists for the Undo and Redo buttons of the Story Editor, cut out so history lists, autosave logs and AI helpers can describe a change the same way.
 
 ## Install
 
@@ -71,6 +75,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- General JSON diff libraries such as jsondiffpatch are named only for comparison; no code was copied from them.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry

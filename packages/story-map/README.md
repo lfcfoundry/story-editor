@@ -10,6 +10,10 @@ Pictures and numbers for the **shape of a branching story**.
 
 Zero dependencies; pure functions (no DOM); Node 18+ or browsers.
 
+## Why it exists
+
+General graph-layout libraries (dagre, ELK, d3-dag) already draw layered graphs well. What a story author needs on top is story-specific: choke points held on one line, drawings that stay put between edits, players simulated with the game's own rules, and scores for the tasks authors really have (editing structure, studying beats, following a variable). This package exists to supply those, and it is cut out of the Story Editor's map so other tools can draw and measure stories the same way. [How it differs from what exists](#how-it-differs-from-what-exists) has the details.
+
 ## Install
 
 Copy `dist/story-map.mjs` or `dist/story-map.global.js` (`StoryMap`), or:
@@ -100,6 +104,11 @@ See [AGENTS.md](AGENTS.md).
 ## Changelog
 
 [CHANGELOG.md](CHANGELOG.md): what changed in each version, in plain words.
+
+## Credits and attributions
+
+- Copyright (c) 2026 LFC Foundry, MIT License (see the repository's [LICENSE](../../LICENSE) and [NOTICE.md](../../NOTICE.md)). Written by JNFoo with AI assistance (Claude, by Anthropic), and cut from the Story Editor's own sources; it contains no third-party source code.
+- The methods used are standard techniques, named in the text above: Sugiyama-style layering, barycenter sweeps with adjacent swaps, a Fenwick-tree crossing counter and pool-adjacent-violators placement. The code was written here. dagre, ELK and d3-dag are named only for comparison; no code was copied from them.
 
 ---
 Part of [story-editor](../../README.md) · MIT License · Copyright (c) 2026 LFC Foundry
