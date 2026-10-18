@@ -216,6 +216,8 @@ artifact = FOUNDRY + "\n<title>Story Editor</title>\n" + STYLE + BODY + "\n" + D
 #      seconds) inside a tiny page that unpacks itself when opened and checks a hash of the result first. The compressed bytes are stored as
 #      base64 text, which works from a file and from any web server (the smaller "raw bytes" form fails on a server that sends a UTF-8 header,
 #      such as GitHub Pages). The packer and the decoder in lzma/ are copied from https://github.com/lfcfoundry/JS-modules (tools/lzma-pack).
+#      The page also carries the 4,087-byte WebAssembly decoder (wasm=True): the loader tries it first (12 to 48 ms sooner in the four test browsers) and
+#      uses the JavaScript decoder when the browser refuses WebAssembly or anything is off. The wasm bytes cannot be packed, so they add 5.9 KB.
 #      story-editor.plain.html keeps the plain page: size budgets and the tests that read the text use it. Exported games are still zipped by
 #      the Export button (core.js), because the browser can zip but has no LZMA compressor.
 open(HERE + "story-editor.plain.html", "w", encoding="utf8").write(standalone)
@@ -223,7 +225,7 @@ _raw = standalone.encode("utf8")
 sys.path.insert(0, HERE + "lzma")
 import lzma_pack
 os.environ.setdefault("ESBUILD", HERE + "node_modules/.bin/esbuild")   # shrinks the unpacking script; build.py must give the same bytes every run
-_page, _info = lzma_pack.pack(_raw, title="Story Editor", encoding="base64", minifier="esbuild", tune=[(1, 0, 0), (2, 0, 0), (3, 0, 0)])   # three settings, 0.5 s; the full 15-setting search (2.7 s) saved at most 100 bytes more
+_page, _info = lzma_pack.pack(_raw, title="Story Editor", encoding="base64", minifier="esbuild", wasm=True, tune=[(1, 0, 0), (2, 0, 0), (3, 0, 0)])   # three settings, 0.5 s; the full 15-setting search (2.7 s) saved at most 100 bytes more
 _page = _page.replace(b"<!doctype html>", b"<!doctype html>\n" + FOUNDRY.encode("utf8"), 1)   # the header stays readable at the top of the delivered file
 open(HERE + "story-editor.html", "wb").write(_page)   # bytes: the header holds emoji, which must stay UTF-8
 print("packed story-editor.html with LZMA (lc=%d pb=%d): %d KB plain -> %d KB" % (_info["lc"], _info["pb"], len(_raw) // 1024, len(_page) // 1024))

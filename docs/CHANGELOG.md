@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 18
+- The editor opens a little sooner: unpacking it is 12 to 48 ms quicker (48 ms in Chromium, 27 in Firefox, 21 in WebKitGTK, 12 in GNOME Web). A browser that will not run WebAssembly still opens it the old way. The editor file is about 6 KB bigger (270,967 to 276,707 bytes).
+
 ## October 17
 - Fixed: the "Changed in another window" warning now appears whenever another window or copy has saved the story, so a forgotten tab can no longer quietly overwrite newer work.
 
