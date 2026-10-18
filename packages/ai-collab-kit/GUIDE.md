@@ -13,7 +13,7 @@ If you read only one section, read "The ten habits" and "Pitfalls we hit".
 | The editor | `editor/` | About 20 source files that `build.py` joins into **one** HTML file that makes no network requests. |
 | The checks | `editor/qa/` | One command runs the suites on Firefox and Chromium: `node qa.js quick` (about 1 to 2 minutes) or `node qa.js full` (about 4 to 6 minutes). |
 | The reusable packages | `packages/` | The story model, checker, game builder, map layout and zipped-page code, cut from the editor's own sources. |
-| The change log | `docs/CHANGELOG.md` | Every change, why, and how it was tested. |
+| The change log | `docs/CHANGELOG.md` | A short plain list of what users will notice. The full log (every change, why, and how it was tested) is kept apart, outside the repository. |
 
 The product, in one line: the author writes pages and choices; the editor checks every path; **Export** makes one small HTML game file anyone can play, online or off.
 

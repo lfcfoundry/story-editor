@@ -1,8 +1,8 @@
 /* Docs drift check: every file name a Markdown file mentions (in `backticks` or as a link) must exist in the repository.
    Run by npm test. A name counts as found when a tracked file has that exact path (from the repository root or from the Markdown file's
    own folder) or, for a bare name with no folder, when any tracked file has that name.
-   Not checked: URLs, names with * or <> or $ in them, files the build makes (BUILT below), and the two documents that record history
-   on purpose (docs/CHANGELOG.md, docs/OPTIMIZATION-CHART.md): they name files that have since gone.
+   Not checked: URLs, names with * or <> or $ in them, files the build makes (BUILT below), and the document that records history
+   on purpose (docs/OPTIMIZATION-CHART.md): it names files that have since gone.
    Usage: node tools/docs-drift.mjs [--list]    Exit code 1 and the list of broken names when any are missing.
    Copyright (c) 2026 LFC Foundry. MIT License. */
 import { execFileSync } from 'node:child_process';
@@ -14,7 +14,7 @@ const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8', maxB
 const tracked = git('ls-files');
 const have = new Set(tracked);
 const bases = new Set(tracked.map(f => path.basename(f)));
-const HISTORY = new Set(['docs/CHANGELOG.md', 'docs/OPTIMIZATION-CHART.md']);
+const HISTORY = new Set(['docs/OPTIMIZATION-CHART.md']);
 /* made by a build or a test run, or kept outside this repository on purpose */
 const BUILT = new Set(['story-editor.html', 'story-editor.packed.html', 'counts.json', 'times.json', 'sizes-last.json', 'package-lock.json', 'CLAUDE.md', 'QA-AND-BROWSER-TESTING-UNIVERSAL-GUIDE.md']);
 /* other repositories' files, and made-up example names in how-to text */
