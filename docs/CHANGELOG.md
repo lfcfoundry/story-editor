@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 18
+- Checking a very big story is up to 15 times faster: stories that hit the check's 200,000-situation limit now finish in about 35 ms instead of 300 to 525 ms (and a 75,000-situation story takes about 80 to 120 ms instead of 235 to 315 ms). Small stories are unchanged. A browser without WebAssembly checks the old way. The editor file is about 6 KB bigger.
 - The editor opens a little sooner: unpacking it is 12 to 48 ms quicker (48 ms in Chromium, 27 in Firefox, 21 in WebKitGTK, 12 in GNOME Web). A browser that will not run WebAssembly still opens it the old way. The editor file is about 6 KB bigger (270,967 to 276,707 bytes).
 
 ## October 17

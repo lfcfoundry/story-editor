@@ -1200,13 +1200,15 @@ var StoryCheck = (() => {
       return c.adds.length ? addTo(n, c.adds) : n;
     };
     const seen = /* @__PURE__ */ new Map();
-    const sPage = [];
-    const sFlags = [];
-    const sFrom = [];
+    let sPage = [];
+    let sFlags = [];
+    let sFrom = [];
     const sStep = [];
+    let stepOf = (s) => sStep[s];
     const startNote = [];
     let edges = [];
     const span = 2 ** nb;
+    let seenHas = (pi, fl) => seen.has(keyOf(pi, fl));
     const keyOf = big ? (pi, fl) => `${pi}|${fl.toString(36)}` : (pi, fl) => pi * span + fl;
     function visit(pi, fl, from, step, note) {
       if (pruned) for (const f of deadAt[pi]) fl = fset(fl, f, 0);
@@ -1232,7 +1234,7 @@ var StoryCheck = (() => {
     const endingAt = /* @__PURE__ */ new Map();
     const endingCount = /* @__PURE__ */ new Map();
     const dupes = /* @__PURE__ */ new Map();
-    const exits = /* @__PURE__ */ new Set();
+    let exits = /* @__PURE__ */ new Set();
     const heldOnArrival = /* @__PURE__ */ new Map();
     const heldOnPick = /* @__PURE__ */ new Map();
     let ever = Z;
@@ -1265,11 +1267,26 @@ var StoryCheck = (() => {
         combos = combos.slice(0, 512);
         truncated = true;
       }
-      combos.forEach((cb) => {
+      const wk = !big && typeof klWalkWasm === "function" ? klWalkWasm({ order, pre, fields, bitOf, limit, edgeCap: EDGE_CAP, s0, starts: combos.map((cb) => [cb[0], arrive(s0, cb[0])]), deadAt: pruned ? deadAt : null }) : null;
+      if (wk) {
+        sPage = wk.sPage;
+        sFlags = wk.sFlags;
+        sFrom = wk.sFrom;
+        stepOf = wk.step;
+        edges = wk.edges;
+        exits = wk.exits;
+        ever = wk.ever;
+        if (wk.truncated) truncated = true;
+        wk.startOut.forEach((sid, i) => {
+          if (startNote[sid] === void 0) startNote[sid] = combos[i][1] || null;
+        });
+        wk.fill({ reachedPage, okBlock, shownBlock, shownChoice, rolled, heldOnPick, heldOnArrival, endingAt, endingCount, softlocks, dupes });
+        seenHas = wk.has;
+      } else combos.forEach((cb) => {
         noteArrival(s0, cb[0]);
         visit(s0, arrive(s0, cb[0]), -1, null, cb[1]);
       });
-      for (let s = 0; s < sPage.length; s++) {
+      for (let s = 0; !wk && s < sPage.length; s++) {
         if (sPage.length > limit) {
           truncated = true;
           break;
@@ -1379,7 +1396,7 @@ var StoryCheck = (() => {
     function pathFor(s) {
       const steps = [];
       while (sFrom[s] !== -1) {
-        const st = sStep[s];
+        const st = stepOf(s);
         steps.push({ label: st[0], to: st[1], ci: st[2], fail: !!st[3] });
         s = sFrom[s];
       }
@@ -1621,7 +1638,7 @@ var StoryCheck = (() => {
         if (v < 0 || v > f.hi - f.lo) return false;
         fl = fset(fl, f, f.of[v]);
       }
-      return seen.has(keyOf(pi, fl));
+      return seenHas(pi, fl);
     }
     let byPageAll = null;
     function samples(pid, max = 6) {

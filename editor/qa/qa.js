@@ -37,7 +37,7 @@ const LOGS = HERE + 'logs/';
 fs.mkdirSync(LOGS, { recursive: true });
 fs.mkdirSync(HERE + 'work/shots', { recursive: true });
 
-const SOURCES = ['core.js', 'player.js', 'maplayout.js', 'game.css', 'ui.css', 'ui1-state.js', 'ui2-widgets.js', 'ui3-write.js', 'ui4-map.js', 'ui4-views.js', 'ui4-speed.js', 'ui5-app.js', 'twine.js', 'routes.js', 'changes.js', 'helpers.js', 'ui4-status.js', 'ui4-helpers.js', 'ui4-phone.js', 'translate.js', 'build.py', 'build-game.mjs', 'minify.mjs', 'contract.mjs'];
+const SOURCES = ['core.js', 'checkwalk.js', 'player.js', 'maplayout.js', 'game.css', 'ui.css', 'ui1-state.js', 'ui2-widgets.js', 'ui3-write.js', 'ui4-map.js', 'ui4-views.js', 'ui4-speed.js', 'ui5-app.js', 'twine.js', 'routes.js', 'changes.js', 'helpers.js', 'ui4-status.js', 'ui4-helpers.js', 'ui4-phone.js', 'translate.js', 'build.py', 'build-game.mjs', 'minify.mjs', 'contract.mjs'];
 const EDITOR = SOURCES.filter(f => f !== 'contract.mjs');
 const GAME = ['core.js', 'player.js', 'game.css', 'build-game.mjs'];
 
@@ -59,6 +59,7 @@ const SUITES = [
   S('undohist', 'undohist.js', ['changes.js', 'ui4-status.js', 'ui1-state.js', 'ui.css', 'player.js', 'core.js'], true),
   S('phone', 'phone.js', ['ui4-phone.js', 'ui5-app.js', 'ui3-write.js', 'ui4-status.js', 'ui1-state.js', 'ui.css', 'core.js'], true),
   S('csp', 'csp.js', ['build.py', 'core.js'], true),
+  S('walk', 'walk.js', ['core.js', 'checkwalk.js'], true),
   S('foundry', 'foundry.js', ['foundry-header.txt', 'build.py', 'core.js', 'ui5-app.js', 'ui.css', 'ui4-phone.js'], true),
   S('translate', 'translate.js', ['translate.js', 'player.js', 'game.css', 'ui5-app.js', 'core.js'], true),
   S('gamefeel', 'gamefeel.js', ['player.js', 'game.css', 'core.js'], true),
@@ -86,6 +87,8 @@ const FUZZ3 = { name: 'fuzz3', cmd: ['node', HERE + 'fuzz3.mjs', '1500', '1'], w
 const TWINE_DIFF = { name: 'twine-diff', cmd: ['node', HERE + 'twine-diff.mjs', '120', '1'], watch: ['core.js', 'player.js', 'twine.js'], quick: true, engine: '' };
 const CONTRACT = { name: 'contract', cmd: ['node', ED + 'contract.mjs', '400', '1'], watch: ['core.js', 'player.js', 'contract.mjs'], quick: true, engine: '' };
 
+const WASMEQ = { name: 'wasm-equiv', cmd: ['node', ED + 'wasm-equiv.mjs', '60', '1'], watch: ['core.js', 'checkwalk.js', 'wasm-equiv.mjs'], quick: true, engine: '' };
+
 const args = process.argv.slice(2);
 const tier = args.find(a => ['quick', 'smart', 'full', 'sample'].includes(a)) || 'quick';
 const verbose = args.includes('--verbose');
@@ -98,12 +101,12 @@ const WEBKIT_ONLY = args.includes('--webkit-only'); /* run just the WebKitGTK la
 const WEBKIT = WEBKIT_ONLY || args.includes('--webkit') || (tier === 'full' && !args.includes('--no-webkit') && !against);
 /* suites that do not run in WebKitGTK, and why (everything else that runs in Firefox does) */
 /* two WebKitGTK windows in one browser hang about half the time when other suites load the machine (30 s alone, 3 of 3 runs) */
-const SOLO = { 'twowin webkit': 'two windows in one WebKitGTK', 'csp gnome-web': 'one browser at a time', 'epismoke gnome-web': 'one browser at a time' };
+const SOLO = { 'twowin webkit': 'two windows in one WebKitGTK', 'csp gnome-web': 'one browser at a time', 'epismoke gnome-web': 'one browser at a time', 'walk gnome-web': 'one browser at a time' };
 const NOT_IN_WEBKIT = { ffsmoke: 'it checks the Firefox stand-in itself', touch1: 'WebKitGTK 2.52.6 has no touch events' };
 /* GNOME Web 46.5 (Epiphany) is the fourth approved test browser. It refuses WebDriver clicks, so it gets a short lane of its own, after WebKitGTK and also one at a time:
-   the policy check (csp) and a smoke check with script clicks (epismoke). The full check includes it; --epiphany adds it to any tier; --no-webkit leaves it out with WebKitGTK. */
+   the policy check (csp), a smoke check with script clicks (epismoke) and the WebAssembly checker walk (walk). The full check includes it; --epiphany adds it to any tier; --no-webkit leaves it out with WebKitGTK. */
 const EPIPHANY = !WEBKIT_ONLY && (args.includes('--epiphany') || (tier === 'full' && WEBKIT)) && !args.includes('--no-webkit');
-const EPI_JOBS = [['csp gnome-web', 'csp.js'], ['epismoke gnome-web', 'epismoke.js']];
+const EPI_JOBS = [['csp gnome-web', 'csp.js'], ['epismoke gnome-web', 'epismoke.js'], ['walk gnome-web', 'walk.js']];
 const RUN = new Date().toISOString();
 
 /* ---- the ledger: one JSON line per suite per run ---- */
@@ -195,6 +198,7 @@ const watched = s => {
 };
 const want = s => against ? true : tier === 'full' ? true : tier === 'sample' ? (s.quick ? quickNames.indexOf(s.name) % 4 === sampleTurn || watched(s) : watched(s)) : s.quick || (tier === 'smart' && watched(s));
 if (!against && !WEBKIT_ONLY && (!only || 'contract'.includes(only))) if (want(CONTRACT) || tier === 'sample') jobs.push({ label: 'contract', cmd: CONTRACT.cmd, lane: 'firefox' });
+if (!against && !WEBKIT_ONLY && (!only || 'wasm-equiv'.includes(only))) if (want(WASMEQ) || tier === 'sample') jobs.push({ label: 'wasm-equiv', cmd: WASMEQ.cmd, lane: 'firefox' });
 if (!against && !WEBKIT_ONLY && (!only || 'twine-diff'.includes(only))) if (want(TWINE_DIFF) || tier === 'sample') jobs.push({ label: 'twine-diff', cmd: TWINE_DIFF.cmd, lane: 'firefox' });
 if (!against && !WEBKIT_ONLY && tier === 'full' && (!only || 'fuzz3'.includes(only))) jobs.push({ label: 'fuzz3', cmd: FUZZ3.cmd, lane: 'firefox' });
 if (!only && !against && !WEBKIT_ONLY) jobs.push({ label: 'lines-selftest', cmd: ['node', 'lines.js'], lane: 'firefox' });
