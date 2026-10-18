@@ -18,7 +18,8 @@ const steps = [
   ...readdirSync(root + 'packages')
     .filter(p => existsSync(`${root}packages/${p}/test`))
     .map(p => [`${p} tests`, ['node', '--test', ...readdirSync(`${root}packages/${p}/test`).filter(f => f.endsWith('.test.mjs')).map(f => `packages/${p}/test/${f}`)]]),
-  ['editor contract test', ['node', 'editor/contract.mjs', '200', '1']]
+  ['editor contract test', ['node', 'editor/contract.mjs', '200', '1']],
+  ['editor checker in WebAssembly equals JavaScript', ['node', 'editor/wasm-equiv.mjs', '60', '1']]
 ];
 /* Two at a time (the machine has two cores; the longest step, story-map, runs on its own worker from the start). */
 const run = ([name, cmd]) =>

@@ -1702,13 +1702,15 @@ function analyzeRun(project, limit, prune) {
 
   /* situations get numbers in the order found; seen maps (page, items) to that number */
   const seen = new Map();
-  const sPage = [];
-  const sFlags = [];
-  const sFrom = []; // the situation this one was first reached from (-1 for a start)
+  let sPage = [];
+  let sFlags = [];
+  let sFrom = []; // the situation this one was first reached from (-1 for a start)
   const sStep = []; // and the choice taken: [label, page id, choice index]
+  let stepOf = s => sStep[s];
   const startNote = []; // the Given answers that begin a starting situation
   let edges = []; // pairs [from, to] of situation numbers, while the story is small enough
   const span = 2 ** nb;
+  let seenHas = (pi, fl) => seen.has(keyOf(pi, fl));
   const keyOf = big ? (pi, fl) => `${pi}|${fl.toString(36)}` : (pi, fl) => pi * span + fl;
   function visit(pi, fl, from, step, note) {
     if (pruned) for (const f of deadAt[pi]) fl = fset(fl, f, 0);
@@ -1735,7 +1737,7 @@ function analyzeRun(project, limit, prune) {
   const endingAt = new Map(); // ending page index -> first situation there
   const endingCount = new Map(); // ending page index -> how many different situations arrive there
   const dupes = new Map(); // page index -> a label shown twice at once
-  const exits = new Set(); // situations that end, or stop because the story is unfinished there
+  let exits = new Set(); // situations that end, or stop because the story is unfinished there
   const heldOnArrival = new Map(); // `${pi}:${bit index}` -> [ever held, always held] for items given or taken on arrival
   const heldOnPick = new Map(); // `${pi}:${ci}:${bit index}` -> ever held, for items a choice takes
   let ever = Z;
@@ -1774,12 +1776,32 @@ function analyzeRun(project, limit, prune) {
       combos = combos.slice(0, 512);
       truncated = true;
     }
-    combos.forEach(cb => {
+    /* The walk below has a WebAssembly twin (checkwalk.js) for stories whose tracked items fit in a plain number. It gives the same tables;
+       the JavaScript loop is the fallback and the reference (wasm-equiv.mjs compares them). */
+    const wk =
+      !big && typeof klWalkWasm === 'function'
+        ? klWalkWasm({ order, pre, fields, bitOf, limit, edgeCap: EDGE_CAP, s0, starts: combos.map(cb => [cb[0], arrive(s0, cb[0])]), deadAt: pruned ? deadAt : null })
+        : null;
+    if (wk) {
+      sPage = wk.sPage;
+      sFlags = wk.sFlags;
+      sFrom = wk.sFrom;
+      stepOf = wk.step;
+      edges = wk.edges;
+      exits = wk.exits;
+      ever = wk.ever;
+      if (wk.truncated) truncated = true;
+      wk.startOut.forEach((sid, i) => {
+        if (startNote[sid] === undefined) startNote[sid] = combos[i][1] || null;
+      });
+      wk.fill({ reachedPage, okBlock, shownBlock, shownChoice, rolled, heldOnPick, heldOnArrival, endingAt, endingCount, softlocks, dupes });
+      seenHas = wk.has;
+    } else combos.forEach(cb => {
       noteArrival(s0, cb[0]);
       visit(s0, arrive(s0, cb[0]), -1, null, cb[1]);
     });
 
-    for (let s = 0; s < sPage.length; s++) {
+    for (let s = 0; !wk && s < sPage.length; s++) {
       if (sPage.length > limit) {
         truncated = true;
         break;
@@ -1898,7 +1920,7 @@ function analyzeRun(project, limit, prune) {
   function pathFor(s) {
     const steps = [];
     while (sFrom[s] !== -1) {
-      const st = sStep[s];
+      const st = stepOf(s);
       steps.push({ label: st[0], to: st[1], ci: st[2], fail: !!st[3] });
       s = sFrom[s];
     }
@@ -2170,7 +2192,7 @@ function analyzeRun(project, limit, prune) {
       if (v < 0 || v > f.hi - f.lo) return false;
       fl = fset(fl, f, f.of[v]);
     }
-    return seen.has(keyOf(pi, fl));
+    return seenHas(pi, fl);
   }
   let byPageAll = null;
   /**
