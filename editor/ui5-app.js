@@ -1928,8 +1928,7 @@ function init() {
     $(`#tabs [data-tab="${tabs[j].dataset.tab}"]`)?.focus();
   });
 
-  runCheck();
-  renderAll();
+  renderAll(); // the first check waits until the first screen is drawn (the status line says "Checking" until then)
   /* Read-only handles used by the automated tests. They expose nothing that is not already on screen. */
   $('#brandlogo').appendChild(logo(26));
   $('#brandlogo').addEventListener('click', showSplash);
@@ -1966,4 +1965,9 @@ function init() {
   };
 }
 init();
-requestAnimationFrame(() => setTimeout(() => (READY_AT = performance.now()), 0)); // the first screen has been drawn
+requestAnimationFrame(() =>
+  setTimeout(() => {
+    READY_AT = performance.now(); // the first screen has been drawn
+    if (!(analysis && analysisFor === cur)) runCheck(); // now the first check
+  }, 0)
+);
