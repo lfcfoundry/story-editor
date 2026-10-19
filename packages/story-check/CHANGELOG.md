@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.2 · 2026-10-18
+- Nothing changes for you. Inside, the checker can also hand its "stuck or missed choice" passes to a WebAssembly version when the host page provides one (the Story Editor does: up to 2.6 times faster on big stories); on its own it works as before.
+
 ## 1.0.1 · 2026-10-18
 - Nothing changes for you. Inside, the checker can hand its exploring loop to a faster WebAssembly version when the host page provides one (the Story Editor does: up to 15 times faster on very big stories); on its own it works as before. 42.0 KB minified, 0.5 KB more.
 

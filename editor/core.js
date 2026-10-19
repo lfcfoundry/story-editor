@@ -2018,63 +2018,74 @@ function analyzeRun(project, limit, prune) {
 
     if (edges) {
       const n = sPage.length;
-      /* the moves backward, as one flat table (rev[off[s] .. off[s + 1]) are the situations that lead to s) */
-      const off = new Int32Array(n + 1);
-      for (let e = 1; e < edges.length; e += 2) off[edges[e] + 1]++;
-      for (let i = 0; i < n; i++) off[i + 1] += off[i];
-      const fill = off.slice(0, n);
-      const rev = new Int32Array(edges.length >> 1);
-      for (let e = 0; e < edges.length; e += 2) rev[fill[edges[e + 1]]++] = edges[e];
-      const stack = new Int32Array(n);
-      /** Every situation from which one of `targets` can be reached. */
-      function canReach(targets) {
-        const ok = new Uint8Array(n);
-        let top = 0;
-        for (const t of targets)
-          if (!ok[t]) {
-            ok[t] = 1;
-            stack[top++] = t;
-          }
-        while (top) {
-          const x = stack[--top];
-          for (let i = off[x]; i < off[x + 1]; i++) {
-            const f = rev[i];
-            if (!ok[f]) {
-              ok[f] = 1;
-              stack[top++] = f;
+      /* The two questions over the moves (which situations can reach these, which of these cannot reach those) have a WebAssembly twin
+         (checkwalk.js) for the same answers; the JavaScript below is the fallback and the reference (wasm-equiv.mjs compares them). */
+      let gw = typeof klGraphWasm === 'function' ? klGraphWasm(edges, n) : null;
+      let jsGraph = null; // built only when needed: when WebAssembly is not there, or fails halfway
+      const js = () =>
+        jsGraph ||
+        (jsGraph = (() => {
+          /* the moves backward, as one flat table (rev[off[s] .. off[s + 1]) are the situations that lead to s) */
+          const off = new Int32Array(n + 1);
+          for (let e = 1; e < edges.length; e += 2) off[edges[e] + 1]++;
+          for (let i = 0; i < n; i++) off[i + 1] += off[i];
+          const fill = off.slice(0, n);
+          const rev = new Int32Array(edges.length >> 1);
+          for (let e = 0; e < edges.length; e += 2) rev[fill[edges[e + 1]]++] = edges[e];
+          const stack = new Int32Array(n);
+          /** Every situation from which one of `targets` can be reached. */
+          const canReach = function (targets) {
+            const ok = new Uint8Array(n);
+            let top = 0;
+            for (const t of targets)
+              if (!ok[t]) {
+                ok[t] = 1;
+                stack[top++] = t;
+              }
+            while (top) {
+              const x = stack[--top];
+              for (let i = off[x]; i < off[x + 1]; i++) {
+                const f = rev[i];
+                if (!ok[f]) {
+                  ok[f] = 1;
+                  stack[top++] = f;
+                }
+              }
             }
-          }
-        }
-        return ok;
-      }
-      /** The first of `from` that cannot reach any of `to`, or undefined. Stops as soon as every one of `from` has been reached. */
-      const seenAt = new Int32Array(n),
-        wantAt = new Int32Array(n);
-      let round = 0;
-      function firstCut(to, from) {
-        round++;
-        let left = from.length,
-          top = 0;
-        for (const f of from) wantAt[f] = round;
-        for (const t of to)
-          if (seenAt[t] !== round) {
-            seenAt[t] = round;
-            stack[top++] = t;
-            if (wantAt[t] === round) left--;
-          }
-        while (top && left) {
-          const x = stack[--top];
-          for (let i = off[x]; i < off[x + 1]; i++) {
-            const f = rev[i];
-            if (seenAt[f] !== round) {
-              seenAt[f] = round;
-              stack[top++] = f;
-              if (wantAt[f] === round) left--;
+            return ok;
+          };
+          /** The first of `from` that cannot reach any of `to`, or undefined. Stops as soon as every one of `from` has been reached. */
+          const seenAt = new Int32Array(n),
+            wantAt = new Int32Array(n);
+          let round = 0;
+          const firstCut = function (to, from) {
+            round++;
+            let left = from.length,
+              top = 0;
+            for (const f of from) wantAt[f] = round;
+            for (const t of to)
+              if (seenAt[t] !== round) {
+                seenAt[t] = round;
+                stack[top++] = t;
+                if (wantAt[t] === round) left--;
+              }
+            while (top && left) {
+              const x = stack[--top];
+              for (let i = off[x]; i < off[x + 1]; i++) {
+                const f = rev[i];
+                if (seenAt[f] !== round) {
+                  seenAt[f] = round;
+                  stack[top++] = f;
+                  if (wantAt[f] === round) left--;
+                }
+              }
             }
-          }
-        }
-        return left ? from.find(f => seenAt[f] !== round) : undefined;
-      }
+            return left ? from.find(f => seenAt[f] !== round) : undefined;
+          };
+          return { canReach, firstCuts: jobs => jobs.map(j => firstCut(j.good, j.hidden)) };
+        })());
+      const canReach = targets => (gw && gw.canReach(targets)) || ((gw = null), js().canReach(targets));
+      const firstCuts = jobs => (gw && gw.firstCuts(jobs)) || ((gw = null), js().firstCuts(jobs));
       /* loops a player can never leave: situations from which no ending (and no unfinished spot) can be reached */
       const out = canReach(exits);
       const trapped = new Set();
@@ -2090,6 +2101,21 @@ function analyzeRun(project, limit, prune) {
       const givenBits = mask((project.givens || []).flatMap(g => g.options));
       const byPage = Array.from({ length: order.length }, () => []);
       for (let s = 0; s < n; s++) byPage[sPage[s]].push(s);
+      /* the questions are asked 32 at a time (the notes come out in the same order as if each were asked on its own) */
+      const jobs = [];
+      const flush = () => {
+        const misses = firstCuts(jobs);
+        jobs.forEach(({ p, c, need }, k) => {
+          const miss = misses[k];
+          if (miss === undefined) return;
+          const lacking = ids.filter(id => has(need, bitOf[id]) && !has(sFlags[miss], bitOf[id])).map(iname);
+          N(
+            p.id,
+            `The choice ${q(c.label || 'unnamed')} on ${label(p)} needs ${joinAnd(lacking)}. A player who arrives without ${plural(lacking.length, 'it', 'them')} can never come back for it, so they miss this choice for good.`
+          );
+        });
+        jobs.length = 0;
+      };
       order.forEach((p, pi) => {
         if (p.ending) return;
         pre[pi].choices.forEach((c, ci) => {
@@ -2104,15 +2130,11 @@ function analyzeRun(project, limit, prune) {
             else if ((fl & fixed) === fixed && (fl & need) !== need) hidden.push(s);
           });
           if (!good.length || !hidden.length) return;
-          const miss = firstCut(good, hidden);
-          if (miss === undefined) return;
-          const lacking = ids.filter(id => has(need, bitOf[id]) && !has(sFlags[miss], bitOf[id])).map(iname);
-          N(
-            p.id,
-            `The choice ${q(c.label || 'unnamed')} on ${label(p)} needs ${joinAnd(lacking)}. A player who arrives without ${plural(lacking.length, 'it', 'them')} can never come back for it, so they miss this choice for good.`
-          );
+          jobs.push({ p, c, need, good, hidden });
+          if (jobs.length === 32) flush();
         });
       });
+      if (jobs.length) flush();
     }
   }
 
