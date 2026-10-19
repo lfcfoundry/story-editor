@@ -765,12 +765,38 @@ var StoryMap = (() => {
     if (!goal.length) goal = pick((p) => !p.ending && !outs[p.id].length);
     if (!goal.length) goal = pick((p) => p.ending);
     choke[start] = true;
-    for (const v of reached) {
-      if (v === start || !goal.length) continue;
-      const others = goal.filter((t) => t !== v);
-      if (!others.length && !goal.includes(v)) continue;
-      const r = mapReach(start, outs, v);
-      if (others.every((t) => r[t] === void 0)) choke[v] = true;
+    if (goal.length) {
+      const n = ids.length, at = new Map(ids.map((id, i) => [id, i])), off = new Int32Array(n + 1), isGoal = new Uint8Array(n), mark = new Int32Array(n), queue = new Int32Array(n);
+      ids.forEach((id, i) => {
+        off[i + 1] = off[i] + outs[id].length;
+      });
+      const adj = new Int32Array(off[n]);
+      ids.forEach((id, i) => outs[id].forEach((w, k) => adj[off[i] + k] = at.get(w)));
+      goal.forEach((g) => isGoal[at.get(g)] = 1);
+      const s = at.get(start);
+      let round = 0;
+      for (const v of reached) {
+        if (v === start) continue;
+        const skip = at.get(v);
+        round++;
+        let met = isGoal[s] === 1, head = 0, tail = 0;
+        mark[s] = round;
+        queue[tail++] = s;
+        while (!met && head < tail) {
+          const x = queue[head++];
+          for (let k = off[x]; k < off[x + 1]; k++) {
+            const w = adj[k];
+            if (w === skip || mark[w] === round) continue;
+            mark[w] = round;
+            if (isGoal[w]) {
+              met = true;
+              break;
+            }
+            queue[tail++] = w;
+          }
+        }
+        if (!met) choke[v] = true;
+      }
     }
     const state = { [start]: 1 }, post = [], dag = { [start]: [] }, stack = [[start, 0]];
     while (stack.length) {

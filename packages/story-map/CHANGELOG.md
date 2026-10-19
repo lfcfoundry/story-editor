@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.1 · 2026-10-19
+- Finding the pages every route must pass is faster: at 300 pages it takes 2 to 3 ms instead of 8 to 27 ms (1 ms instead of 2 to 3 ms at 100 pages). The answers are the same.
+
 ## 1.0.0 · 2026-10-16
 - Smaller download: a minified build is 33.2 KB (14.3 KB gzipped), about 41% less. The readable file is still there.
 - Frozen (read-only) stories now work.
