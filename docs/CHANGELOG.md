@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 19
+- The editor's first screen appears 17 to 27% sooner (Firefox 98 to 76 ms, Chromium 104 to 83, WebKitGTK 189 to 157, GNOME Web 333 to 242): the first check of your story now runs just after the screen is drawn, and the status line says "Checking" for those few milliseconds.
 - The Map opens faster after you change a story: finding the pages every route must pass through now takes 2 to 3 ms instead of 8 to 27 ms at 300 pages (1 ms instead of 2 to 3 ms at 100 pages). The Map looks exactly the same.
 
 ## October 18
