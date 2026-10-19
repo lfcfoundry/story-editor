@@ -1,5 +1,5 @@
-/* The checker's WebAssembly walk (checkwalk.js) in a real browser: on big generated stories, analyze() gives exactly the same answers with the walk in WebAssembly
-   and with the JavaScript loop, the WebAssembly walk really runs, and with WebAssembly missing the checker still works. Prints both times.
+/* The checker's WebAssembly walk and graph passes (checkwalk.js) in a real browser: on big generated stories, analyze() gives exactly the same answers with them in WebAssembly
+   and with the JavaScript code, the WebAssembly parts really run, and with WebAssembly missing the checker still works. Prints both times.
    Usage: node walk.js [chromium|firefox|webkit]   (WEBKIT=epiphany node walk.js webkit  runs it in GNOME Web)   Copyright (c) 2026 LFC Foundry. MIT License. */
 const which = process.argv[2] || 'firefox'; const B = require('./engine').pick(which);
 const path = require('path');
@@ -28,25 +28,27 @@ function inPage(useWasm) {
     });
     return normalizeProject({ id: 's', title: 't', start: 'p0', items, givens: [], passages, game: {} });
   }
-  const real = window.klWalkWasm; let used = 0;
+  const real = window.klWalkWasm, realGraph = window.klGraphWasm; let used = 0, graphUsed = 0;
   window.klWalkWasm = useWasm ? function (a) { const r = real(a); if (r) used++; return r; } : 0;
+  window.klGraphWasm = useWasm ? function (e, n) { const r = realGraph(e, n); if (r) graphUsed++; return r; } : 0;
   const out = [];
   for (const [N, o, s] of [[30, 3, 1], [100, 6, 2], [300, 8, 3]]) {
     const p = mk(N, o, s); analyze(p);
     const t0 = performance.now(); const r = analyze(p); const ms = performance.now() - t0;
     out.push({ pages: N, states: r.states, truncated: !!r.truncated, ms: Math.round(ms), json: JSON.stringify([r.problems, r.warnings, r.notes, r.endings, r.states, r.grouped, r.pruned, r.truncated, r.samples]) });
   }
-  window.klWalkWasm = real;
-  return { out, used };
+  window.klWalkWasm = real; window.klGraphWasm = realGraph;
+  return { out, used, graphUsed };
 }
 (async () => {
   const b = await B.launch(); const errs = [];
-  const ready = pg => pg.waitForFunction(() => window.__editor && !document.getElementById('splash') && typeof klWalkWasm === 'function', null, { timeout: 30000 });
+  const ready = pg => pg.waitForFunction(() => window.__editor && !document.getElementById('splash') && typeof klWalkWasm === 'function' && typeof klGraphWasm === 'function', null, { timeout: 30000 });
   const ctx = await b.newContext({ viewport: { width: 1200, height: 800 } });
   const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message));
   await pg.goto(EDITOR); await ready(pg);
   const w = await pg.evaluate(inPage, true), j = await pg.evaluate(inPage, false);
   ok(w.used >= 6, 'the WebAssembly walk ran for the generated stories (' + w.used + ' times; a story with numbers is checked twice when it is big)');
+  ok(w.graphUsed >= 2, 'the WebAssembly graph passes ran for the stories that keep their moves (' + w.graphUsed + ' times; the 200,002-situation story is over the limit for keeping moves)');
   w.out.forEach((x, i) => ok(x.json === j.out[i].json, `${x.pages} pages, ${x.states} situations${x.truncated ? ' (stopped at the limit)' : ''}: same answers in WebAssembly and JavaScript (${x.json.length} characters compared)`));
   ok(w.out[1].states > 50000 && w.out[2].truncated, 'the big stories really are big: ' + w.out.map(x => x.states).join(', ') + ' situations');
   console.log('time of analyze, JavaScript then WebAssembly: ' + w.out.map((x, i) => `${x.pages} pages ${j.out[i].ms} -> ${x.ms} ms`).join('; '));
@@ -58,7 +60,7 @@ function inPage(useWasm) {
   const p2 = await c2.newPage(); p2.on('pageerror', e => errs.push(e.message));
   await p2.goto(EDITOR); await ready(p2);
   const n = await p2.evaluate(inPage, true);
-  ok(n.used === 0 && n.out.every((x, i) => x.json === j.out[i].json), 'without WebAssembly the walk is not used and the answers are the same');
+  ok(n.used === 0 && n.graphUsed === 0 && n.out.every((x, i) => x.json === j.out[i].json), 'without WebAssembly the walk is not used and the answers are the same');
   ok(!errs.length, 'no errors: ' + errs.join('; '));
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); await b.close(); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('FAIL ' + (e && e.stack || e)); process.exit(1); });
