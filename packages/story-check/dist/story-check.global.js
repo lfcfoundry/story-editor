@@ -1267,7 +1267,7 @@ var StoryCheck = (() => {
         combos = combos.slice(0, 512);
         truncated = true;
       }
-      const wk = !big && typeof klWalkWasm === "function" ? klWalkWasm({ order, pre, fields, bitOf, limit, edgeCap: EDGE_CAP, s0, starts: combos.map((cb) => [cb[0], arrive(s0, cb[0])]), deadAt: pruned ? deadAt : null }) : null;
+      const wk = typeof klWalkWasm === "function" ? klWalkWasm({ bits: nb, order, pre, fields, bitOf, limit, edgeCap: EDGE_CAP, s0, starts: combos.map((cb) => [cb[0], arrive(s0, cb[0])]), deadAt: pruned ? deadAt : null }) : null;
       if (wk) {
         sPage = wk.sPage;
         sFlags = wk.sFlags;

@@ -21,17 +21,19 @@ function load(mode) {
   const o = ctx.__o;
   if (withWasm) {
     ctx.walkUsed = 0;
+    ctx.wideUsed = 0;
+    ctx.wideUsed = 0;
     ctx.graphUsed = 0;
     ctx.graphFailed = 0;
     ctx.graphJobs = 0;
     ctx.graphFull = 0;
     runInContext(
-      `klWalkWasm = (function (f) { return function (a) { ${mode === 'graph' ? 'return null;' : 'const r = f(a); if (r) walkUsed++; return r;'} }; })(klWalkWasm);` +
+      `klWalkWasm = (function (f) { return function (a) { ${mode === 'graph' ? 'return null;' : 'const r = f(a); if (r) { walkUsed++; if (a.bits > 30) wideUsed++; } return r;'} }; })(klWalkWasm);` +
         `klGraphWasm = (function (f) { return function (e, n) { const r = f(e, n); if (!r) return r; graphUsed++; const w = g => x => { const v = g(x); if (v === null) graphFailed++; return v; }; return { canReach: w(r.canReach), firstCuts: j => { graphJobs += j.length; if (j.length === 32) graphFull++; return w(r.firstCuts)(j); } }; }; })(klGraphWasm);`,
       ctx
     );
   }
-  return { ...o, used: () => ctx.walkUsed || 0, graphUsed: () => ctx.graphUsed || 0, graphFailed: () => ctx.graphFailed || 0, jobs: () => ctx.graphJobs || 0, full: () => ctx.graphFull || 0 };
+  return { ...o, used: () => ctx.walkUsed || 0, wide: () => ctx.wideUsed || 0, graphUsed: () => ctx.graphUsed || 0, graphFailed: () => ctx.graphFailed || 0, jobs: () => ctx.graphJobs || 0, full: () => ctx.graphFull || 0 };
 }
 const W = load('both'), G = load('graph'), J = load('none');
 const N = +process.argv[2] || 300, SEED = +process.argv[3] || 1;
@@ -109,7 +111,25 @@ for (let n = 0; n < Math.max(10, N / 6); n++) {
   const st = longStory(J.normalizeProject, int(40, 90), int(5, 8), int(0, 1), 0, true);
   same('gated' + n, st, 200000);
 }
-console.log(`${checked} comparisons, ${fails} differences; the WebAssembly walk answered ${W.used()} and the graph passes ${W.graphUsed() + G.graphUsed()}; ${withTrap} stories report a trap and ${withCut} a missed choice; ${W.jobs() + G.jobs()} way-back questions, ${W.full() + G.full()} batches of a full 32`);
+/* 31 to 60 tracked items: the walk with 64-bit flags (and one past 64 bits, which stays JavaScript) */
+for (let n = 0; n < Math.max(8, N / 6); n++) {
+  /* the first three: 70 items (too many, so JavaScript), exactly 64 (the top bit in use), 63 */
+  const st = longStory(J.normalizeProject, int(12, 40), n === 0 ? 70 : n === 1 ? 64 : n === 2 ? 63 : int(31, 58), n < 3 ? 0 : int(0, 3), n % 2, n % 3 === 0);
+  same('wide' + n, st, 3000);
+  if (n % 2 === 0) same('wide' + n, st, 200000, { prune: true });
+}
+/* an item at the edges of each 32-bit half: all 64 are given on the first page, one is needed and taken to leave it, and then it is missing (a lost or shifted bit is a different verdict) */
+for (const b of [0, 29, 30, 31, 32, 33, 62, 63]) {
+  const items = [];
+  for (let i = 0; i < 64; i++) items.push({ id: 'o' + i, name: 'O' + i, kind: 'object', show: true });
+  const ch = (to, needs, takes, forbid) => ({ label: 'go' + to, to, needs, forbid: forbid || [], gives: [], takes, adds: {}, check: null, lock: false, why: '' });
+  const pg = (id, gives, choices, ending) => ({ id, name: id, blocks: [{ text: 'x', needs: [], forbid: [], orPrev: false }], gives, takes: [], choices, ending: !!ending });
+  const all = items.map(i => i.id);
+  const st = J.normalizeProject({ id: 's', title: 't', start: 'a', items, givens: [], game: {}, passages: [pg('a', all, [ch('b', ['o' + b], ['o' + b])]), pg('b', [], [ch('c', ['o' + b], []), ch('d', [], [], ['o' + b])]), pg('c', [], [], true), pg('d', [], [], true)] });
+  same('edge' + b, st, 3000);
+}
+console.log(`${checked} comparisons, ${fails} differences; the WebAssembly walk answered ${W.used()} (${W.wide()} with 64-bit flags) and the graph passes ${W.graphUsed() + G.graphUsed()}; ${withTrap} stories report a trap and ${withCut} a missed choice; ${W.jobs() + G.jobs()} way-back questions, ${W.full() + G.full()} batches of a full 32`);
+if (!W.wide()) { console.log('FAIL the 64-bit walk was never used'); process.exit(1); }
 if (!W.used() || !G.graphUsed()) { console.log('FAIL the WebAssembly walk or graph passes were never used (are the modules usable here?)'); process.exit(1); }
 if (W.graphFailed() + G.graphFailed()) { console.log('FAIL the WebAssembly graph passes failed halfway ' + (W.graphFailed() + G.graphFailed()) + ' times (the JavaScript fallback hid it)'); process.exit(1); }
 process.exit(fails ? 1 : 0);

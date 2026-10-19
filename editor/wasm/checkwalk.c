@@ -1,12 +1,24 @@
 /* checkwalk.c: the Story Editor checker's exploring loop (analyzeRun in core.js, "the walk") as WebAssembly.
    It explores every situation (page + items + number groups) a player can reach, breadth first, exactly as the JavaScript loop does, and
-   fills flat tables that the JavaScript turns back into the same sets and maps. Only stories whose tracked items fit in 30 bits come here.
+   fills flat tables that the JavaScript turns back into the same sets and maps. Built twice from this file: for stories whose tracked items
+   fit in 30 bits the flags are 32 bits wide, and built with -DW64 they are 64 bits wide (up to 64 tracked bits).
    Copyright (c) 2026 LFC Foundry. MIT License.
    Build: wasm/build.sh.  The tables it reads are written by klWalkWasm in checkwalk.js; both sides must agree on the layout below. */
 
 typedef int i32;
 typedef unsigned int u32;
 typedef unsigned long long u64;
+
+/* a situation's items and numbers as bits: W 32-bit words in the tables, fl_t in the code */
+#ifdef W64
+typedef u64 fl_t;
+#define W 2
+#define RF(p) ((fl_t)(u32)(p)[0] | ((fl_t)(u32)(p)[1] << 32))
+#else
+typedef u32 fl_t;
+#define W 1
+#define RF(p) ((fl_t)(u32)(p)[0])
+#endif
 
 /* ---- control block: i32 values, written by JavaScript (indices are the C_* names) ---- */
 enum {
@@ -16,7 +28,7 @@ enum {
   C_NSTART, C_STARTPRE, C_STARTPOST, C_STARTOUT,
   C_VIEW, C_REACHED, C_OKBLOCK, C_SHOWNBLOCK, C_SHOWNCHOICE, C_ROLLED, C_HELDPICK, C_ARRSEEN, C_ARREVER, C_ARRALWAYS,
   C_ENDAT, C_ENDCOUNT, C_DUPES, C_DUPCI, C_SOFT, C_EXITS, C_DEADMASK,
-  C_OUT_COUNT, C_OUT_EDGES, C_OUT_EDGESON, C_OUT_TRUNC, C_OUT_EVER, C_OUT_STATUS
+  C_OUT_COUNT, C_OUT_EDGES, C_OUT_EDGESON, C_OUT_TRUNC, C_OUT_EVER, C_OUT_STATUS, C_OUT_EVERHI
 };
 
 static i32 *K;   /* control block */
@@ -25,15 +37,17 @@ static i32 *pool;
 #define F(n) (K[n])
 #define PTR(n) ((i32 *)(unsigned long)(K[n]))
 #define BPTR(n) ((unsigned char *)(unsigned long)(K[n]))
+#define FPTR(n) ((fl_t *)(unsigned long)(K[n]))
 
 /* field record in the pool: sh, mask, lo, ngroups, firstOff  (5 values) */
-static inline i32 fv(i32 fl, i32 *f) { return (i32)(((u32)fl >> f[0]) & (u32)f[1]); }
+static inline i32 fv(fl_t fl, i32 *f) { return (i32)((fl >> f[0]) & (fl_t)(u32)f[1]); }
 
 /* a condition: n, f, ntn, (field,min)*ntn, ntf, (field,min)*ntf ; returns the offset after it */
 static inline i32 *fieldRec(i32 idx) { return pool + K[C_FIELDS] + idx * 5; }
-static inline i32 okc(i32 fl, i32 *c, i32 **after) {
-  i32 n = c[0], f = c[1], ntn = c[2], i;
-  i32 *p = c + 3;
+static inline i32 okc(fl_t fl, i32 *c, i32 **after) {
+  fl_t n = RF(c), f = RF(c + W);
+  i32 ntn = c[2 * W], i;
+  i32 *p = c + 2 * W + 1;
   i32 ok = ((fl & n) == n) && ((fl & f) == 0);
   for (i = 0; i < ntn; i++, p += 2) {
     i32 *fr = fieldRec(p[0]);
@@ -49,13 +63,13 @@ static inline i32 okc(i32 fl, i32 *c, i32 **after) {
 }
 
 /* number changes: count, (field, toOff)* ; toOff points at ngroups values */
-static inline i32 addTo(i32 fl, i32 *p, i32 **after) {
+static inline fl_t addTo(fl_t fl, i32 *p, i32 **after) {
   i32 n = *p++, i;
   for (i = 0; i < n; i++, p += 2) {
     i32 *fr = fieldRec(p[0]);
     i32 g = fv(fl, fr);
     i32 v = pool[p[1] + g];
-    fl = (fl & ~(fr[1] << fr[0])) | (v << fr[0]);
+    fl = (fl & ~((fl_t)fr[1] << fr[0])) | ((fl_t)v << fr[0]);
   }
   *after = p;
   return fl;
@@ -64,8 +78,8 @@ static inline i32 addTo(i32 fl, i32 *p, i32 **after) {
 /* page record: ending, giveClear, nSends,(item,clear,set)*, gives, takes, adds..., nBlocks, blocks..., nChoices, choices..., nArr, arrbits..., deadSlot */
 /* We keep per-page parsed offsets by walking the record each time it is used; records are short. */
 
-static inline u32 hashOf(i32 pi, i32 fl) {
-  u64 x = ((u64)(u32)pi << 32) | (u32)fl;
+static inline u32 hashOf(i32 pi, fl_t fl) {
+  u64 x = (u64)fl ^ ((u64)(u32)pi * 0x9e3779b97f4a7c15ULL);
   x ^= x >> 33; x *= 0xff51afd7ed558ccdULL; x ^= x >> 33; x *= 0xc4ceb9fe1a85ec53ULL; x ^= x >> 33;
   return (u32)x;
 }
@@ -76,8 +90,9 @@ static i32 nEdges;
 static i32 status;
 
 /* find (pi, fl) in the hash; returns situation number or -1 */
-static i32 findSit(i32 pi, i32 fl) {
-  i32 *hash = PTR(C_HASH), *sPage = PTR(C_SPAGE), *sFlags = PTR(C_SFLAGS);
+static i32 findSit(i32 pi, fl_t fl) {
+  i32 *hash = PTR(C_HASH), *sPage = PTR(C_SPAGE);
+  fl_t *sFlags = FPTR(C_SFLAGS);
   u32 mask = (u32)K[C_HASHMASK], h = hashOf(pi, fl) & mask;
   for (;;) {
     i32 s = hash[h];
@@ -88,22 +103,23 @@ static i32 findSit(i32 pi, i32 fl) {
 }
 
 /* klArrive in bit form on the page record at `rec` (after the ending flag) */
-static i32 arrive(i32 pi, i32 fl) {
+static fl_t arrive(i32 pi, fl_t fl) {
   i32 *r = pool + PTR(C_PAGEOFF)[pi];
-  i32 giveClear = r[1], nSends = r[2], i;
-  i32 *p = r + 3;
-  i32 n = fl & ~giveClear;
-  for (i = 0; i < nSends; i++, p += 3)
-    if (fl & p[0]) n = (n & ~p[1]) | p[2];
-  i32 gives = p[0], takes = p[1];
+  fl_t giveClear = RF(r + 1);
+  i32 nSends = r[1 + W], i;
+  i32 *p = r + 2 + W;
+  fl_t n = fl & ~giveClear;
+  for (i = 0; i < nSends; i++, p += 3 * W)
+    if (fl & RF(p)) n = (n & ~RF(p + W)) | RF(p + 2 * W);
+  fl_t gives = RF(p), takes = RF(p + W);
   n = (n | gives) & ~takes;
-  p += 2;
+  p += 2 * W;
   i32 *after;
   return addTo(n, p, &after);
 }
 
-static i32 visit(i32 pi, i32 fl, i32 from, i32 step) {
-  i32 dm = PTR(C_DEADMASK)[pi];
+static i32 visit(i32 pi, fl_t fl, i32 from, i32 step) {
+  fl_t dm = FPTR(C_DEADMASK)[pi];
   fl &= ~dm;
   i32 s = findSit(pi, fl);
   if (s >= 0) return s;
@@ -113,17 +129,17 @@ static i32 visit(i32 pi, i32 fl, i32 from, i32 step) {
   u32 mask = (u32)K[C_HASHMASK], h = hashOf(pi, fl) & mask;
   while (hash[h] >= 0) h = (h + 1) & mask;
   hash[h] = s;
-  PTR(C_SPAGE)[s] = pi; PTR(C_SFLAGS)[s] = fl; PTR(C_SFROM)[s] = from; PTR(C_SSTEP)[s] = step;
+  PTR(C_SPAGE)[s] = pi; FPTR(C_SFLAGS)[s] = fl; PTR(C_SFROM)[s] = from; PTR(C_SSTEP)[s] = step;
   return s;
 }
 
 /* the arrival slots of page pi: nArr then (bit, slot) pairs; found after the choices */
-static void noteArrival(i32 pi, i32 fl, i32 *arr) {
+static void noteArrival(i32 pi, fl_t fl, i32 *arr) {
   unsigned char *seen = BPTR(C_ARRSEEN), *ever = BPTR(C_ARREVER), *always = BPTR(C_ARRALWAYS);
   i32 n = arr[0], i;
   seen[pi] = 1;
   for (i = 0; i < n; i++) {
-    i32 h = (fl & arr[1 + 2 * i]) != 0, slot = arr[2 + 2 * i];
+    i32 h = (fl & RF(arr + 1 + (W + 1) * i)) != 0, slot = arr[1 + (W + 1) * i + W];
     ever[slot] |= h;
     always[slot] &= h;
   }
@@ -142,16 +158,19 @@ i32 walk(i32 *ctrl, i32 *tables) {
   i32 *hash = PTR(C_HASH);
   for (i = 0; i <= K[C_HASHMASK]; i++) hash[i] = -1;
   nSit = 0; edgesOn = 1; nEdges = 0; status = 0;
-  i32 truncated = 0, ever = 0;
+  i32 truncated = 0;
+  fl_t ever = 0;
   i32 *edges = PTR(C_EDGES), edgeMax = F(C_EDGEMAX);
   unsigned char *reached = BPTR(C_REACHED), *okBlock = BPTR(C_OKBLOCK), *shownBlock = BPTR(C_SHOWNBLOCK), *shownChoice = BPTR(C_SHOWNCHOICE),
     *rolled = BPTR(C_ROLLED), *heldPick = BPTR(C_HELDPICK), *exits = BPTR(C_EXITS);
   i32 *endAt = PTR(C_ENDAT), *endCount = PTR(C_ENDCOUNT), *dupes = PTR(C_DUPES), *dupCi = PTR(C_DUPCI), *soft = PTR(C_SOFT);
-  i32 *sPage = PTR(C_SPAGE), *sFlags = PTR(C_SFLAGS);
+  i32 *sPage = PTR(C_SPAGE);
+  fl_t *sFlags = FPTR(C_SFLAGS);
   (void)npages;
   /* the starting situations: note the arrival at the first page, then enter it */
   i32 ns = F(C_NSTART);
-  i32 *startPre = PTR(C_STARTPRE), *startPost = PTR(C_STARTPOST), *startOut = PTR(C_STARTOUT);
+  fl_t *startPre = FPTR(C_STARTPRE), *startPost = FPTR(C_STARTPOST);
+  i32 *startOut = PTR(C_STARTOUT);
   {
     i32 s0page = K[C_OUT_STATUS];   /* the start page index is passed in OUT_STATUS on the way in */
     PageView pv; pageView(s0page, &pv);
@@ -164,7 +183,8 @@ i32 walk(i32 *ctrl, i32 *tables) {
     if (status) break;
     if (nSit > limit) { truncated = 1; break; }
     if (edgesOn && nSit > edgeCap) edgesOn = 0;
-    i32 pi = sPage[s], fl = sFlags[s];
+    i32 pi = sPage[s];
+    fl_t fl = sFlags[s];
     PageView pv; pageView(pi, &pv);
     reached[pi] = 1;
     ever |= fl;
@@ -194,12 +214,14 @@ i32 walk(i32 *ctrl, i32 *tables) {
     i32 *p = pv.choices;
     for (i32 ci = 0; ci < pv.nChoices; ci++) {
       i32 *after; i32 ok = okc(fl, p, &after);
-      i32 to = after[0], fail = after[1], ckField = after[2], ckTarget = after[3], key = after[4], g = after[5], t = after[6], clear = after[7], cslot = after[8];
-      i32 *q = after + 9;
+      i32 to = after[0], fail = after[1], ckField = after[2], ckTarget = after[3], key = after[4];
+      fl_t g = RF(after + 5), t = RF(after + 5 + W), clear = RF(after + 5 + 2 * W);
+      i32 cslot = after[5 + 3 * W];
+      i32 *q = after + 6 + 3 * W;
       i32 *adds = q;
       i32 na = *q++; q += na * 2;
       i32 *takesP = q;
-      i32 nt = *q++; q += nt * 2;
+      i32 nt = *q++; q += nt * (W + 1);
       p = q;
       if (!ok) continue;
       anyShown = 1;
@@ -211,9 +233,9 @@ i32 walk(i32 *ctrl, i32 *tables) {
         if (nKeys < 64) shownKeys[nKeys++] = key;
       }
       if (to < 0 || (ckField >= 0 && fail < 0)) { exits[s] = 1; continue; }
-      for (i32 k = 0; k < nt; k++) if (fl & takesP[1 + 2 * k]) heldPick[takesP[2 + 2 * k]] = 1;
+      for (i32 k = 0; k < nt; k++) if (fl & RF(takesP + 1 + (W + 1) * k)) heldPick[takesP[1 + (W + 1) * k + W]] = 1;
       i32 *dummy;
-      i32 chosen = (((fl & ~clear) | g) & ~t);
+      fl_t chosen = (((fl & ~clear) | g) & ~t);
       chosen = addTo(chosen, adds, &dummy);
       PageView tv; pageView(to, &tv);
       noteArrival(to, chosen, tv.arr);
@@ -244,6 +266,9 @@ i32 walk(i32 *ctrl, i32 *tables) {
       if (soft[pi] < 0) soft[pi] = s;
     }
   }
-  K[C_OUT_COUNT] = nSit; K[C_OUT_EDGES] = nEdges; K[C_OUT_EDGESON] = edgesOn; K[C_OUT_TRUNC] = truncated; K[C_OUT_EVER] = ever; K[C_OUT_STATUS] = status;
+  K[C_OUT_COUNT] = nSit; K[C_OUT_EDGES] = nEdges; K[C_OUT_EDGESON] = edgesOn; K[C_OUT_TRUNC] = truncated; K[C_OUT_EVER] = (i32)(u32)ever; K[C_OUT_STATUS] = status;
+#ifdef W64
+  K[C_OUT_EVERHI] = (i32)(u32)(ever >> 32);
+#endif
   return status;
 }
