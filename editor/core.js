@@ -1776,11 +1776,11 @@ function analyzeRun(project, limit, prune) {
       combos = combos.slice(0, 512);
       truncated = true;
     }
-    /* The walk below has a WebAssembly twin (checkwalk.js) for stories whose tracked items fit in a plain number. It gives the same tables;
+    /* The walk below has a WebAssembly twin (checkwalk.js) for stories whose tracked items and numbers fit in 64 bits. It gives the same tables;
        the JavaScript loop is the fallback and the reference (wasm-equiv.mjs compares them). */
     const wk =
-      !big && typeof klWalkWasm === 'function'
-        ? klWalkWasm({ order, pre, fields, bitOf, limit, edgeCap: EDGE_CAP, s0, starts: combos.map(cb => [cb[0], arrive(s0, cb[0])]), deadAt: pruned ? deadAt : null })
+      typeof klWalkWasm === 'function'
+        ? klWalkWasm({ bits: nb, order, pre, fields, bitOf, limit, edgeCap: EDGE_CAP, s0, starts: combos.map(cb => [cb[0], arrive(s0, cb[0])]), deadAt: pruned ? deadAt : null })
         : null;
     if (wk) {
       sPage = wk.sPage;

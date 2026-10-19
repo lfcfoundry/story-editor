@@ -28,17 +28,17 @@ function inPage(useWasm) {
     });
     return normalizeProject({ id: 's', title: 't', start: 'p0', items, givens: [], passages, game: {} });
   }
-  const real = window.klWalkWasm, realGraph = window.klGraphWasm; let used = 0, graphUsed = 0;
-  window.klWalkWasm = useWasm ? function (a) { const r = real(a); if (r) used++; return r; } : 0;
+  const real = window.klWalkWasm, realGraph = window.klGraphWasm; let used = 0, wide = 0, graphUsed = 0;
+  window.klWalkWasm = useWasm ? function (a) { const r = real(a); if (r) { used++; if (a.bits > 30) wide++; } return r; } : 0;
   window.klGraphWasm = useWasm ? function (e, n) { const r = realGraph(e, n); if (r) graphUsed++; return r; } : 0;
   const out = [];
-  for (const [N, o, s] of [[30, 3, 1], [100, 6, 2], [300, 8, 3]]) {
+  for (const [N, o, s] of [[30, 3, 1], [100, 6, 2], [300, 8, 3], [60, 40, 2]]) {
     const p = mk(N, o, s); analyze(p);
     const t0 = performance.now(); const r = analyze(p); const ms = performance.now() - t0;
     out.push({ pages: N, states: r.states, truncated: !!r.truncated, ms: Math.round(ms), json: JSON.stringify([r.problems, r.warnings, r.notes, r.endings, r.states, r.grouped, r.pruned, r.truncated, r.samples]) });
   }
   window.klWalkWasm = real; window.klGraphWasm = realGraph;
-  return { out, used, graphUsed };
+  return { out, used, wide, graphUsed };
 }
 (async () => {
   const b = await B.launch(); const errs = [];
@@ -50,6 +50,8 @@ function inPage(useWasm) {
   ok(w.used >= 6, 'the WebAssembly walk ran for the generated stories (' + w.used + ' times; a story with numbers is checked twice when it is big)');
   ok(w.graphUsed >= 2, 'the WebAssembly graph passes ran for the stories that keep their moves (' + w.graphUsed + ' times; the 200,002-situation story is over the limit for keeping moves)');
   w.out.forEach((x, i) => ok(x.json === j.out[i].json, `${x.pages} pages, ${x.states} situations${x.truncated ? ' (stopped at the limit)' : ''}: same answers in WebAssembly and JavaScript (${x.json.length} characters compared)`));
+  ok(w.wide >= 2 && w.out[3].truncated, 'the story with 40 items (more than 30 tracked bits) used the 64-bit WebAssembly walk (' + w.wide + ' times) and hit the limit: ' + w.out[3].states + ' situations');
+  ok(w.out[3].ms * 3 < j.out[3].ms, `the 64-bit walk is at least 3 times as fast (${j.out[3].ms} -> ${w.out[3].ms} ms)`);
   ok(w.out[1].states > 50000 && w.out[2].truncated, 'the big stories really are big: ' + w.out.map(x => x.states).join(', ') + ' situations');
   console.log('time of analyze, JavaScript then WebAssembly: ' + w.out.map((x, i) => `${x.pages} pages ${j.out[i].ms} -> ${x.ms} ms`).join('; '));
   ok(w.out[2].ms * 1.5 < j.out[2].ms, `the WebAssembly walk is at least 1.5 times as fast on the biggest story (${j.out[2].ms} -> ${w.out[2].ms} ms)`);
@@ -60,7 +62,7 @@ function inPage(useWasm) {
   const p2 = await c2.newPage(); p2.on('pageerror', e => errs.push(e.message));
   await p2.goto(EDITOR); await ready(p2);
   const n = await p2.evaluate(inPage, true);
-  ok(n.used === 0 && n.graphUsed === 0 && n.out.every((x, i) => x.json === j.out[i].json), 'without WebAssembly the walk is not used and the answers are the same');
+  ok(n.used === 0 && n.wide === 0 && n.graphUsed === 0 && n.out.every((x, i) => x.json === j.out[i].json), 'without WebAssembly the walk is not used and the answers are the same');
   ok(!errs.length, 'no errors: ' + errs.join('; '));
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); await b.close(); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('FAIL ' + (e && e.stack || e)); process.exit(1); });
