@@ -111,7 +111,7 @@ build; raise the ceiling in `BUDGETS` (build.py) on purpose, with a reason, or t
   `story-editor-bak:` and falls back to it, and also saves when the page is hidden or closed.
 - **Error log.** `logError(where, err)` (ui1-state.js) keeps the last five errors (where, the message, the function names it was
   inside; line numbers mean little in a packed file). Every `catch` that carries on instead of telling the person calls it, and
-  uncaught errors and unhandled promises are logged too. The Speed report lists them.
+  uncaught errors and unhandled promises are logged too. The Speed report lists them, and its Save as file button keeps the whole report as a text file.
 - **Speed report.** `ui4-speed.js`: Options → Speed report, or `#report` on the address. Timings of tab switches, the checker
   and map zoom are always kept in memory; a frame recorder with an "It stuttered!" button starts on request. The report holds
   timings and device details, never story text, and nothing is sent anywhere.
