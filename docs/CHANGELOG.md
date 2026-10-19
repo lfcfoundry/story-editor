@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 19
+- The Map opens faster after you change a story: finding the pages every route must pass through now takes 2 to 3 ms instead of 8 to 27 ms at 300 pages (1 ms instead of 2 to 3 ms at 100 pages). The Map looks exactly the same.
+
 ## October 18
 - Checking a story with more than 30 items and states is 12 to 44 times faster: a story that reaches the check's 200,000-situation limit now finishes in 25 to 72 ms instead of 0.5 to 1.8 seconds (up to 64 items and number groups; more than that checks the old way). A browser without WebAssembly checks the old way. The editor file is about 6 KB bigger, and its size limits were raised.
 - Checking a big story that keeps its moves is up to 2.6 times faster again: the "can a player get stuck or miss a choice for good" part now runs in WebAssembly too. A 75,000-situation story takes 40 to 62 ms instead of 77 to 119 ms. Small stories and stories at the 200,000-situation limit are unchanged. A browser without WebAssembly checks the old way. The editor file is about 2 KB bigger.
