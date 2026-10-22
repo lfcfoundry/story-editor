@@ -47,7 +47,8 @@ module.exports = {
     S('last', 'last.js', EDITOR, false),
     S('fix2', 'fix2.js', EDITOR, false),
     S('dlg', 'dlg.js', EDITOR, false),
-    S('inter', 'inter.js', EDITOR, false)
+    S('inter', 'inter.js', EDITOR, false),
+    S('mapcull', 'mapcull.js', ['ui4-map.js', 'maplayout.js', 'ui.css', 'core.js'], false)
   ],
   /* commands that are not browser suites (run once, on the first engine's lane) */
   extra: [

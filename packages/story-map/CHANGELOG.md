@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.2 · 2026-10-22
+- Counting the crossings can be handed to a faster counter when the page that uses this package provides one (the Story Editor does, in WebAssembly). The counts are the same. Without one, nothing changes.
+
 ## 1.0.1 · 2026-10-19
 - Finding the pages every route must pass is faster: at 300 pages it takes 2 to 3 ms instead of 8 to 27 ms (1 ms instead of 2 to 3 ms at 100 pages). The answers are the same.
 
