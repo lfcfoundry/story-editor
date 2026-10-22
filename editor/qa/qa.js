@@ -82,7 +82,8 @@ const SUITES = [
   S('fix2', 'fix2.js', EDITOR, false),
   S('dlg', 'dlg.js', EDITOR, false),
   S('inter', 'inter.js', EDITOR, false),
-  S('mapcull', 'mapcull.js', ['ui4-map.js', 'maplayout.js', 'ui.css', 'core.js'], false)
+  S('mapcull', 'mapcull.js', ['ui4-map.js', 'maplayout.js', 'ui.css', 'core.js'], false),
+  S('mapprebuild', 'mapprebuild.js', ['ui4-map.js', 'maplayout.js', 'ui4-views.js', 'core.js'], false)
 ];
 const FUZZ3 = { name: 'fuzz3', cmd: ['node', HERE + 'fuzz3.mjs', '1500', '1'], watch: ['core.js', 'player.js', 'maplayout.js'], quick: false, engine: '' };
 const TWINE_DIFF = { name: 'twine-diff', cmd: ['node', HERE + 'twine-diff.mjs', '120', '1'], watch: ['core.js', 'player.js', 'twine.js'], quick: true, engine: '' };

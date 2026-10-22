@@ -53,6 +53,7 @@ build; raise the ceiling in `BUDGETS` (build.py) on purpose, with a reason, or t
 | `wasm-equiv.mjs` | The test that the WebAssembly walk and graph passes give exactly the answers of the JavaScript code on random stories (run by `npm test` and the quick check). |
 | `choke-equiv.mjs` | The test that the Map's choke points (pages every route to the goal must pass) are exactly the ones found the plain way, on random stories (run by `npm test`). |
 | `cross-equiv.mjs` | The test that the Map's crossing count in WebAssembly (`wasm/mapcross.c`) equals the JavaScript count exactly, on random drawings (run by `npm test`). |
+| `map-worker-equiv.mjs` | The test that the Map layout built ahead in a background worker (the worker's code is the text of the same functions, `mapWorkerSource` in `maplayout.js`) is complete and gives exactly the Map tab's own layout, on random stories (run by `npm test`). |
 | `lzma/` | The LZMA packer (`lzma_pack.py`, Python standard library), the decoder (`lzma-decode.js`) and the WebAssembly decoder (`wasm/`: the C source, its build script and `lzma-decode.wasm`) that pack the editor itself; copied from JS-modules. |
 | `build-game.mjs` | Builds the pieces exported games are made from: the rules and core player, one code piece and one style piece per optional feature, each minified by esbuild from the very functions the Play tab runs. |
 | `minify.mjs` | Shrinks the editor's own script and styles (comments and spacing only) for the finished file. |

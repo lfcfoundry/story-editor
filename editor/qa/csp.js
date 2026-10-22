@@ -1,5 +1,5 @@
 /* The editor's own page policy (the Content-Security-Policy meta tag build.py writes): no network, no 'unsafe-eval', and WebAssembly allowed ('wasm-unsafe-eval' in
-   script-src, the owner's rule of 2026-10-17). Checks the text of the tag, then asks the browser: a tiny WebAssembly module compiles in a script of the page (it is refused without the token).
+   script-src, the owner's rule of 2026-10-17; and worker-src blob: for the background Map layout, rule of 2026-10-19). Checks the text of the tag, then asks the browser: a tiny WebAssembly module compiles in a script of the page (it is refused without the token).
    Usage: node csp.js [chromium|firefox|webkit]   (WEBKIT=epiphany node csp.js webkit  runs it in GNOME Web)   Copyright (c) 2026 LFC Foundry. MIT License. */
 const which = process.argv[2] || 'firefox'; const B = require('./engine').pick(which);
 const fs = require('fs'), path = require('path');
@@ -15,6 +15,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const policy = m ? m[1] : '';
   const dir = {}; policy.split(';').map(s => s.trim()).filter(Boolean).forEach(s => { const [n, ...v] = s.split(/\s+/); dir[n] = v.join(' '); });
   ok(dir['script-src'] === "'unsafe-inline' 'wasm-unsafe-eval'", "script-src allows the page's own scripts and WebAssembly, nothing else: " + dir['script-src']);
+  ok(dir['worker-src'] === 'blob:', 'worker-src allows blob: workers (the background Map layout), nothing else: ' + dir['worker-src']);
   ok(dir['default-src'] === "'none'" && dir['connect-src'] === "'none'" && dir['form-action'] === "'none'" && dir['base-uri'] === "'none'", 'no network, no forms, no base tag: default-src, connect-src, form-action and base-uri stay none');
   ok(dir['style-src'] === "'unsafe-inline'" && dir['img-src'] === 'data:' && dir['font-src'] === 'data:', 'style-src, img-src and font-src are as before');
   ok(!/unsafe-eval'/.test(policy.replace("'wasm-unsafe-eval'", '')), "'unsafe-eval' is not in the policy");
@@ -40,7 +41,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const { buildGame, makeProject } = await import(path.join(__dirname, '..', '..', 'packages', 'story-player', 'dist', 'story-player.mjs'));
   const game = buildGame(makeProject('Policy test'));
   const gm = /<meta http-equiv="Content-Security-Policy" content="([^"]*)">/.exec(game);
-  ok(!!gm && gm[1] === policy, 'an exported game carries the same policy as the editor page, token included');
+  ok(!!gm && gm[1] === policy.replace(' worker-src blob:;', ''), 'an exported game carries the editor page policy, token included, without the editor-only worker-src (a game starts no workers)');
   const GAME_FILE = path.join(__dirname, 'work', 'csp-game.html');
   fs.writeFileSync(GAME_FILE, game);
   const gp = pg; /* the same window: one window is all this needs, which GNOME Web (WEBKIT=epiphany) handles best */

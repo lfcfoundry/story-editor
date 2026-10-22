@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.3 · 2026-10-22
+- Nothing changes in what this package gives. Inside, the flow, top-down and spine drawings are now built by one function, so the Story Editor can run the very same code in a background worker. The drawings are exactly the same.
+
 ## 1.0.2 · 2026-10-22
 - Counting the crossings can be handed to a faster counter when the page that uses this package provides one (the Story Editor does, in WebAssembly). The counts are the same. Without one, nothing changes.
 
