@@ -38,6 +38,11 @@ ok(/Story Editor speed report/.test(rep)&&/Version:/.test(rep)&&/Browser:/.test(
   ok(!!m&&+m[1]>0&&+m[5]>=+m[3]&&+m[3]>=+m[2],'speed report says how long the editor took to open, in order (arrived <= code started <= drawn): '+(m?m.slice(1,7).join(' / '):rep.split('\n').find(l=>/Opened/.test(l)))); }
 ok(/Timings \(count/.test(rep)&&/draw tab|checker/.test(rep),'speed report lists timings');
 ok(!/Courage|Keeper|lighthouse/i.test(rep),'speed report holds no story words');
+/* Save as file: the same text as the textarea, with the build stamp in the name, and no story words */
+await ed.evaluate(()=>{window.showSaveFilePicker=undefined;window.__dl=null;const cu=URL.createObjectURL;URL.createObjectURL=b=>{window.__blob=b;return cu.call(URL,b);};HTMLAnchorElement.prototype.click=function(){window.__dl=this.download;};});
+await ed.click('dialog button:text-is("Save as file")');await ed.waitForTimeout(200);
+{ const dl=await ed.evaluate(async()=>({name:window.__dl,text:window.__blob?await window.__blob.text():null,type:window.__blob&&window.__blob.type}));
+  ok(!!dl.name&&/^story-editor-report-[\d.]+\.txt$/.test(dl.name)&&dl.text===rep&&/^text\/plain/.test(dl.type),'Save as file saves the report text under a stamped name: '+dl.name); }
 await ed.click('dialog button:text-is("Start recording")');await ed.waitForTimeout(150);
 ok(await ed.isVisible('#speedbar'),'recording bar appears');
 await ed.click('#tabs [data-tab="map"]');await ed.waitForTimeout(400);await ed.click('#tabs [data-tab="write"]');await ed.waitForTimeout(300);

@@ -10,7 +10,8 @@
    On request (Options -> Speed report, or add #report to the address): a frame recorder. It notes the time between screen
    updates; a gap over about 34 ms is a visible hitch (a smooth screen updates every 17 ms at 60 Hz). While it records, a small
    bar offers "It stuttered!" (marks that moment with the recent frame times) and "Stop".
-   "Copy report" puts a plain-text summary on the clipboard to paste back into the chat.
+   "Copy report" puts a plain-text summary on the clipboard to paste back into the chat; "Save as file" keeps the same text as a small file
+   (the errors in it are the error log), so a session on a phone or laptop can be sent on as a bug report.
    --------------------------------------------------------------------------- */
 
 const SPEED_KEEP = 400; // timings kept
@@ -202,6 +203,21 @@ function showSpeedReport() {
           }
         }),
         h('button', { class: 'btn primary', type: 'button', text: 'Copy report', onclick: () => copyText(ta.value, ta) }),
+        h('button', {
+          class: 'btn',
+          type: 'button',
+          text: 'Save as file',
+          title: 'Save this report (timings, device details and the recent errors, never your story’s words) as a small text file to send or keep',
+          onclick: async () => {
+            try {
+              const ok = await saveFile(`story-editor-report-${BUILT}.txt`, ta.value, 'text/plain', 'Report', 'reports');
+              if (ok) toast('Report saved');
+            } catch (e) {
+              logError('save report', e);
+              toast('The report could not be saved. Use Copy report instead.');
+            }
+          }
+        }),
         h('button', { class: 'btn', type: 'button', text: 'Close', onclick: close })
       ])
     );

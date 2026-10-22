@@ -1544,14 +1544,18 @@ var StoryMap = (() => {
           }
       } else if (L.kind === "matrix") cr = 0;
       else if (segs.length <= 4e3) {
-        const box = segs.map((s2) => [Math.min(s2[0][0], s2[1][0]), Math.max(s2[0][0], s2[1][0]), Math.min(s2[0][1], s2[1][1]), Math.max(s2[0][1], s2[1][1])]);
-        for (let i = 0; i < segs.length; i++) {
-          const bi = box[i];
-          for (let j = i + 1; j < segs.length; j++) {
-            const bj = box[j];
-            if (bi[1] < bj[0] || bj[1] < bi[0] || bi[3] < bj[2] || bj[3] < bi[2]) continue;
-            if (segs[i][2] === segs[j][2]) continue;
-            if (mapSegCross(segs[i][0], segs[i][1], segs[j][0], segs[j][1])) cr++;
+        const fast = typeof klCrossWasm === "function" ? klCrossWasm(segs) : null;
+        if (fast !== null) cr = fast;
+        else {
+          const box = segs.map((s2) => [Math.min(s2[0][0], s2[1][0]), Math.max(s2[0][0], s2[1][0]), Math.min(s2[0][1], s2[1][1]), Math.max(s2[0][1], s2[1][1])]);
+          for (let i = 0; i < segs.length; i++) {
+            const bi = box[i];
+            for (let j = i + 1; j < segs.length; j++) {
+              const bj = box[j];
+              if (bi[1] < bj[0] || bj[1] < bi[0] || bi[3] < bj[2] || bj[3] < bi[2]) continue;
+              if (segs[i][2] === segs[j][2]) continue;
+              if (mapSegCross(segs[i][0], segs[i][1], segs[j][0], segs[j][1])) cr++;
+            }
           }
         }
       } else cr = L.crossings ?? 0;

@@ -4,7 +4,12 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 22
+- The Map opens faster for big stories: from 120 pages up, only the boxes and arrows you can see (and a little around them) are drawn first, and the rest come in as you scroll or zoom. For 300 pages after an edit it opens in 100 ms instead of 186 in Firefox and 149 instead of 231 in Chromium; WebKitGTK and GNOME Web stay about the same. Smaller stories are drawn exactly as before, and a big Map looks the same (99.6 to 100% identical pictures). Search, the arrow counts, the key and Tab order cover the whole Map.
+- The Map's crossing count (the number in the toolbar) is worked out in WebAssembly, with exactly the same answer (8 ms instead of 28 in Chromium, 14 instead of 33 in Firefox at 300 pages). A browser that will not run WebAssembly counts the old way.
+
 ## October 19
+- New: the Speed report (Options → Speed report…) has a **Save as file** button, so a session on your phone or laptop can be kept as a small text file with the timings, device details and recent errors (never your story's words).
 - The editor's first screen appears 17 to 27% sooner (Firefox 98 to 76 ms, Chromium 104 to 83, WebKitGTK 189 to 157, GNOME Web 333 to 242): the first check of your story now runs just after the screen is drawn, and the status line says "Checking" for those few milliseconds.
 - The Map opens faster after you change a story: finding the pages every route must pass through now takes 2 to 3 ms instead of 8 to 27 ms at 300 pages (1 ms instead of 2 to 3 ms at 100 pages). The Map looks exactly the same.
 

@@ -23,6 +23,7 @@ const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
   const hits = await pg.locator('g.node.hit').count(), dims = await pg.locator('g.node.dim').count();
   ok(hits>0 && dims>10, `search hits ${hits} dims ${dims}`);
   console.log('   ', await pg.locator('.mapcount').innerText());
+  await pg.waitForFunction(()=>{const e=document.querySelector('g.node.dim');return !!e&&+getComputedStyle(e).opacity<0.3;},null,{timeout:3000}).catch(()=>{}); // the dimming fades in over a moment: wait for it to finish instead of reading it half way
   const op = await pg.locator('g.node.dim').first().evaluate(e=>getComputedStyle(e).opacity); ok(+op<0.3, 'dimmed opacity '+op);
   await pg.press('.mapsearch','Escape'); await pg.waitForTimeout(100);
   ok(await pg.locator('g.node.dim').count()===0, 'Esc clears search');
