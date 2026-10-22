@@ -1976,15 +1976,20 @@ function mapMetrics(L, ms, cls, prevPos, quick) {
         }
     } else if (L.kind === 'matrix') cr = 0;
     else if (segs.length <= 4000) {
-      /* two segments whose bounding boxes do not overlap cannot cross, so most pairs are dismissed with four comparisons */
-      const box = segs.map(s => [Math.min(s[0][0], s[1][0]), Math.max(s[0][0], s[1][0]), Math.min(s[0][1], s[1][1]), Math.max(s[0][1], s[1][1])]);
-      for (let i = 0; i < segs.length; i++) {
-        const bi = box[i];
-        for (let j = i + 1; j < segs.length; j++) {
-          const bj = box[j];
-          if (bi[1] < bj[0] || bj[1] < bi[0] || bi[3] < bj[2] || bj[3] < bi[2]) continue;
-          if (segs[i][2] === segs[j][2]) continue;
-          if (mapSegCross(segs[i][0], segs[i][1], segs[j][0], segs[j][1])) cr++;
+      /* WebAssembly counts them when it can (checkwalk.js): the same arithmetic, and it does not have to warm up first */
+      const fast = typeof klCrossWasm === 'function' ? klCrossWasm(segs) : null;
+      if (fast !== null) cr = fast;
+      else {
+        /* two segments whose bounding boxes do not overlap cannot cross, so most pairs are dismissed with four comparisons */
+        const box = segs.map(s => [Math.min(s[0][0], s[1][0]), Math.max(s[0][0], s[1][0]), Math.min(s[0][1], s[1][1]), Math.max(s[0][1], s[1][1])]);
+        for (let i = 0; i < segs.length; i++) {
+          const bi = box[i];
+          for (let j = i + 1; j < segs.length; j++) {
+            const bj = box[j];
+            if (bi[1] < bj[0] || bj[1] < bi[0] || bi[3] < bj[2] || bj[3] < bi[2]) continue;
+            if (segs[i][2] === segs[j][2]) continue;
+            if (mapSegCross(segs[i][0], segs[i][1], segs[j][0], segs[j][1])) cr++;
+          }
         }
       }
     } else cr = L.crossings ?? 0;

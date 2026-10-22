@@ -964,6 +964,12 @@ function renderMap(main) {
   const nodeEls = {},
     edgeEls = [],
     present = {};
+  /* A big map (CULL_MIN boxes or more) draws only the boxes and arrows near the window; the rest come in as they scroll into view.
+     Their records and key entries exist from the start, so counts, search and paths cover the whole map. */
+  const CULL_MIN = typeof window.__mapCullMin === 'number' ? window.__mapCullMin : 120;
+  let cullOn = false;
+  let cullNodes = []; // the boxes in keyboard order, drawn or not
+  let litId = null; // the page lit by hover, focus or pinning
   let moved = false; // a drag-to-pan in progress, so it is not taken for a click
   const HEAD = 12;
 
@@ -1074,6 +1080,7 @@ function renderMap(main) {
 
   function drawNodeViews() {
     const LR = L.dir !== 'TB';
+    cullOn = L.nodes.length >= CULL_MIN;
     /* lane bands and the spine line, behind everything */
     (L.lanes || []).forEach((ln, i) => {
       const name = L.laneNames?.[ln.lane] || '';
@@ -1153,12 +1160,19 @@ function renderMap(main) {
           }
         }
       }
-      drawEdge(e, P);
+      const rec = newEdge(e, P);
+      if (!cullOn) fillEdge(rec);
     });
-    L.nodes
-      .slice()
-      .sort((a, b) => a.layer - b.layer || (L.dir === 'TB' ? a.x - b.x : a.y - b.y))
-      .forEach(n => drawNode(n)); // keyboard order follows the picture: layer by layer, top to bottom
+    /* keyboard order follows the picture: layer by layer, top to bottom */
+    cullNodes = L.nodes.slice().sort((a, b) => a.layer - b.layer || (L.dir === 'TB' ? a.x - b.x : a.y - b.y));
+    cullNodes.forEach((n, i) => {
+      n.ord = i;
+      if (cullOn) {
+        n.pend = true;
+        n.el = null;
+        noteNode(n);
+      } else drawNode(n);
+    });
     /* opened runs: a soft band behind their pages with a Fold button */
     if (vname !== 'river' && vname !== 'matrix')
       L.G.runs
@@ -1221,33 +1235,13 @@ function renderMap(main) {
     }
   }
 
-  /** One arrow (or one arrow for several choices), with its hit area, its menu and its badges. */
-  function drawEdge(e, P, opts = {}) {
-    const d = pathOf(P);
-    const many = e.srcs.length > 1;
-    const pe = s('path', { d, class: `edge${e.gated ? ' gated' : ''}${many ? ' multi' : ''}`, 'marker-end': opts.noHead ? null : 'url(#arr)' });
-    if (many) {
-      pe.style.strokeWidth = Math.min(1.5 + e.srcs.length * 0.7, 4.5);
-      present.multi = true;
-    }
-    if (e.gated) present.sometimes = true;
-    else present.choice = true;
-    const lines = [],
-      fx = [],
+  /** What picking an arrow gives (1) or takes (0), one entry per item, in the order the choices list them. */
+  function edgeFx(e) {
+    const fx = [],
       seenFx = new Set();
     e.srcs.forEach(src => {
       const cc = byId(src.pid)?.choices[src.ci];
       if (!cc) return;
-      lines.push(
-        (many ? `“${src.label || 'Choice with no text'}”` : src.label || 'Choice with no text') +
-          (src.gated ? ` (appears only if: ${condSummary(cc, itemName).replace(/^Only if /, '')})` : '') +
-          (cc.gives.length ? ` · gets ${joinAnd(cc.gives.map(itemName))}` : '') +
-          (cc.takes.length ? ` · loses ${joinAnd(cc.takes.map(itemName))}` : '') +
-          Object.keys(cc.adds || {})
-            .map(id => ` · ${itemName(id)} ${cc.adds[id] > 0 ? '+' : ''}${cc.adds[id]}`)
-            .join('') +
-          (cc.check && itemById(cc.check.stat) ? ` · dice check: ${itemName(cc.check.stat)} + 2 dice vs ${cc.check.target}` : '')
-      );
       Object.keys(cc.adds || {}).forEach(id => {
         if (!seenFx.has(`n${id}`)) {
           seenFx.add(`n${id}`);
@@ -1267,6 +1261,48 @@ function renderMap(main) {
         }
       });
     });
+    return fx;
+  }
+
+  /** The record for one arrow: its data and the key entries it brings. fillEdge makes the picture, at once or, on a big map, when it scrolls into view. */
+  function newEdge(e, P, opts = {}) {
+    if (e.srcs.length > 1) present.multi = true;
+    if (e.gated) present.sometimes = true;
+    else present.choice = true;
+    const fx = edgeFx(e);
+    if (fx.length && !opts.noBadges) fx.slice(0, 3).forEach(f => (present[kindOf(itemById(f[0]))] = true));
+    const rec = { el: null, hit: null, e, from: e.from, to: e.to, srcs: e.srcs, P, fx, opts, deco: [], sdim: false, pk: 0, noHead: !!opts.noHead };
+    rec.i = edgeEls.push(rec) - 1;
+    return rec;
+  }
+  function drawEdge(e, P, opts = {}) {
+    const rec = newEdge(e, P, opts);
+    fillEdge(rec);
+    return rec;
+  }
+
+  /** One arrow (or one arrow for several choices), with its hit area, its menu and its badges. */
+  function fillEdge(rec) {
+    const { e, P, opts, fx } = rec;
+    const d = pathOf(P);
+    const many = e.srcs.length > 1;
+    const pe = s('path', { d, class: `edge${e.gated ? ' gated' : ''}${many ? ' multi' : ''}`, 'marker-end': opts.noHead ? null : 'url(#arr)' });
+    if (many) pe.style.strokeWidth = Math.min(1.5 + e.srcs.length * 0.7, 4.5);
+    const lines = [];
+    e.srcs.forEach(src => {
+      const cc = byId(src.pid)?.choices[src.ci];
+      if (!cc) return;
+      lines.push(
+        (many ? `“${src.label || 'Choice with no text'}”` : src.label || 'Choice with no text') +
+          (src.gated ? ` (appears only if: ${condSummary(cc, itemName).replace(/^Only if /, '')})` : '') +
+          (cc.gives.length ? ` · gets ${joinAnd(cc.gives.map(itemName))}` : '') +
+          (cc.takes.length ? ` · loses ${joinAnd(cc.takes.map(itemName))}` : '') +
+          Object.keys(cc.adds || {})
+            .map(id => ` · ${itemName(id)} ${cc.adds[id] > 0 ? '+' : ''}${cc.adds[id]}`)
+            .join('') +
+          (cc.check && itemById(cc.check.stat) ? ` · dice check: ${itemName(cc.check.stat)} + 2 dice vs ${cc.check.target}` : '')
+      );
+    });
     const text = (many ? `${e.srcs.length} choices lead here:\n` : '') + lines.join('\n') + '\nRight-click to change it.';
     tip(pe, text);
     const deco = [];
@@ -1279,7 +1315,6 @@ function renderMap(main) {
       shown.forEach((f, i) => {
         const it = itemById(f[0]),
           ic = itemIcon(it || { kind: 'object' }, 13);
-        present[kindOf(it)] = true;
         ic.setAttribute('x', m[0] - bw / 2 + 4 + i * 15);
         ic.setAttribute('y', m[1] - 6.5);
         if (!f[1]) ic.setAttribute('opacity', '0.45');
@@ -1299,7 +1334,10 @@ function renderMap(main) {
       cg.querySelector('text').textContent = `×${e.srcs.length}`;
       deco.push(cg);
     }
-    layerEdges.appendChild(pe);
+    /* on a big map the arrows come in as they scroll into view, so each goes before the next one already drawn (the stacking stays as if all were drawn at once) */
+    let nx = null;
+    if (cullOn) for (let k = rec.i + 1; k < edgeEls.length && !nx; k++) nx = edgeEls[k].el;
+    layerEdges.insertBefore(pe, nx);
     const hit = s('path', { d, class: 'edgehit' });
     const menu = (x, y) => ctxMenu(x, y, edgeMenuFor(e.srcs));
     hit.addEventListener('contextmenu', ev => {
@@ -1308,11 +1346,11 @@ function renderMap(main) {
       menu(ev.clientX, ev.clientY);
     });
     longPress(hit, menu);
-    layerEdges.appendChild(hit);
+    layerEdges.insertBefore(hit, nx);
     deco.forEach(dd => layerTop.appendChild(dd));
-    const rec = { el: pe, hit, from: e.from, to: e.to, srcs: e.srcs, P, deco, sdim: false, pk: 0, noHead: !!opts.noHead };
-    edgeEls.push(rec);
-    return rec;
+    rec.el = pe;
+    rec.hit = hit;
+    rec.deco = deco;
   }
 
   /** One page box (or folded run). Drawn at normal size, then moved and scaled into place. */
@@ -1465,8 +1503,29 @@ function renderMap(main) {
           : pageMenu(p)
     );
     n.el = g;
+    n.pend = false;
     nodeEls[n.id] = g;
-    layerNodes.appendChild(g);
+    /* on a big map the boxes come in as they scroll into view, so each goes before the next one already drawn (keyboard order stays the picture's order) */
+    let nx = null;
+    if (cullOn) for (let k = n.ord + 1; k < cullNodes.length && !nx; k++) nx = cullNodes[k].el;
+    layerNodes.insertBefore(g, nx);
+  }
+
+  /** The key entries a page box brings, without drawing it (a big map draws its boxes later). */
+  function noteNode(n) {
+    pageClasses(n);
+    overlayFill(n);
+    const pages = n.pages.map(byId);
+    if (track) {
+      const tk = n.pages.map(id => trackInfo[id]).filter(Boolean);
+      if (tk.some(x => x.give)) present.tgive = true;
+      if (tk.some(x => x.take)) present.ttake = true;
+      if (tk.some(x => x.need)) present.tneed = true;
+    }
+    let fxl = [];
+    pages.forEach(q => (fxl = fxl.concat(q.gives)));
+    pages.forEach(q => (fxl = fxl.concat(q.takes)));
+    fxl.slice(0, 5).forEach(id => (present[kindOf(itemById(id))] = true));
   }
 
   /** Clicks, keys, menus and neighbor highlighting for any page mark. */
@@ -1491,7 +1550,10 @@ function renderMap(main) {
         open();
       }
     });
-    el.addEventListener('focus', () => light(n.id));
+    el.addEventListener('focus', () => {
+      light(n.id);
+      revealAround(n);
+    });
     el.addEventListener('blur', () => light(mapPin));
     el.addEventListener('pointerenter', ev => {
       if (ev.pointerType !== 'touch') light(n.id);
@@ -1515,12 +1577,15 @@ function renderMap(main) {
 
   /* neighbor highlight: the page, the pages that lead to it and the pages it leads to */
   function light(id) {
+    litId = id;
     box.classList.toggle('nh', !!id);
     const near = new Set(id ? [id] : []);
     edgeEls.forEach(e => {
       const on = !!id && (e.from === id || e.to === id);
-      e.el.classList.toggle('nh-on', on);
-      e.deco.forEach(d => d.classList.toggle('nh-on', on));
+      if (e.el) {
+        e.el.classList.toggle('nh-on', on);
+        e.deco.forEach(d => d.classList.toggle('nh-on', on));
+      }
       if (on) {
         near.add(e.from);
         near.add(e.to);
@@ -2110,13 +2175,32 @@ function renderMap(main) {
       key.classList.remove('one');
       key.style.left = key.style.top = key.style.right = key.style.bottom = '';
     };
-    const st = box.querySelector('.node.start');
-    if (window.innerWidth <= 700 || !st || L.nodes.length > 300) return reset();
+    if (window.innerWidth <= 700 || L.nodes.length > 300) return reset();
     const pr = par.getBoundingClientRect(),
-      br = box.getBoundingClientRect(),
+      br = box.getBoundingClientRect();
+    let s, nodes;
+    if (L.kind === 'nodes' && NODE_VIEWS.includes(vname)) {
+      /* where each page box sits on screen, worked out from the layout (no measuring of every box, and boxes not drawn yet count too) */
+      const st = L.nodes.find(n => n.pages?.[0] === project.start);
+      if (!st) return reset();
+      const sr = svg.getBoundingClientRect(),
+        sc = sr.width / (L.width || 1);
+      const rectOf = n => {
+        const k = n.k || 1,
+          x = (n.cx ?? n.x + n.w / 2) - (MAP_W * k) / 2,
+          y = (n.cy ?? n.y + n.h / 2) - (MAP_H * k) / 2,
+          e = n.run ? 5 : 0; // a folded run shows a second box behind, up and to the right
+        return { left: sr.left + x * sc, top: sr.top + (y - e) * sc, right: sr.left + (x + MAP_W * k + e) * sc, bottom: sr.top + (y + MAP_H * k) * sc };
+      };
+      s = rectOf(st);
+      nodes = L.nodes.filter(n => n !== st).map(rectOf);
+    } else {
+      const st = box.querySelector('.node.start');
+      if (!st) return reset();
       s = st.getBoundingClientRect();
+      nodes = [].slice.call(box.querySelectorAll('.node')).filter(n => n !== st).map(n => n.getBoundingClientRect());
+    }
     if (s.right < br.left || s.left > br.right) return reset();
-    const nodes = [].slice.call(box.querySelectorAll('.node')).filter(n => n !== st);
     /* two columns first; if that would cover a page, one narrow column (taller, so it needs more room above) */
     for (const one of [false, true]) {
       key.classList.toggle('one', one);
@@ -2127,10 +2211,7 @@ function renderMap(main) {
       if (top < br.top - pr.top + 4) continue;
       const x0 = left + pr.left,
         y0 = top + pr.top;
-      if (nodes.some(n => {
-        const q = n.getBoundingClientRect();
-        return q.right > x0 && q.left < x0 + kw && q.bottom > y0 && q.top < y0 + kh;
-      })) continue;
+      if (nodes.some(q => q.right > x0 && q.left < x0 + kw && q.bottom > y0 && q.top < y0 + kh)) continue;
       key.style.left = `${left}px`;
       key.style.top = `${top}px`;
       key.style.bottom = 'auto';
@@ -2152,6 +2233,7 @@ function renderMap(main) {
     zlabel.textContent = `${Math.round(mapZoom * 100)}%`;
     mapZoomOf[vname] = mapZoom;
     key.auto();
+    revealSoon();
   }
   /* While the zoom is changing (wheel turns, + and - presses) the drawing is only scaled with a CSS transform on its own layer, which
      the browser does without laying the page out or redrawing the map at every step. About 0.2 s after the last step the real size is
@@ -2173,6 +2255,7 @@ function renderMap(main) {
     zlabel.textContent = `${Math.round(z * 100)}%`;
     box.scrollLeft = liveAnchor.rx * z - cx;
     box.scrollTop = liveAnchor.ry * z - cy;
+    revealSoon();
     clearTimeout(liveTimer);
     liveTimer = setTimeout(commitZoom, 200);
     speedNote('map zoom step', performance.now() - t0);
@@ -2212,10 +2295,111 @@ function renderMap(main) {
     box.scrollTop = cy * mapZoom - box.clientHeight / 2;
   }
 
+  /* ----- big maps: draw what scrolls into view ----- */
+  const nodeBox = n => {
+    const k = n.k || 1,
+      cx = n.cx ?? n.x + n.w / 2,
+      cy = n.cy ?? n.y + n.h / 2;
+    return [cx - (MAP_W * k) / 2 - 8, cy - (MAP_H * k) / 2 - 12, cx + (MAP_W * k) / 2 + 13, cy + (MAP_H * k) / 2 + 8];
+  };
+  const edgeBox = e => {
+    if (e.box) return e.box;
+    let x0 = Infinity,
+      y0 = Infinity,
+      x1 = -Infinity,
+      y1 = -Infinity;
+    for (let i = 0; i + 1 < e.P.length; i += 2) {
+      x0 = Math.min(x0, e.P[i]);
+      x1 = Math.max(x1, e.P[i]);
+      y0 = Math.min(y0, e.P[i + 1]);
+      y1 = Math.max(y1, e.P[i + 1]);
+    }
+    return (e.box = [x0 - 30, y0 - 30, x1 + 30, y1 + 30]); // the control points hold the curve; 30 leaves room for the badges
+  };
+  /** The part of the drawing (in map units) that the window shows, grown by pad windows on every side. */
+  const wantRect = pad => {
+    const z = curZoom(),
+      w = box.clientWidth || 1200,
+      ht = box.clientHeight || 800;
+    return [(box.scrollLeft - pad * w) / z, (box.scrollTop - pad * ht) / z, (box.scrollLeft + w * (1 + pad)) / z, (box.scrollTop + ht * (1 + pad)) / z];
+  };
+  const meets = (b, r) => b[2] > r[0] && b[0] < r[2] && b[3] > r[1] && b[1] < r[3];
+  /** Draws the boxes and arrows inside r that are not drawn yet, for at most `budget` ms. */
+  function drawIn(r, budget) {
+    const t0 = performance.now();
+    let k = 0;
+    for (const n of cullNodes) {
+      if (!n.pend || !meets(nodeBox(n), r)) continue;
+      n.pend = false;
+      drawNode(n);
+      k++;
+      if (performance.now() - t0 > budget) return { k, more: true };
+    }
+    for (const e of edgeEls) {
+      if (e.el || !e.e || !meets(edgeBox(e), r)) continue;
+      fillEdge(e);
+      k++;
+      if (performance.now() - t0 > budget) return { k, more: true };
+    }
+    return { k, more: false };
+  }
+  /** Newly drawn boxes and arrows take on the paths, search and highlight the rest already show. */
+  function restyle() {
+    applyPaths();
+    applySearch(false);
+    if (litId) light(litId);
+  }
+  let revealRaf = 0,
+    frameRaf = 0;
+  /** In animation frames of at most about 6 ms: first what the window shows, then a margin around it. */
+  function drawFrames() {
+    cancelAnimationFrame(frameRaf);
+    frameRaf = requestAnimationFrame(() => {
+      if (!box.isConnected) return;
+      const t0 = performance.now();
+      let r = drawIn(wantRect(0), 6),
+        k = r.k;
+      if (!r.more) {
+        r = drawIn(wantRect(0.3), Math.max(1, 6 - (performance.now() - t0)));
+        k += r.k;
+      }
+      if (k) restyle();
+      if (r.more) drawFrames();
+    });
+  }
+  /** Draws what the window shows now (the first screenful at once) and carries on with the margin. */
+  function reveal() {
+    cancelAnimationFrame(revealRaf);
+    if (!cullOn || !box.isConnected) return;
+    const a = drawIn(wantRect(0), 14);
+    if (a.k) restyle();
+    drawFrames();
+  }
+  function revealSoon() {
+    if (!cullOn) return;
+    cancelAnimationFrame(revealRaf);
+    revealRaf = requestAnimationFrame(reveal);
+  }
+  /** Keyboard focus on a box: the boxes just before and after it in keyboard order are drawn, so Tab and Shift+Tab always have somewhere to go. */
+  function revealAround(n) {
+    if (!cullOn || n.ord === undefined) return;
+    let k = 0;
+    for (let i = Math.max(0, n.ord - 8); i <= Math.min(cullNodes.length - 1, n.ord + 8); i++) {
+      const m = cullNodes[i];
+      if (!m.pend) continue;
+      m.pend = false;
+      drawNode(m);
+      k++;
+    }
+    if (k) restyle();
+  }
+  if (typeof ResizeObserver === 'function') new ResizeObserver(revealSoon).observe(box);
+
   /* ----- crit paths ----- */
   function paintEdges() {
     const pathsOn = mapGood || mapBad;
     edgeEls.forEach(e => {
+      if (!e.el) return; // not drawn yet (a big map draws arrows as they scroll into view)
       e.el.classList.toggle('dim', e.sdim);
       e.deco.forEach(d => d.classList.toggle('dim', e.sdim));
       e.el.classList.toggle('pg', (e.pk & 1) > 0);
@@ -2279,7 +2463,7 @@ function renderMap(main) {
       first = null;
     const picked = mapPick;
     L.nodes.forEach(n => {
-      if (!n.el) return;
+      if (!n.el && !n.pend) return;
       let c = 0;
       (n.pages || []).forEach(id => {
         const p = byId(id);
@@ -2294,6 +2478,7 @@ function renderMap(main) {
       const hit = terms.length ? c > 0 : !!isPicked;
       hitNode[n.id] = hit;
       if (hit && !first) first = n.id;
+      if (!n.el) return;
       n.el.classList.toggle('hit', hit);
       n.el.classList.toggle('dim', (terms.length > 0 || !!picked) && !hit);
     });
@@ -2410,6 +2595,7 @@ function renderMap(main) {
     () => {
       mapScroll[vname] = { l: box.scrollLeft, t: box.scrollTop };
       key.auto();
+      revealSoon();
     },
     { passive: true }
   );
@@ -2464,6 +2650,7 @@ function renderMap(main) {
       requestAnimationFrame(() => centerOn(nid));
     }
   }
+  reveal(); // a big map draws only what the window shows
 }
 
 /** Gives the map the rest of the window's height, so nothing below it needs scrolling. */

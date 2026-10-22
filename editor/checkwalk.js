@@ -11,6 +11,53 @@ const KL_WALK_B64 = /*WASM:BEGIN*/ 'AGFzbQEAAAABGARgAABgAn9/AX9gA39/fwBgBH9/f38B
 /* the graph module, base64; written between the markers by wasm/embed.py from wasm/checkgraph.wasm */
 const KL_GRAPH_B64 = /*GRAPH:BEGIN*/ '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' /*GRAPH:END*/;
 
+/* the Map's crossing count, base64; written between the markers by wasm/embed.py from wasm/mapcross.wasm */
+const KL_CROSS_B64 = /*CROSS:BEGIN*/ 'AGFzbQEAAAABCgFgBX9/f39/AX8CDwEDZW52Bm1lbW9yeQIAAgMCAQAGDwJ/AUGAiAQLfwBBgIgECwcbAgljcm9zc2luZ3MAAAtfX2hlYXBfYmFzZQMBCtYGAdMGBAR/AnwGfwx8AkAgAEEBSA0AQQAhBSABIQYgBCEHIAMhCANAIAggBTYCACAHIAYrAwAiCSAGQRBqKwMAIgogCSAKYxs5AwAgBkEgaiEGIAdBCGohByAIQQRqIQggACAFQQFqIgVHDQALAkAgAEEBRg0AIAAhCwNAAkAgC0EBdiIHIABODQBBACAHQQJ0IgxrIQ0gAyEOIAchDwNAIAMgD0ECdGooAgAhECAPIQUCQCAPIAdJDQAgBCAQQQN0aisDACEJIA4hBiAPIQUDQCAEIAYoAgAiCEEDdGorAwAgCWRFDQEgBiAMaiAINgIAIAYgDWohBiAFIAdrIgUgB04NAAsLIAMgBUECdGogEDYCACAOQQRqIQ4gD0EBaiIPIABHDQALCyALQQRJIQYgByELIAZFDQALCyAAQQFIDQAgA0EEaiEOIABBf2ohEEEAIQ9BACELA0ACQCAPIgZBAWoiDyAATg0AIAEgAyAGQQJ0aigCACIFQQV0aiIGQRhqKwMAIhEgBkEIaisDACISIBIgEWMiBxshEyASIBEgBxshFCAGQRBqKwMAIhUgBisDACIWIBYgFWMbIRcgESASoSEYIBUgFqEhGSACIAVBAnRqIQ0gDiEGIBAhCANAIAQgBigCACIFQQN0aisDACAXZA0BAkAgEyABIAVBBXRqIgdBCGorAwAiCSAHQRhqKwMAIgogCSAKYyIMG2MNACAKIAkgDBsgFGMNACANKAIAIAIgBUECdGooAgBGDQBBAUF/QQAgGSAKIBKhoiAYIAdBEGorAwAiGiAWoaKhIhtEAAAAAAAAAABjGyAbRAAAAAAAAAAAZBtBAUF/QQAgGSAJIBKhoiAYIAcrAwAiGyAWoaKhIhxEAAAAAAAAAABjGyAcRAAAAAAAAAAAZBtsQX9KDQBBAUF/QQAgEiAJoSAaIBuhIhyiIBYgG6EgCiAJoSIKoqEiGkQAAAAAAAAAAGMbIBpEAAAAAAAAAABkG0EBQX9BACARIAmhIByiIBUgG6EgCqKhIglEAAAAAAAAAABjGyAJRAAAAAAAAAAAZBtsQR92IAtqIQsLIAZBBGohBiAIQX9qIggNAAsLIA5BBGohDiAQQX9qIRAgDyAARw0ACyALDwtBAAs=' /*CROSS:END*/;
+let klCrossMod; // undefined: not tried yet; null: not usable; else { ex, mem, heap }
+
+function klCrossInit() {
+  if (klCrossMod !== undefined) return klCrossMod;
+  klCrossMod = null;
+  try {
+    if (typeof WebAssembly !== 'object' || !KL_CROSS_B64) return null;
+    const txt = atob(KL_CROSS_B64);
+    const bytes = new Uint8Array(txt.length);
+    for (let i = 0; i < txt.length; i++) bytes[i] = txt.charCodeAt(i);
+    const mem = new WebAssembly.Memory({ initial: 16 });
+    const inst = new WebAssembly.Instance(new WebAssembly.Module(bytes), { env: { memory: mem } });
+    const hb = inst.exports.__heap_base;
+    klCrossMod = { ex: inst.exports, mem, heap: ((hb.value === undefined ? hb : hb.value) + 15) & ~15 };
+  } catch (e) {
+    klCrossMod = null;
+  }
+  return klCrossMod;
+}
+
+/**
+ * How many pairs of segments of different arrows cross, in WebAssembly. `segs` is a list of [[x0, y0], [x1, y1], arrowNumber]. Gives the count of
+ * the JavaScript loop in mapMetrics (maplayout.js), or null when it cannot (no WebAssembly, a page rule that refuses it, too many segments).
+ */
+function klCrossWasm(segs) {
+  const M = klCrossInit();
+  const n = segs.length;
+  if (!M || !(n > 0) || n > 8000) return null;
+  try {
+    const f = new Float64Array(M.mem.buffer, M.heap, n * 4);
+    const id = new Int32Array(M.mem.buffer, M.heap + n * 32, n); // then room for the order (n numbers) and the left ends (n doubles)
+    for (let i = 0; i < n; i++) {
+      const s = segs[i];
+      f[4 * i] = s[0][0];
+      f[4 * i + 1] = s[0][1];
+      f[4 * i + 2] = s[1][0];
+      f[4 * i + 3] = s[1][1];
+      id[i] = s[2];
+    }
+    return M.ex.crossings(n, M.heap, M.heap + n * 32, M.heap + n * 36, M.heap + n * 40);
+  } catch (e) {
+    return null;
+  }
+}
+
 let klGraphMod; // undefined: not tried yet; null: not usable; else { ex, mem, heap }
 
 function klGraphInit() {
