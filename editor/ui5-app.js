@@ -1964,6 +1964,7 @@ function init() {
     mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
     mapKept: () => mapCache.get(mapLayoutKey(mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
     mapFresh: v => mapBuildFresh(v), // a layout built the usual way, to compare with the background one
+    mapChip: L => mapScore(L, undefined, true), // the toolbar chip's numbers for a layout
     startTour
   };
 }

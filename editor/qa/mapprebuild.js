@@ -21,13 +21,18 @@ const SAME = `(() => {
     if (x === y) return null;
     if (typeof x !== typeof y || x === null || y === null || typeof x !== 'object') return Number.isNaN(x) && Number.isNaN(y) ? null : p + ': ' + x + ' vs ' + y;
     if (seen.get(x) === y) return null; seen.set(x, y);
-    const top = p === '', skip = k => top && ['ms', 'pt', 'groups'].includes(k);
+    const top = p === '', skip = k => top && ['ms', 'pt', 'groups', '_metrics', '_centers'].includes(k);
     const kx = Object.keys(x).filter(k => !skip(k)), ky = Object.keys(y).filter(k => !skip(k));
     if (kx.length !== ky.length) return p + ': ' + kx.length + ' keys vs ' + ky.length;
     for (const k of kx) { if (!(k in y)) return p + '.' + k + ' missing'; const d = eq(x[k], y[k], p + '.' + k); if (d) return d; }
     return null;
   };
-  return eq(A, F, '') || 'same';
+  const pre = A._metrics && A._metrics.cross !== undefined; // the worker already counted the crossings
+  const d = eq(A, F, '');
+  if (d) return d;
+  if (!pre) return 'the background layout has no crossing count yet';
+  const ca = E.mapChip(A).raw, cf = E.mapChip(F).raw;
+  return ca.crossings === cf.crossings && ca.backward === cf.backward && ca.edges === cf.edges ? 'same' : 'chip numbers differ: ' + JSON.stringify([ca, cf]);
 })()`;
 (async () => {
   const b = await B.launch(); const errs = [];

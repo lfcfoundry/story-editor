@@ -2,7 +2,7 @@
    MAP-WORKER-EQUIV: a big story's Map layout is built ahead in a background worker. The worker's code is not a second copy: it is the text of the
    same functions (mapWorkerSource in maplayout.js). This check proves two things for random stories (loops, dead ends, Givens, long jumps):
      1. the text really is complete: it runs in an empty context with nothing else of the editor in it, and
-     2. the layout it gives (graph, box sizes, positions, order, crossings) is exactly what the Map tab's own build gives, for each plain
+     2. the layout it gives (graph, box sizes, positions, order, crossings, and the crossing count the toolbar chip shows) is exactly what the Map tab's own build gives, for each plain
         view (flow, down, spine), merged arrows on and off, traffic sizing on and off, with and without last time's order.
    It also reads the page text of ui4-map.js, to confirm the Map tab builds these views through the same functions.
    Usage: node map-worker-equiv.mjs [stories=60] [seed=7]     Exit code 1 and the first difference on any failure.
@@ -13,8 +13,8 @@ import { createContext, runInContext } from 'node:vm';
 
 const here = f => new URL(f, import.meta.url);
 const main = createContext({ console, performance });
-runInContext(`${readFileSync(here('core.js'), 'utf8')}\n${readFileSync(here('maplayout.js'), 'utf8')}\nthis.__api = { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, layered: null };`, main);
-const { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN } = main.__api;
+runInContext(`${readFileSync(here('core.js'), 'utf8')}\n${readFileSync(here('maplayout.js'), 'utf8')}\nthis.__api = { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, mapMetrics };`, main);
+const { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, mapMetrics } = main.__api;
 
 /* the worker: only the text, in a context that has a clock and a way to answer, nothing else */
 const answers = [];
@@ -89,6 +89,7 @@ for (let t = 0; t < stories; t++) {
               o.prev = first.order;
             }
             const want = mapBuildPlain(JSON.parse(text), view, o);
+            mapMetrics(want.L, 0, null, null, true); // the worker also does this, so the page finds the toolbar chip's numbers done
             answers.length = 0;
             worker.onmessage({ data: { seq: 1, view, text, o: JSON.parse(JSON.stringify(o)) } });
             const got = answers[0];
