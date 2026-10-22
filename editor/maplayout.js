@@ -728,11 +728,13 @@ function mapBuildPlain(project, viewName, o) {
 }
 
 /* The plain views can be built in a background worker (the Map tab, ui4-map.js, starts it): the worker's code is these functions as text,
-   so there is one copy of the logic. The list must hold everything mapBuildPlain uses (the check map-worker-equiv.mjs proves it). */
-const MAP_WORKER_FUNCS = [mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain];
+   so there is one copy of the logic. It also counts the crossings for the toolbar chip (mapMetrics keeps that on the layout, so the page finds it done). The list must hold everything mapBuildPlain uses (the check map-worker-equiv.mjs proves it). */
+const MAP_WORKER_FUNCS = [
+  mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain, mapSegCross, mapMetrics
+];
 function mapWorkerSource() {
   const fns = MAP_WORKER_FUNCS.map(f => f.toString()).join('\n');
-  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const r=mapBuildPlain(JSON.parse(m.text),m.view,m.o);postMessage({seq:m.seq,G:r.G,L:r.L,ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const r=mapBuildPlain(JSON.parse(m.text),m.view,m.o);mapMetrics(r.L,0,null,null,true);postMessage({seq:m.seq,G:r.G,L:r.L,ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
 }
 
 /* ---------------------------------------------------------------------------
