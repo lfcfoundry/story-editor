@@ -1,6 +1,6 @@
 {
   "name": "story-map",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Layered, arc, matrix and shape drawings of a story graph, choke points, simulated players, drawing metrics, SVG output. Zero dependencies.",
   "license": "MIT",
   "author": "LFC Foundry",

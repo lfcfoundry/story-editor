@@ -1961,6 +1961,9 @@ function init() {
     openPage: id => openPage(typeof id === 'string' ? byId(id) : id), // for the test suites
     xl: { sheet: () => translationSheet(project), csvParse, csvWrite }, // for the test suites
     refresh, // the test suites change the story directly, then ask for the same redraw an edit would
+    mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
+    mapKept: () => mapCache.get(mapLayoutKey(mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
+    mapFresh: v => mapBuildFresh(v), // a layout built the usual way, to compare with the background one
     startTour
   };
 }

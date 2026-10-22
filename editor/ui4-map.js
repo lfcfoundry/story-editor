@@ -471,8 +471,16 @@ function mapGroups(G) {
 
 /** Builds the picture for `viewName` with the current settings: graph, box sizes, layout. */
 const mapCache = new Map(); // settings + a fingerprint of the story text -> layout, so the same story always looks the same (Undo puts pages back)
+/** The key a layout is kept under in mapCache. */
+function mapLayoutKey(viewName, color, as) {
+  return viewName === 'shape' ? '' : JSON.stringify([sigOf(cur), viewName, mapOpts.merge, mapOpts.traffic, color, as, mapOpen, mapSim]);
+}
+function mapKeep(ck, L) {
+  mapCache.set(ck, L);
+  if (mapCache.size > 16) mapCache.delete(mapCache.keys().next().value);
+}
 function mapBuild(viewName) {
-  const ck = viewName === 'shape' ? '' : JSON.stringify([sigOf(cur), viewName, mapOpts.merge, mapOpts.traffic, mapOpts.color, mapAs, mapOpen, mapSim]);
+  const ck = mapLayoutKey(viewName, mapOpts.color, mapAs);
   if (ck && mapCache.has(ck)) {
     const hit = mapCache.get(ck);
     mapCache.delete(ck);
@@ -480,12 +488,85 @@ function mapBuild(viewName) {
     return hit;
   }
   const L = mapBuildFresh(viewName);
-  if (ck) {
-    mapCache.set(ck, L);
-    if (mapCache.size > 16) mapCache.delete(mapCache.keys().next().value);
-  }
+  if (ck) mapKeep(ck, L);
   return L;
 }
+/* ----- the first drawing of a big story, built ahead in the background -----
+   Laying out a big story's Map takes 30-40 ms the first time (the code is cold), long enough to freeze the screen. So once the checker has run,
+   a background worker builds the layout of the Map view you last used, and the Map finds it ready. The worker runs the same functions
+   (maplayout.js, mapWorkerSource) on a copy of the story text. If anything differs (the story changed, a Map was drawn meanwhile, the browser
+   refuses workers) the result is simply thrown away and the Map builds itself as always. */
+const MAP_PRE_MIN = 60; // pages; smaller stories build in a few ms, so the worker is not started
+const MAP_PRE_WAIT = 300; // ms of quiet after a check before the worker is asked
+const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, built: 0, dropped: 0, ms: 0, take: 0 };
+function mapPrebuildSoon() {
+  if (mapPre.bad || window.__mapPrebuild === false || !window.Worker || project.passages.length < (window.__mapPreMin ?? MAP_PRE_MIN)) return;
+  clearTimeout(mapPre.timer);
+  mapPre.timer = setTimeout(mapPrebuild, MAP_PRE_WAIT);
+}
+function mapPrebuild() {
+  if (view === 'map') return; // the Map is on screen: it builds for itself
+  loadMapOpts();
+  const full = adv('map');
+  const vname = mapViews().some(v => v[0] === mapOpts.view) ? mapOpts.view : 'flow';
+  const color = full ? mapOpts.color : 'none';
+  if (!MAP_PLAIN.includes(vname) || color === 'odds' || color === 'heat') return;
+  const as = full ? mapAs : {};
+  const ck = mapLayoutKey(vname, color, as);
+  if (mapCache.has(ck) || mapPre.job?.ck === ck) return;
+  if (!mapPre.worker) {
+    try {
+      const url = URL.createObjectURL(new Blob([mapWorkerSource()], { type: 'text/javascript' }));
+      const w = new Worker(url);
+      w.onmessage = mapPrebuilt;
+      w.onerror = () => {
+        mapPre.bad = true;
+        mapPre.job = null;
+        w.terminate();
+        mapPre.worker = null;
+      };
+      mapPre.worker = w;
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      mapPre.bad = true; // no workers here (or the page rules forbid them): the Map builds for itself
+      return;
+    }
+  }
+  const prevRef = mapPrev[vname];
+  mapPre.job = { seq: ++mapPre.seq, ck, vname, prevRef, text: cur };
+  mapPre.worker.postMessage({ seq: mapPre.seq, view: vname, text: cur, o: { as, open: mapOpen, merge: mapOpts.merge, traffic: mapOpts.traffic, prev: prevRef?.order } });
+}
+/** The worker's answer: keep it only if it is still the Map you would get (same story, no Map drawn since). */
+function mapPrebuilt(e) {
+  const t0 = performance.now();
+  const m = e.data, // the layout arrives as a copy; this is where the page unpacks it
+    job = mapPre.job;
+  if (!job || m.seq !== job.seq) return;
+  mapPre.job = null;
+  if (m.error) {
+    mapPre.bad = true;
+    mapPre.worker?.terminate();
+    mapPre.worker = null;
+    logError('map worker', new Error(m.error));
+    return;
+  }
+  if (job.text !== cur || mapPrev[job.vname] !== job.prevRef || mapCache.has(job.ck)) {
+    mapPre.dropped++;
+    return;
+  }
+  const L = m.L;
+  L.view = job.vname;
+  L.G = m.G;
+  mapLazyGroups(L, null);
+  L.pt = null;
+  L.ms = m.ms;
+  mapKeep(job.ck, L);
+  mapPre.built++;
+  mapPre.ms = m.ms;
+  mapPre.take = performance.now() - t0;
+  speedNote('map ahead', mapPre.take, `${L.nodes.length} boxes took in (${Math.round(m.ms)} ms worked out in the background)`);
+}
+
 /** Builds a layout from scratch (mapBuild keeps the results). */
 function mapBuildFresh(viewName) {
   const t0 = performance.now();
@@ -497,27 +578,19 @@ function mapBuildFresh(viewName) {
     merge: mapOpts.merge || flowing || viewName === 'matrix' || viewName === 'arc'
   });
   const pt = flowing || mapOpts.color === 'odds' || mapOpts.color === 'heat' ? playData() : null;
-  G.nodes.forEach(n => {
-    n.traffic = Math.max(...n.pages.map(id => G.imp.traffic[id] || 0));
-    n.choke = n.pages.some(id => G.imp.choke[id]);
-    let k = 1;
-    if (mapOpts.traffic) k = 1 + 0.45 * n.traffic;
-    if (viewName === 'spine' && n.choke) k = Math.max(k, 1.2);
-    n.k = k;
-    n.w = MAP_W * k;
-    n.h = MAP_H * k;
-    if (flowing) {
+  mapSizeNodes(G, viewName, mapOpts.traffic);
+  if (flowing) {
+    G.nodes.forEach(n => {
       n.k = 1;
       n.w = 14;
       n.h = Math.max(6, ((pt.visits[n.pages[0]] || 0) * 420) / Math.max(1, pt.runs));
-    }
-  });
-  const groups = mapGroups(G);
+    });
+  }
+  const groups = viewName === 'lanes' ? mapGroups(G) : null; // the other views ask only when a score needs them (with Givens that is several graph builds)
   const root = G.groupOf[project.start];
   const prev = mapPrev[viewName]?.order;
   let L;
-  if (viewName === 'down') L = layered(G, { dir: 'TB', root, prev });
-  else if (viewName === 'spine') L = layered(G, { dir: 'LR', root, prev, spine: true });
+  if (viewName === 'down' || viewName === 'spine') L = mapLayerPlain(G, viewName, root, prev);
   else if (viewName === 'lanes' && groups.lanes.length) L = layered(G, { dir: 'LR', root, prev, lane: n => Math.max(0, groups.laneOf[n.id]) });
   else if (viewName === 'river') L = layered(G, { dir: 'LR', root, prev, gapLayer: 190, gapNode: 14 });
   else if (viewName === 'arc') L = arcLayout(G, layered(G, { dir: 'LR', root, prev: mapPrev.flow?.order }));
@@ -528,14 +601,27 @@ function mapBuildFresh(viewName) {
       n.w = n.h = L.cell;
     });
   } else if (viewName === 'shape') L = shapeLayout(project, G);
-  else L = layered(G, { dir: 'LR', root, prev });
+  else L = mapLayerPlain(G, 'flow', root, prev);
   if (viewName === 'lanes') L.laneNames = groups.lanes.map(l => l.name);
   L.view = viewName;
   L.G = G;
-  L.groups = groups;
+  mapLazyGroups(L, groups);
   L.pt = pt;
   L.ms = performance.now() - t0;
   return L;
+}
+/** L.groups: given when the view needs it to lay out, else worked out the first time something reads it. */
+function mapLazyGroups(L, groups) {
+  if (groups) {
+    L.groups = groups;
+    return;
+  }
+  let g = null;
+  Object.defineProperty(L, 'groups', {
+    get: () => (g ||= mapGroups(L.G)),
+    enumerable: true,
+    configurable: true
+  });
 }
 
 /** Scores layout L against the qualities in mapMetrics (null for summary views that do not draw every arrow). */

@@ -804,6 +804,7 @@ function runCheck() {
     renderMain();
     m.scrollTop = st;
   }
+  mapPrebuildSoon(); // a big story's Map layout is built in the background, ready for when the Map tab opens
 }
 /** The checker's result for the story as it is now, re-using the last result when nothing has changed since. */
 function freshAnalysis() {

@@ -693,6 +693,49 @@ function layered(G, opts = {}) {
 }
 
 /* ---------------------------------------------------------------------------
+   The plain layered views, built in one piece (so the Map tab can also build them in the background)
+   --------------------------------------------------------------------------- */
+
+const MAP_PLAIN = ['flow', 'down', 'spine']; // the layered views that need nothing but the story and a few settings
+
+/** Gives every page box its size: normal, or larger by traffic (and the choke points a little larger in the spine view). */
+function mapSizeNodes(G, viewName, traffic) {
+  G.nodes.forEach(n => {
+    n.traffic = Math.max(...n.pages.map(id => G.imp.traffic[id] || 0));
+    n.choke = n.pages.some(id => G.imp.choke[id]);
+    let k = 1;
+    if (traffic) k = 1 + 0.45 * n.traffic;
+    if (viewName === 'spine' && n.choke) k = Math.max(k, 1.2);
+    n.k = k;
+    n.w = MAP_W * k;
+    n.h = MAP_H * k;
+  });
+}
+
+/** The layered drawing for one of the MAP_PLAIN views. `prev` is last time's order (so the picture stays put). */
+function mapLayerPlain(G, viewName, root, prev) {
+  if (viewName === 'down') return layered(G, { dir: 'TB', root, prev });
+  if (viewName === 'spine') return layered(G, { dir: 'LR', root, prev, spine: true });
+  return layered(G, { dir: 'LR', root, prev });
+}
+
+/** Graph, box sizes and layout of a MAP_PLAIN view in one call: { G, L }. o = { as, open, merge, traffic, prev }. */
+function mapBuildPlain(project, viewName, o) {
+  const G = mapGraph(project, { as: o.as, fold: true, open: o.open, merge: o.merge });
+  mapSizeNodes(G, viewName, o.traffic);
+  const L = mapLayerPlain(G, viewName, G.groupOf[project.start], o.prev);
+  return { G, L };
+}
+
+/* The plain views can be built in a background worker (the Map tab, ui4-map.js, starts it): the worker's code is these functions as text,
+   so there is one copy of the logic. The list must hold everything mapBuildPlain uses (the check map-worker-equiv.mjs proves it). */
+const MAP_WORKER_FUNCS = [mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain];
+function mapWorkerSource() {
+  const fns = MAP_WORKER_FUNCS.map(f => f.toString()).join('\n');
+  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const r=mapBuildPlain(JSON.parse(m.text),m.view,m.o);postMessage({seq:m.seq,G:r.G,L:r.L,ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+}
+
+/* ---------------------------------------------------------------------------
    Other views
    --------------------------------------------------------------------------- */
 
