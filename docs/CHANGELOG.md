@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 23
+- On a phone, the Map's toolbar is now one row of layout buttons plus a More button (colors, search and playtest results sit behind it), and the zoom buttons float over the map. The map area is about 25% taller (552 to 690 px on a 390 x 844 screen). The map itself draws exactly as before.
+
 ## October 22
 - Nothing changes in the editor you use; the maintainers' own checks got steadier and shorter (one flaky check in Chromium fixed, routine runs play half-size random-input tests).
 - Opening the Map of a big story does less work: boxes and arrows are re-styled (search, highlight, paths) only when something about them changed, instead of rewriting every one after each drawn piece. For 300 pages after an edit, the screen freezes for about 44 instead of 62 ms in Firefox and opening takes about 39 instead of 57 ms there; Chromium, WebKit and GNOME Web are about the same or a little better.
