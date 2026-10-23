@@ -26,6 +26,8 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
   };
   const dlg = pg => pg.evaluate(() => { const d = document.querySelector('dialog.dlg[open]'); return d ? d.innerText.replace(/\s+/g, ' ') : ''; });
   const openSafety = async pg => { await pg.locator('#optbtn').click(); await pg.locator('#optpop button:has-text("Safety")').click(); await pg.waitForTimeout(500); };
+  /* the reminder check runs about 2.6 s after start-up: wait for it to have run, not for a fixed time */
+  const waitNudge = pg => pg.waitForFunction(() => window.__editor && !window.__old && window.__editor.nudgeRuns > 0, null, { timeout: 30000 });
   const toastText = pg => pg.evaluate(() => document.getElementById('toast').innerText.replace(/\s+/g, ' '));
 
   /* ---- 1. the panel on a story never saved to a file ---- */
@@ -62,7 +64,8 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
   ok(/revision 2/.test(await toastText(pg)), 'the toast says revision 2: ' + await toastText(pg));
   /* the revision and time are part of the story: they survive a reload */
   const pre = await pg.evaluate(() => [window.__editor.guard, (JSON.parse(localStorage.getItem('story-editor-v1')) || {}).title]);
-  await pg.reload(); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(400);
+  await pg.evaluate(() => { window.__old = true; }); /* marks the page being left, so the wait below cannot be satisfied by it */
+  await pg.reload(); await pg.waitForFunction(() => window.__editor && !window.__old && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(400);
   const kept = await pg.evaluate(() => { const o = JSON.parse(localStorage.getItem('story-editor-v1')); return [o.rev, o.savedAt, o.id, o.title, Object.keys(localStorage).join('+')]; });
   ok(kept[0] === 2 && !!kept[1], 'the autosave keeps revision 2 and its time across a reload: ' + kept.slice(0, 2));
   if (kept[0] !== 2) console.log('DEBUG', JSON.stringify(kept), 'before the reload (guard, stored title):', JSON.stringify(pre));
@@ -92,24 +95,25 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
   const day = 864e5;
   /* a story with words, first seen 8 days ago, never saved to a file: one reminder with a Save now button */
   pg = await open(sample, { nudge: JSON.stringify({ id: SID, first: Date.now() - 8 * day, last: 0 }) });
-  await pg.waitForTimeout(3300);
+  await waitNudge(pg);
   let tt = await toastText(pg);
   ok(/has not been saved to a file for 8 days/.test(tt) && /Save now/.test(tt), 'a story first seen 8 days ago gets the reminder with Save now: ' + tt);
   await pg.locator('#toast button:has-text("Save now")').click(); await pg.waitForTimeout(800);
   ok((await pg.evaluate(() => window.__saves)).length === 1, 'the reminder\'s Save now saves');
   /* reload at once: not again within a day (the file save also just reset the clock) */
-  await pg.reload(); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(3300);
+  await pg.evaluate(() => { window.__old = true; }); /* marks the page being left, so the wait below cannot be satisfied by it */
+  await pg.reload(); await pg.waitForFunction(() => window.__editor && !window.__old && !document.getElementById('splash'), null, { timeout: 20000 }); await waitNudge(pg);
   ok(!/not been saved to a file for/.test(await toastText(pg)), 'no second reminder after saving: ' + await toastText(pg) + ' (stored reminder record, saved-at, story id: ' + await pg.evaluate(() => JSON.stringify([localStorage.getItem('story-editor-v1-nudge'), window.__editor.project.savedAt || null, window.__editor.project.id])) + ')');
   await pg.context().close();
   /* 6 days: too soon. Reminded 2 hours ago: not again. */
-  pg = await open(sample, { nudge: JSON.stringify({ id: SID, first: Date.now() - 6 * day, last: 0 }) }); await pg.waitForTimeout(3300);
+  pg = await open(sample, { nudge: JSON.stringify({ id: SID, first: Date.now() - 6 * day, last: 0 }) }); await waitNudge(pg);
   ok(!/not been saved to a file for/.test(await toastText(pg)), 'no reminder at 6 days');
   await pg.context().close();
-  pg = await open(sample, { nudge: JSON.stringify({ id: SID, first: Date.now() - 30 * day, last: Date.now() - 2 * 3600e3 }) }); await pg.waitForTimeout(3300);
+  pg = await open(sample, { nudge: JSON.stringify({ id: SID, first: Date.now() - 30 * day, last: Date.now() - 2 * 3600e3 }) }); await waitNudge(pg);
   ok(!/not been saved to a file for/.test(await toastText(pg)), 'no second reminder within a day');
   await pg.context().close();
   /* an almost empty story is never nagged about */
-  pg = await open(null, { nudge: JSON.stringify({ id: 'x', first: Date.now() - 30 * day, last: 0 }) }); await pg.waitForTimeout(3300);
+  pg = await open(null, { nudge: JSON.stringify({ id: 'x', first: Date.now() - 30 * day, last: 0 }) }); await waitNudge(pg);
   ok(!/not been saved to a file for/.test(await toastText(pg)), 'a new empty story gets no reminder');
   await pg.context().close();
 
