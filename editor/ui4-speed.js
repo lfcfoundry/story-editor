@@ -2,31 +2,24 @@
    3d2. Speed report ("It stuttered!")
    ---------------------------------------------------------------------------
    Smoothness can only be judged on the device and browser the editor runs on: a test machine cannot see how a screen
-   paints on yours. This part lets you do the judging and send back numbers.
-
-   Also lists the last few errors the editor noted (errorLog in ui1-state.js: where, what it said, which functions it was in).
+   paints on yours. This part lets you do the judging and send back numbers. The recording itself is the shared field-report
+   module (field-report.js, started in ui1-state.js as `fieldReport`): it keeps start-up times, heavy tasks and every error (and the last
+   3,600 frame times once "Record frames" in the report window is pressed; always-on frames slowed the Map's first frames in Firefox), and five quick taps in the top-left corner of the page open its two hidden buttons ("Save speed report",
+   "Save error log"). Options -> Speed report (or #report in the address) opens the same report in a window to copy or save.
    Always on (costs almost nothing): how long each tab switch, each run of the checker and each map zoom took, kept as a short
-   list in memory. Never written anywhere, never sent anywhere, and no story text is in it.
-   On request (Options -> Speed report, or add #report to the address): a frame recorder. It notes the time between screen
-   updates; a gap over about 34 ms is a visible hitch (a smooth screen updates every 17 ms at 60 Hz). While it records, a small
-   bar offers "It stuttered!" (marks that moment with the recent frame times) and "Stop".
-   "Copy report" puts a plain-text summary on the clipboard to paste back into the chat; "Save as file" keeps the same text as a small file
-   (the errors in it are the error log), so a session on a phone or laptop can be sent on as a bug report.
+   list in memory (speedLog) and added to the saved report under "Story Editor details". Never written anywhere, never sent
+   anywhere, and no story text is in it.
    --------------------------------------------------------------------------- */
 
 const SPEED_KEEP = 400; // timings kept
-const SPEED_HITCH = 34; // a frame gap over this many ms is a hitch
-const SPEED_STALL = 100; // and over this many, a stall
+const SPEED_HEAVY = 8; // timings this long (ms) are also passed to the module's heavy-task list
 const speedLog = []; // { at: ms since the page opened, kind, ms, note }
-const speedMarks = []; // moments you pressed "It stuttered!"
-const speedFrame = { on: false, raf: 0, last: 0, since: 0, n: 0, sum: 0, worst: 0, hitches: 0, stalls: 0, recent: [] };
-let speedBar = null;
-let speedLongTasks = null;
 
 /** Records that something called `kind` took `ms`, with a short note (the view, the size). */
 function speedNote(kind, ms, note) {
   speedLog.push({ at: Math.round(performance.now()), kind, ms: Math.round(ms * 10) / 10, note: note || '' });
   if (speedLog.length > SPEED_KEEP) speedLog.shift();
+  if (ms >= SPEED_HEAVY) fieldReport.time(note ? `${kind} (${note})` : kind, ms);
 }
 /** Runs `fn`, records how long it took under `kind`, and returns what it returned. `note` may be text or a function giving text. */
 function speedTime(kind, fn, note) {
@@ -44,138 +37,58 @@ function speedPaint(kind, t0, note) {
   });
 }
 
-/* ----- the frame recorder ----- */
-
-function speedTick(ts) {
-  const f = speedFrame;
-  if (!f.on) return;
-  if (f.last) {
-    const g = ts - f.last;
-    f.n++;
-    f.sum += g;
-    if (g > f.worst) f.worst = g;
-    if (g > SPEED_HITCH) f.hitches++;
-    if (g > SPEED_STALL) f.stalls++;
-    f.recent.push(Math.round(g));
-    if (f.recent.length > 90) f.recent.shift();
-  }
-  f.last = ts;
-  f.raf = requestAnimationFrame(speedTick);
-}
-function speedStart() {
-  const f = speedFrame;
-  if (f.on) return;
-  Object.assign(f, { on: true, last: 0, since: performance.now(), n: 0, sum: 0, worst: 0, hitches: 0, stalls: 0, recent: [] });
-  speedMarks.length = 0;
-  f.raf = requestAnimationFrame(speedTick);
-  /* Chromium can also say which stretches of script ran long; Firefox cannot, so the frame gaps are the common measure */
-  try {
-    if (window.PerformanceObserver && PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
-      speedLongTasks = new PerformanceObserver(list =>
-        list.getEntries().forEach(e => speedNote('long task', e.duration, `started at ${Math.round(e.startTime)} ms`))
-      );
-      speedLongTasks.observe({ type: 'longtask' });
-    }
-  } catch {
-    speedLongTasks = null;
-  }
-  speedShowBar();
-}
-function speedStop() {
-  const f = speedFrame;
-  f.on = false;
-  cancelAnimationFrame(f.raf);
-  speedLongTasks?.disconnect();
-  speedLongTasks = null;
-  speedBar?.remove();
-  speedBar = null;
-}
-/** The small bar shown while recording. */
-function speedShowBar() {
-  speedBar?.remove();
-  speedBar = h('div', { id: 'speedbar', role: 'region', 'aria-label': 'Speed recording' }, [
-    h('span', { text: 'Recording' }),
-    h('button', { class: 'btn small primary', type: 'button', text: 'It stuttered!', onclick: speedMark }),
-    h('button', { class: 'btn small', type: 'button', text: 'Stop', onclick: () => (speedStop(), showSpeedReport()) })
-  ]);
-  document.body.appendChild(speedBar);
-}
-/** "It stuttered!": keeps the last frame times and the latest timings, with where you were. */
-function speedMark() {
-  const f = speedFrame;
-  const now = performance.now();
-  const rec = f.recent.slice(-60);
-  speedMarks.push({
-    at: Math.round(now - f.since),
-    view,
-    worst: rec.length ? Math.max(...rec) : 0,
-    hitches: rec.filter(g => g > SPEED_HITCH).length,
-    frames: rec.length,
-    events: speedLog.filter(e => e.at > now - 3000).map(e => `${e.kind} ${e.ms} ms${e.note ? ` (${e.note})` : ''}`)
-  });
-  toast(`Marked (${speedMarks.length}). Keep going, then press Stop.`);
-}
-
 /* ----- the report ----- */
 
 const speedPct = (list, p) => {
   const a = list.slice().sort((x, y) => x - y);
   return a.length ? a[Math.min(a.length - 1, Math.floor(p * a.length))] : 0;
 };
-/** The report as plain text. */
-function speedReportText() {
-  const L = [];
+/** The editor's own lines for the saved report: the build, the story's size, how the page opened and the timings it kept. */
+function speedExtras() {
+  const L = ['', '## Story Editor details', ''];
   const nav = performance.getEntriesByType('navigation')[0];
-  const paint = {};
-  performance.getEntriesByType('paint').forEach(e => (paint[e.name] = Math.round(e.startTime)));
-  L.push('Story Editor speed report', `Version: ${BUILT}`, `Browser: ${navigator.userAgent}`);
+  L.push(`- Version: ${BUILT}`);
   L.push(
-    `Screen: ${screen.width}x${screen.height} at ${window.devicePixelRatio}x; window ${innerWidth}x${innerHeight}; ` +
-      `cores ${navigator.hardwareConcurrency || '?'}; memory ${navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '?'}; ` +
-      `reduced motion ${matchMedia('(prefers-reduced-motion: reduce)').matches ? 'on' : 'off'}; theme ${document.documentElement.dataset.theme || 'light'}`
+    `- Window: ${innerWidth}x${innerHeight}; reduced motion ${matchMedia('(prefers-reduced-motion: reduce)').matches ? 'on' : 'off'}; theme ${document.documentElement.dataset.theme || 'light'}`
   );
   const choices = project.passages.reduce((n, p) => n + p.choices.length, 0);
-  L.push(`Story: ${project.passages.length} pages, ${choices} choices, ${project.items.length} items; tab ${view}`);
-  L.push(
-    `Start-up: DOM ready ${nav ? Math.round(nav.domContentLoadedEventEnd) : '?'} ms, first paint ${paint['first-paint'] ?? '?'} ms, ` +
-      `first content ${paint['first-contentful-paint'] ?? '?'} ms, loaded ${nav ? Math.round(nav.loadEventEnd) : '?'} ms`
-  );
+  L.push(`- Story: ${project.passages.length} pages, ${choices} choices, ${project.items.length} items; tab ${view}`);
   const got = nav ? Math.round(nav.responseEnd) : 0; // the file has arrived (from disk or the network)
   L.push(
-    `Opened in ${READY_AT ? Math.round(READY_AT) + ' ms' : 'more than ' + Math.round(performance.now()) + ' ms (not drawn yet)'}: ` +
+    `- Opened in ${READY_AT ? Math.round(READY_AT) + ' ms' : 'more than ' + Math.round(performance.now()) + ' ms (not drawn yet)'}: ` +
       `the file arrived at ${got} ms, the editor's code started at ${Math.round(BOOT_AT)} ms (${Math.max(0, Math.round(BOOT_AT) - got)} ms unpacking and reading the page), ` +
       `the first screen was drawn at ${READY_AT ? Math.round(READY_AT) : '?'} ms (${READY_AT ? Math.round(READY_AT - BOOT_AT) : '?'} ms setting up). All counted from the moment the page was asked for.`
   );
-  const f = speedFrame;
-  if (f.n) {
-    L.push(
-      '',
-      `Frames while recording (${f.on ? 'still recording' : 'stopped'}): ${f.n} frames over ${((performance.now() - f.since) / 1000).toFixed(1)} s; ` +
-        `average gap ${(f.sum / f.n).toFixed(1)} ms; worst ${Math.round(f.worst)} ms; over ${SPEED_HITCH} ms: ${f.hitches}; over ${SPEED_STALL} ms: ${f.stalls}`
-    );
-  } else L.push('', 'No frames recorded (press Start recording, use the editor, then Stop).');
-  if (speedMarks.length) {
-    L.push('', `You marked ${speedMarks.length} stutter${speedMarks.length === 1 ? '' : 's'}:`);
-    speedMarks.forEach((m, i) => {
-      L.push(
-        `  ${i + 1}. at ${(m.at / 1000).toFixed(1)} s on the ${m.view} tab: worst frame ${m.worst} ms, ${m.hitches} of the last ${m.frames} frames over ${SPEED_HITCH} ms` +
-          (m.events.length ? `; just before: ${m.events.join('; ')}` : '')
-      );
-    });
-  }
-  L.push('', errorLog.length ? `Recent errors (last ${ERROR_KEEP}):` : 'No errors since the page opened.');
-  errorLog.forEach(e => L.push(`  ${(e.at / 1000).toFixed(1)} s  ${e.where}: ${e.msg}${e.frames.length ? `  [in ${e.frames.join(' < ')}]` : ''}`));
   const kinds = [...new Set(speedLog.map(e => e.kind))];
   if (kinds.length) {
-    L.push('', 'Timings (count, median, 95th percentile, worst; milliseconds):');
+    L.push('', '### Timings (milliseconds, lower is better)', '', '| What | Count | Median | 95th percentile | Worst |', '|---|---:|---:|---:|---:|');
     kinds.forEach(k => {
       const ms = speedLog.filter(e => e.kind === k).map(e => e.ms);
-      L.push(`  ${k}: ${ms.length}, ${speedPct(ms, 0.5)}, ${speedPct(ms, 0.95)}, ${Math.max(...ms)}`);
+      L.push(`| ${k} | ${ms.length} | ${speedPct(ms, 0.5)} | ${speedPct(ms, 0.95)} | ${Math.max(...ms)} |`);
     });
-    L.push('', 'Latest events:');
-    speedLog.slice(-20).forEach(e => L.push(`  ${(e.at / 1000).toFixed(1)} s  ${e.kind}  ${e.ms} ms${e.note ? `  (${e.note})` : ''}`));
+    L.push('', '### Latest events', '');
+    speedLog.slice(-20).forEach(e => L.push(`- ${(e.at / 1000).toFixed(1)} s  ${e.kind}  ${e.ms} ms${e.note ? `  (${e.note})` : ''}`));
   }
   return L.join('\n');
+}
+/** What the module saves for "Save speed report" (its report plus the editor's lines) and for "Save error log" (as it is). */
+function speedTextFor(kind) {
+  return kind === 'speed' ? fieldReport.speedText() + '\n' + speedExtras() : fieldReport.errorsText();
+}
+/** The module calls this when a button is pressed in its hidden panel (or in the window below): the system Save window where there is one, else a download. */
+async function speedSave(text, file, kind) {
+  const full = kind === 'speed' ? text + '\n' + speedExtras() : text;
+  try {
+    const ok = await saveFile(file, full, 'text/markdown', 'Report', 'reports');
+    if (ok) toast(kind === 'speed' ? 'Speed report saved' : 'Error log saved');
+  } catch (e) {
+    logError('save report', e);
+    toast('The report could not be saved. Use Copy report instead.');
+  }
+}
+/** The whole report as plain text, for the window and for Copy report. */
+function speedReportText() {
+  return speedTextFor('speed') + '\n\n' + fieldReport.errorsText();
 }
 /** Options -> Speed report: how to use it, the report so far, and the buttons. */
 function showSpeedReport() {
@@ -185,37 +98,39 @@ function showSpeedReport() {
       h('div', {
         class: 'hint',
         text:
-          'For when something feels slow or choppy. Press Start recording, use the editor the way that stutters (zoom the map, switch tabs), ' +
-          'press “It stuttered!” each time it happens, then Stop. Copy the report and paste it into the chat. It holds timings and your device’s details, never your story’s words, and nothing is sent anywhere.'
+          'For when something feels slow or choppy. Use the editor the way that stutters (zoom the map, switch tabs), then open this report: it holds start-up, heavy tasks and errors since the page opened, and the frames since you pressed Record frames. ' +
+          'Copy the report and paste it into the chat, or save it as a file. On a phone, five quick taps in the top-left corner open the same two saves. It holds timings and your device’s details, never your story’s words, and nothing is sent anywhere.'
       })
     );
     const ta = h('textarea', { class: 'in mono', readonly: true, rows: 14, 'aria-label': 'Speed report', value: speedReportText() });
     d.appendChild(ta);
     d.appendChild(
       h('div', { class: 'row end' }, [
-        h('button', {
-          class: 'btn',
-          type: 'button',
-          text: speedFrame.on ? 'Keep recording' : 'Start recording',
-          onclick: () => {
-            close();
-            speedStart();
-          }
-        }),
         h('button', { class: 'btn primary', type: 'button', text: 'Copy report', onclick: () => copyText(ta.value, ta) }),
         h('button', {
           class: 'btn',
           type: 'button',
-          text: 'Save as file',
-          title: 'Save this report (timings, device details and the recent errors, never your story’s words) as a small text file to send or keep',
-          onclick: async () => {
-            try {
-              const ok = await saveFile(`story-editor-report-${BUILT}.txt`, ta.value, 'text/plain', 'Report', 'reports');
-              if (ok) toast('Report saved');
-            } catch (e) {
-              logError('save report', e);
-              toast('The report could not be saved. Use Copy report instead.');
-            }
+          text: 'Save speed report',
+          title: 'Save the speed report (frames, start-up, heavy tasks, the editor’s timings and device details, never your story’s words) as a small file to send or keep',
+          onclick: () => fieldReport.saveSpeed()
+        }),
+        h('button', {
+          class: 'btn',
+          type: 'button',
+          text: 'Save error log',
+          title: 'Save the errors the page noted as a small file to send or keep',
+          onclick: () => fieldReport.saveErrors()
+        }),
+        h('button', {
+          class: 'btn',
+          type: 'button',
+          text: 'Record frames',
+          title: 'Start counting frames (smoothness) from now; open this report again afterwards. Earlier errors are cleared by this.',
+          onclick: () => {
+            fieldReport.stop();
+            fieldReport = startFieldReport(true);
+            close();
+            toast('Recording frames. Use the editor, then open Speed report again.');
           }
         }),
         h('button', { class: 'btn', type: 'button', text: 'Close', onclick: close })

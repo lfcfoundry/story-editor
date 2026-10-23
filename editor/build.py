@@ -16,7 +16,7 @@ Sources, in the order they appear in the finished file:
                                 -> <script type="application/json" id="game-parts"> (code and styles in one piece per optional feature)
   keepers-light.project.json    the built-in example story                -> <script type="application/json" id="starter-story">
   ui.css                        styles for the editor                     -> <style>
-  core.js, maplayout.js, twine.js, routes.js, changes.js, helpers.js
+  field-report.js (the shared module, first so start-up errors are seen), core.js, maplayout.js, twine.js, routes.js, changes.js, helpers.js
                                 PART 1: story model, game rules, checker, export; map layout; Twine import (global functions)
   player.js                     PART 2: plays a story (global function)
   ui1-state.js ... ui5-app.js   PART 3, wrapped in one function so it leaks nothing
@@ -90,7 +90,7 @@ starter = starter.replace("<", "\\u003c")
 
 # ---- the editor's script
 ui = "(function () {\n'use strict';\n\n" + "\n".join(read(f) for f in UI_PARTS) + "\n})();\n"
-script = "'use strict';\n\n" + read("core.js") + "\n" + read("checkwalk.js") + "\n" + read("maplayout.js") + "\n" + read("twine.js") + "\n" + read("routes.js") + "\n" + read("changes.js") + "\n" + read("helpers.js") + "\n" + read("player.js") + "\n" + ui
+script = "'use strict';\n\n" + read("field-report.js") + "\n" + read("core.js") + "\n" + read("checkwalk.js") + "\n" + read("maplayout.js") + "\n" + read("twine.js") + "\n" + read("routes.js") + "\n" + read("changes.js") + "\n" + read("helpers.js") + "\n" + read("player.js") + "\n" + ui
 script = re.sub(r"</(script)", r"<\\/\1", script, flags=re.I)  # any capitalization ends a script tag in HTML
 # ---- the version stamp shown on the splash: when this file was built, as YYYY.MM.DD.HHMM in US Eastern time, 24-hour clock, e.g. "2026.10.08.2320" (the owner's format from Oct 8 2026 on)
 now = datetime.datetime.now(ZoneInfo("America/New_York"))

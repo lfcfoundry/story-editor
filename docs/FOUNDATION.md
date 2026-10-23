@@ -71,7 +71,7 @@ Honest comparison against `JS-modules` and the games, as of 2026-10-13. "Reuse" 
 | **ai-collab-kit** (written process: ten habits, templates for AGENTS.md, task board, session brief) | `packages/ai-collab-kit/` | New. JS-modules has `AGENTS.md` and `TASKS.md` in the same spirit; this packages the reusable version. |
 | **Extraction by script with a drift check** (cut packages out of real sources; `npm test` fails if a generated file is stale) | `tools/slice.mjs`, `tools/extract-packages.mjs`, `tools/docs.mjs` | New. README code blocks are copied from `examples/*.mjs` so docs cannot rot. |
 | **Size budgets that stop the build** with seeded randomness and clock so numbers repeat | `build.py`, `budget.mjs` | New in this form. |
-| **Speed report** (always-on timings, frame recorder, error log; no story text, nothing sent) | `ui4-speed.js` | Related to `frame-kit`/`fx-governor` in goal (they act on slowness; this reports it). Not shared. |
+| **Speed report** (always-on timings and error log, frames on request; no story text, nothing sent) | `field-report.js` (shared module `field-report` 1.0.0) plus `ui4-speed.js` for the editor's own timings | Adopted from JS-modules; the editor adds only its tab, checker and map timings. Related to `frame-kit`/`fx-governor` in goal (they act on slowness; this reports it). |
 
 Things that exist in the other repos and were **not** used here (so a new context does not assume they were): `idle-core`, `sticker-text`, `stage-curtains`, `sprite-baker`, `pad-nav`, `hold-press`, `fx-governor`, `frame-kit`, `fly-to-mini`, `cartoon-3d-kit`, `fuzz-kit`, `env-probes`, `save-kit`.
 

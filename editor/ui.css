@@ -729,7 +729,6 @@ input.chipnum.in{width:4.4em}
 .numf select.in,.cardhd select.in{width:auto}
 
 /* ---- 12. Speed report: the bar shown while recording (ui4-speed.js) ---- */
-#speedbar{position:fixed;left:50%;bottom:14px;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;background:var(--paper);color:var(--fg);border:1px solid var(--line);border-top:3px solid var(--signal);box-shadow:var(--shadow);padding:6px 10px;font-size:.85rem;max-width:calc(100vw - 24px)}
 .finder .findlist{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto}
 .findrow{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--line);background:var(--paper)}
 .findrow .t{flex:1;min-width:0;overflow-wrap:anywhere}
