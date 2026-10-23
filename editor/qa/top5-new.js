@@ -33,30 +33,41 @@ ok(chk.samples.length>0&&chk.samples.every(s=>/Courage \d+/.test(s.held)),'Test 
 /* ---------- 2. speed report ---------- */
 await ed.click('#optbtn');await ed.click('#optpop >> text=Speed report…');await ed.waitForTimeout(200);
 let rep=await ed.inputValue('dialog textarea');
-ok(/Story Editor speed report/.test(rep)&&/Version:/.test(rep)&&/Browser:/.test(rep)&&/Start-up:/.test(rep),'speed report has version, browser, start-up lines');
+ok(/# Speed report/.test(rep)&&/Page: story-editor [\d.]+/.test(rep)&&/Browser:/.test(rep)&&/## Start-up/.test(rep)&&/## Story Editor details/.test(rep)&&/- Version: [\d.]+/.test(rep),'speed report has version, browser, start-up lines');
 { const m=rep.match(/Opened in (\d+) ms: the file arrived at (\d+) ms, the editor's code started at (\d+) ms \((\d+) ms unpacking and reading the page\), the first screen was drawn at (\d+) ms \((\d+) ms setting up\)/);
   ok(!!m&&+m[1]>0&&+m[5]>=+m[3]&&+m[3]>=+m[2],'speed report says how long the editor took to open, in order (arrived <= code started <= drawn): '+(m?m.slice(1,7).join(' / '):rep.split('\n').find(l=>/Opened/.test(l)))); }
-ok(/Timings \(count/.test(rep)&&/draw tab|checker/.test(rep),'speed report lists timings');
+ok(/### Timings \(milliseconds/.test(rep)&&/draw tab|checker/.test(rep),'speed report lists timings');
+ok(/No frames were recorded/.test(rep),'frames are off until asked for (always-on frames slowed the Map in Firefox)');
+{ await ed.click('dialog button:text-is("Record frames")');await ed.waitForTimeout(1200);
+  await ed.click('#optbtn');await ed.click('#optpop >> text=Speed report…');await ed.waitForTimeout(200);
+  const r2=await ed.inputValue('dialog textarea');
+  ok(/Frames recorded/.test(r2),'Record frames starts the frame count'); rep=r2; }
 ok(!/Courage|Keeper|lighthouse/i.test(rep),'speed report holds no story words');
-/* Save as file: the same text as the textarea, with the build stamp in the name, and no story words */
+/* Save speed report: the module's report plus the editor's lines, as a stamped Markdown file, and no story words */
 await ed.evaluate(()=>{window.showSaveFilePicker=undefined;window.__dl=null;const cu=URL.createObjectURL;URL.createObjectURL=b=>{window.__blob=b;return cu.call(URL,b);};HTMLAnchorElement.prototype.click=function(){window.__dl=this.download;};});
-await ed.click('dialog button:text-is("Save as file")');await ed.waitForTimeout(200);
+await ed.click('dialog button:text-is("Save speed report")');await ed.waitForTimeout(300);
 { const dl=await ed.evaluate(async()=>({name:window.__dl,text:window.__blob?await window.__blob.text():null,type:window.__blob&&window.__blob.type}));
-  ok(!!dl.name&&/^story-editor-report-[\d.]+\.txt$/.test(dl.name)&&dl.text===rep&&/^text\/plain/.test(dl.type),'Save as file saves the report text under a stamped name: '+dl.name); }
-await ed.click('dialog button:text-is("Start recording")');await ed.waitForTimeout(150);
-ok(await ed.isVisible('#speedbar'),'recording bar appears');
+  ok(!!dl.name&&/^story-editor-speed-\d{8}-\d{4}\.md$/.test(dl.name)&&/^# Speed report/.test(dl.text||'')&&/## Story Editor details/.test(dl.text||'')&&!/Courage|Keeper|lighthouse/i.test(dl.text||'')&&/^text\/(markdown|plain)/.test(dl.type),'Save speed report saves the report under a stamped name: '+dl.name); }
+await ed.click('dialog button:text-is("Save error log")');await ed.waitForTimeout(300);
+{ const dl=await ed.evaluate(async()=>({name:window.__dl,text:window.__blob?await window.__blob.text():null}));
+  ok(/^story-editor-errors-\d{8}-\d{4}\.md$/.test(dl.name||'')&&/^# Error log/.test(dl.text||''),'Save error log saves the error log under a stamped name: '+dl.name); }
+await ed.keyboard.press('Escape');await ed.waitForTimeout(150);
+/* the hidden buttons: five quick taps in the top-left corner open the module's panel */
+for(let i=0;i<5;i++){await ed.mouse.click(10,10);await ed.waitForTimeout(60);}
+await ed.waitForTimeout(200);
+const panelUp=()=>ed.evaluate(()=>[...document.querySelectorAll('button')].some(x=>/Save speed report/.test(x.textContent)&&!x.closest('dialog')));
+if(!await panelUp()){ /* GNOME Web refuses real pointer clicks over WebDriver: send the same five pointer presses from the page */
+  await ed.evaluate(()=>{for(let i=0;i<5;i++)window.dispatchEvent(new PointerEvent('pointerdown',{clientX:10,clientY:10,bubbles:true}));});await ed.waitForTimeout(200);}
+ok(await ed.evaluate(()=>[...document.querySelectorAll('button')].some(x=>/Save speed report/.test(x.textContent)&&!x.closest('dialog'))),'five taps in the top-left corner open the hidden Save speed report / Save error log panel');
+await ed.click('[data-field-report="close"]');await ed.waitForTimeout(150);
 await ed.click('#tabs [data-tab="map"]');await ed.waitForTimeout(400);await ed.click('#tabs [data-tab="write"]');await ed.waitForTimeout(300);
-await ed.click('#speedbar >> text=It stuttered!');await ed.waitForTimeout(200);
-await ed.click('#speedbar >> text=Stop');await ed.waitForTimeout(200);
+await ed.click('#optbtn');await ed.click('#optpop >> text=Speed report…');await ed.waitForTimeout(200);
 rep=await ed.inputValue('dialog textarea');
-ok(/You marked 1 stutter/.test(rep),'one stutter marked in the report');
-ok(/Frames while recording \(stopped\): \d+ frames/.test(rep),'frame summary present: '+(rep.match(/Frames while recording[^\n]*/)||[''])[0].slice(0,140));
 ok(/tab shown/.test(rep),'tab switches timed ("tab shown" present)');
-ok(!(await ed.isVisible('#speedbar')),'bar gone after Stop');
 await ed.keyboard.press('Escape');
-/* the #report tag starts recording at once */
+/* the #report tag opens the report by itself */
 const rp=await ctx.newPage();rp.on('pageerror',e=>errs.push('RP '+e.message));await rp.goto(FILE+'#report');await rp.waitForTimeout(1500);
-ok(await rp.isVisible('#speedbar'),'#report in the address starts recording from the start');await rp.close();
+ok(await rp.isVisible('dialog textarea[aria-label="Speed report"]'),'#report in the address opens the speed report');await rp.close();
 
 /* ---------- 3. map zoom: scaled by transform first, real size set afterwards ---------- */
 await ed.click('#tabs [data-tab="map"]');await ed.waitForTimeout(600);

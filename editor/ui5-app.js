@@ -1720,7 +1720,7 @@ function init() {
   const gs = document.createElement('style');
   gs.textContent = gameCss(GAME_PARTS.css, KL_FEATURE_ORDER, null); // every feature, every palette: the Play tab can show anything
   document.head.appendChild(gs); // so Play looks like the export
-  if (/(^|[#&;])report($|[&;])/.test(location.hash)) speedStart(); // opened with #report: record from the start (see ui4-speed.js)
+  if (/(^|[#&;])report($|[&;])/.test(location.hash)) setTimeout(showSpeedReport, 0); // opened with #report: the report opens by itself (see ui4-speed.js)
   let saved = null;
   try {
     saved = localStorage.getItem(STORE);
@@ -1817,7 +1817,7 @@ function init() {
       null,
       ['Safety…', showSafety, 'Where your story is kept, when it was last saved to a file, and whether the browser promises to keep the autosave.'],
       ['Advanced…', showAdvanced, 'Choose which advanced features each tab shows.'],
-      ['Speed report…', showSpeedReport, 'For troubleshooting: record how smoothly the editor runs on this device and copy a report to paste into the chat.']
+      ['Speed report…', showSpeedReport, 'For troubleshooting: see how smoothly the editor runs on this device and copy or save a report to paste into the chat.']
     ].filter(x => x !== undefined);
   optionsMenu = dropMenu($('#optbtn'), $('#optpop'), optionEntries);
   /* On a phone the top bar is one row: File, Save, Undo, Redo and the title. The rest lives here. */

@@ -25,6 +25,11 @@
 /* Start-up timing for the Speed report: the moment the editor's own code began (milliseconds since the page was asked for; with the packed page
    this includes unpacking it) and the moment the first screen was drawn, set at the end of init(). */
 const BOOT_AT = performance.now();
+/* The shared field-report module (field-report.js, first in the page): hidden real-device speed report and error log, opened by five quick taps in the top-left corner or from
+   Options -> Speed report. It watches start-up, heavy tasks and every error from here on, and frames once Options -> Speed report -> Record frames is pressed. What it saves is the module's report plus the editor's own lines (speedExtras). */
+/* Frames are off until asked for: a page that never stops asking for frames made the Map take about 4x longer to show its first two frames in Firefox. */
+const startFieldReport = frames => FieldReport.start({ name: 'story-editor', version: '__BUILD_STAMP__', frames, onSave: (text, file, kind) => speedSave(text, file, kind) });
+let fieldReport = startFieldReport(false);
 let READY_AT = 0;
 const STORE = 'story-editor-v1'; // localStorage key for the autosaved story
 const UNDO_STEPS = 150; // most undo steps kept
@@ -243,27 +248,15 @@ function pname(p) {
   return (p && p.name) || 'Untitled page';
 }
 
-/** The last few things that went wrong, for the Speed report (see ui4-speed.js). Never written anywhere or sent anywhere. */
-const errorLog = [];
-const ERROR_KEEP = 5;
 /**
- * Notes an error: where in the program it happened (`where`, a few words), what it said, and the names of the functions it
- * was inside (the file's line numbers mean little once the file is packed, the function names do not). Use it in every
- * `catch` that carries on instead of telling the person.
+ * Notes an error that was caught: where in the program it happened (`where`, a few words) and what it said. It goes to the console, where the
+ * field-report module (started at the top of this file) keeps it for the error log in the Speed report; uncaught errors and rejected
+ * promises it sees by itself. Never written anywhere or sent anywhere.
  */
 function logError(where, err) {
   const msg = String((err && err.message) || err);
-  const frames = String((err && err.stack) || '')
-    .split('\n')
-    .map(l => l.trim().match(/^(?:at\s+)?([\w$.<>]+)(?:@|\s\()/))
-    .filter(Boolean)
-    .map(m => m[1])
-    .slice(0, 4);
-  errorLog.push({ at: Math.round(performance.now()), where, msg: msg.slice(0, 200), frames });
-  if (errorLog.length > ERROR_KEEP) errorLog.shift();
+  console.error(`${where}: ${msg.slice(0, 200)}`);
 }
-window.addEventListener('error', e => logError('uncaught', e.error || `${e.message} (${e.lineno}:${e.colno})`));
-window.addEventListener('unhandledrejection', e => logError('uncaught promise', e.reason));
 
 /* ----- saving ----- */
 

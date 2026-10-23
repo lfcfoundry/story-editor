@@ -49,7 +49,7 @@ await ed.evaluate(()=>window.dispatchEvent(new ErrorEvent('error',{error:new Err
 await ed.click('#optbtn');await ed.waitForTimeout(200);
 await ed.evaluate(()=>[...document.querySelectorAll('#optpop button, #optpop [role=menuitem]')].find(x=>/Speed report/.test(x.textContent)).click());await ed.waitForTimeout(300);
 const rep=await ed.$eval('dialog textarea',e=>e.value);
-ok(/Recent errors \(last 5\)/.test(rep)&&/uncaught: boom for the log/.test(rep),'the report lists the error: '+(rep.match(/uncaught:[^\n]*/)||[''])[0].slice(0,80));
+ok(/error line\(s\)/.test(rep)&&/boom for the log/.test(rep),'the report lists the error: '+(rep.match(/\|[^\n]*boom for the log[^\n]*/)||[''])[0].slice(0,100));
 ed.removeAllListeners('pageerror');
 await ctx.close();
 /* a clean editor reports no errors */
@@ -58,7 +58,7 @@ ed=await ctx.newPage();ed.on('pageerror',e=>errs.push('ED2 '+e.message));
 await ed.goto(FILE);await ed.waitForFunction(()=>window.__editor&&!document.getElementById('splash'),null,{timeout:20000});
 await ed.click('#optbtn');await ed.waitForTimeout(200);
 await ed.evaluate(()=>[...document.querySelectorAll('#optpop button, #optpop [role=menuitem]')].find(x=>/Speed report/.test(x.textContent)).click());await ed.waitForTimeout(300);
-ok(/No errors since the page opened/.test(await ed.$eval('dialog textarea',e=>e.value)),'a fresh editor reports no errors');
+ok(/No errors were recorded/.test(await ed.$eval('dialog textarea',e=>e.value)),'a fresh editor reports no errors');
 /* ---------- the game ---------- */
 const built=await ed.evaluate(()=>{
   const parts=JSON.parse(document.getElementById('game-parts').textContent);

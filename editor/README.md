@@ -46,7 +46,7 @@ build; raise the ceiling in `BUDGETS` (build.py) on purpose, with a reason, or t
 | `core.js` | Part 1. Story model and clean-up of loaded files, the game rules (`kl…` functions), the checker (`analyze`), "where things went" records, import of the old text format, export of a game. No DOM. |
 | `maplayout.js` | Part 1b. Everything the Map computes: which boxes and arrows to draw, choke points and traffic, the layered layout engine, arc, matrix and story-shape views, simulated players (`playtest`) and layout scores (`mapMetrics`). No DOM. |
 | `player.js` | Part 2. Plays a story. Used by the Play tab and by every exported game. |
-| `ui1-state.js` … `ui5-app.js` | Part 3, the editor screens, wrapped in one function: state and undo; widgets; Write; Map; Items, Check and Play; the speed report (`ui4-speed.js`); File menu, guide and start-up. |
+| `ui1-state.js` … `ui5-app.js` | Part 3, the editor screens, wrapped in one function: state and undo; widgets; Write; Map; Items, Check and Play; the speed report (`ui4-speed.js`, on the shared `field-report.js` copy in this folder); File menu, guide and start-up. |
 | `ui.css`, `game.css` | Editor styles; game styles (used by the Play tab and exports). All colors are tokens with light and dark values. |
 | `contract.mjs` | The test that ties the checker to the game. `build.py` runs it before every build and stops if it fails (see Design notes). |
 | `checkwalk.js`, `wasm/` | The checker's exploring loop and its move-graph passes as small WebAssembly modules (`wasm/checkwalk.c`, built twice: 32-bit flags for stories with up to 30 tracked bits and 64-bit flags for 31 to 64; `wasm/checkgraph.c`; and `wasm/mapcross.c`, the Map's crossing count; all built by `wasm/build.sh`, put into `checkwalk.js` by `wasm/embed.py`). `analyze` uses the loop for stories whose tracked items and numbers fit in 64 bits and the graph passes whenever it keeps the moves, and uses the JavaScript in `core.js` otherwise, or when the browser has no WebAssembly. |
@@ -114,9 +114,11 @@ build; raise the ceiling in `BUDGETS` (build.py) on purpose, with a reason, or t
 - **Error log.** `logError(where, err)` (ui1-state.js) keeps the last five errors (where, the message, the function names it was
   inside; line numbers mean little in a packed file). Every `catch` that carries on instead of telling the person calls it, and
   uncaught errors and unhandled promises are logged too. The Speed report lists them, and its Save as file button keeps the whole report as a text file.
-- **Speed report.** `ui4-speed.js`: Options → Speed report, or `#report` on the address. Timings of tab switches, the checker
-  and map zoom are always kept in memory; a frame recorder with an "It stuttered!" button starts on request. The report holds
-  timings and device details, never story text, and nothing is sent anywhere.
+- **Speed report.** `ui4-speed.js` on `field-report.js` (the shared field-report 1.0.1 module, copied here unchanged and packed
+  first): Options → Speed report, or `#report` on the address, opens the report in a window (Copy report, Save speed report,
+  Save error log). Five quick taps in the top-left corner open the same two saves anywhere. Start-up, heavy
+  tasks and every error are always kept in memory (frames, the last 3,600, from the Record frames button in the window, because an always-running frame loop slowed the Map's first frames in Firefox); the editor adds tab-switch, checker and map timings. The report holds timings
+  and device details, never story text, and nothing is sent anywhere.
 - **Map speed (Oct 8).** Two rounds, each proved to give identical output. (1) Scoring and counting: `mapMetrics` takes a `quick` flag (the toolbar
   asks only for what it shows), keeps the full scores per layout (`L._centers`, `L._metrics`), finds neighbours with a short sorted list, and
   `playtestCount` counts by page number and builds the name strings once. (2) The simulated players (`playtest`): per page, once, it works out
