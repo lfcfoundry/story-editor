@@ -356,8 +356,16 @@ function showSafety() {
     );
   });
 }
+let nudgeRuns = 0; // how many times the reminder check has run (the test suites wait for this instead of a fixed time)
 /** The once-a-day reminder (see above). Runs a moment after start-up, so it never competes with the start-up notes. */
 function maybeNudge() {
+  try {
+    nudgeOnce();
+  } finally {
+    nudgeRuns++;
+  }
+}
+function nudgeOnce() {
   if (!storageOk || storyWords() < 50) return;
   let rec = null;
   try { rec = JSON.parse(localStorage.getItem(NUDGE_KEY) || 'null'); } catch { rec = null; }
@@ -1942,6 +1950,9 @@ function init() {
   maybeTour();
   guardStart();
   window.__editor = {
+    get nudgeRuns() {
+      return nudgeRuns;
+    },
     get guard() {
       return guardState;
     },

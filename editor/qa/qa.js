@@ -9,6 +9,7 @@
      node qa.js sample    contract plus a rotating quarter of the quick suites (and any whose files changed): a cheap look between edits,
                           never the check before delivery
      node qa.js smart --since origin/main   pick the suites by the files that differ from that git revision (right on a fresh checkout or a new session); writes no .stamp
+     node qa.js smart --full-fuzz       the whole random fuzzers in a routine run (the full tier always plays them whole)
      node qa.js <tier> --plan           print the suites that would run and stop
      node qa.js <tier> --only lite      run only suites whose name contains "lite"
      node qa.js <tier> --verbose        print each suite's own output as well (it is always saved in logs/)
@@ -224,13 +225,18 @@ if (!against && !WEBKIT_ONLY && (!only || 'wasm-equiv'.includes(only))) if (want
 if (!against && !WEBKIT_ONLY && (!only || 'twine-diff'.includes(only))) if (want(TWINE_DIFF) || tier === 'sample') jobs.push({ label: 'twine-diff', cmd: TWINE_DIFF.cmd, lane: 'firefox' });
 if (!against && !WEBKIT_ONLY && tier === 'full' && (!only || 'fuzz3'.includes(only))) jobs.push({ label: 'fuzz3', cmd: FUZZ3.cmd, lane: 'firefox' });
 if (!only && !against && !WEBKIT_ONLY) jobs.push({ label: 'lines-selftest', cmd: ['node', 'lines.js'], lane: 'firefox' });
+/* Routine runs (smart, sample, quick) play half of each random fuzzer (1 of its 2 sequences, 3 of its 6 stories), a different part each run so the runs add up; the full run, the one before a release, plays them all.
+   --full-fuzz asks for the whole fuzzers in any tier. */
+const ROUTINE_FUZZ = { fuzz1: ['150', '1'], fuzz2: ['3'] };
+const fuzzTurn = new Set(ledger.map(e => e.run)).size % 4;
+const routineFuzz = (name, cmd) => (tier === 'full' || against || args.includes('--full-fuzz') || !ROUTINE_FUZZ[name]) ? cmd : ['env', `SEEDBASE=${fuzzTurn * 3}`, ...cmd, ...ROUTINE_FUZZ[name]];
 const lane = engine => SUITES.forEach(s => {
   if (WEBKIT_ONLY && engine !== 'webkit') return;
   if (!(s.engines.includes(engine) || (engine === 'webkit' && s.engines.includes('firefox') && !NOT_IN_WEBKIT[s.name])) || !want(s)) return;
   if (engine === 'chromium' && tier !== 'full' && !against) return; /* Chromium only in the full check */
   if (engine === 'webkit' && !WEBKIT) return; /* WebKitGTK only when asked for (--webkit) or in the full check */
   if (only && !s.name.includes(only)) return;
-  jobs.push({ label: `${s.name} ${engine}`, cmd: ['node', s.file, engine], lane: engine });
+  jobs.push({ label: `${s.name} ${engine}`, cmd: routineFuzz(s.name, ['node', s.file, engine]), lane: engine });
 });
 lane('firefox');
 lane('chromium');

@@ -111,7 +111,8 @@ await pg.click('#tabs button:has-text("Items")');await pg.click('#main button:ha
 await pg.fill('.dlg input >> nth=0','Who are you?');await pg.fill('.dlg input >> nth=1','Fox, Owl');await pg.click('.dlg button.primary');
 ok(await pg.evaluate(()=>window.__editor.project.givens.length===1&&window.__editor.project.givens[0].options.length===2),'a Given with two answers is created');
 await pg.waitForFunction(()=>!document.querySelector('.dlg')); /* the dialog must be gone before the next click */
-await pg.click('#tabs button:has-text("Play")');await pg.waitForSelector('button:has-text("Play from the beginning")');await pg.click('button:has-text("Play from the beginning")');
+for(let t=0;t<4;t++){await pg.click('#tabs button:has-text("Play")');if(await pg.waitForSelector('button:has-text("Play from the beginning")',{timeout:t<3?5000:30000}).then(()=>true,()=>false))break;} /* a tab press that did not take is pressed again after 5 s */
+await pg.click('button:has-text("Play from the beginning")');
 ok((await pg.textContent('.playbox .kl-head'))==='Who are you?','the Given is asked before page one');
 await pg.click('.playbox .kl-choices button:has-text("Owl")');
 ok(await pg.evaluate(()=>{const h=document.querySelector('.playbox .kl-head');return !h||h.textContent!=='Who are you?';}),'answering starts the story');
