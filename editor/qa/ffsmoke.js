@@ -2,6 +2,7 @@
 const { firefox } = require('../../packages/qa-kit/src/bidi.js');
 (async()=>{
   const b = await firefox.launch(); const pg = await b.newPage({viewport:{width:1300,height:850}});
+  await pg.addInitScript(() => { try { localStorage.setItem('story-editor-v1-toured', '1'); } catch (e) {} }); /* the first-run tour starts 4.6 s after load and covers the tabs; this smoke test is not about the tour */
   const errs=[]; pg.on('pageerror',e=>errs.push(e.message)); pg.on('console',m=>{ if(m.type()==='error') errs.push(m.text()); });
   await pg.goto(require('url').pathToFileURL((process.env.QA_EDITOR || require('path').join(__dirname, '..', 'story-editor.html'))).href); await pg.waitForFunction(()=>window.__editor&&!document.getElementById('splash'),null,{timeout:20000});
   console.log('ua', await pg.evaluate(()=>navigator.userAgent));
