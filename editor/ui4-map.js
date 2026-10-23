@@ -2487,6 +2487,10 @@ function renderMap(main) {
     const pathsOn = mapGood || mapBad;
     edgeEls.forEach(e => {
       if (!e.el) return; // not drawn yet (a big map draws arrows as they scroll into view)
+      const sig = (e.sdim ? 1 : 0) | (pathsOn ? 2 : 0) | (e.pk << 2) | (e.deco.length << 4);
+      if (e.sig === sig && e.sigEl === e.el) return; // already styled this way: the page does not touch it again
+      e.sig = sig;
+      e.sigEl = e.el;
       e.el.classList.toggle('dim', e.sdim);
       e.deco.forEach(d => d.classList.toggle('dim', e.sdim));
       e.el.classList.toggle('pg', (e.pk & 1) > 0);
@@ -2512,18 +2516,24 @@ function renderMap(main) {
         });
       });
     box.classList.toggle('paths-on', !!((mapGood || mapBad) && nodeView));
+    const anyPk = Object.keys(pagePk).length > 0; // no path shown (the usual case): nothing to look up
     edgeEls.forEach(e => {
       e.pk = 0;
-      e.srcs.forEach(src => {
-        e.pk |= edgePk[`${src.pid}:${src.ci}`] || 0;
-      });
+      if (anyPk)
+        e.srcs.forEach(src => {
+          e.pk |= edgePk[`${src.pid}:${src.ci}`] || 0;
+        });
     });
     L.nodes.forEach(n => {
       if (!n.el) return;
       let pk = 0;
-      (n.pages || []).forEach(id => {
-        pk |= pagePk[id] || 0;
-      });
+      if (anyPk)
+        (n.pages || []).forEach(id => {
+          pk |= pagePk[id] || 0;
+        });
+      if (n.pkEl === n.el && n.pkv === pk) return;
+      n.pkEl = n.el;
+      n.pkv = pk;
       n.el.classList.toggle('onp', pk > 0);
       n.el.classList.toggle('pg', (pk & 1) > 0);
       n.el.classList.toggle('pb', (pk & 2) > 0);
@@ -2566,8 +2576,13 @@ function renderMap(main) {
       hitNode[n.id] = hit;
       if (hit && !first) first = n.id;
       if (!n.el) return;
+      const dim = (terms.length > 0 || !!picked) && !hit;
+      if (n.hitEl === n.el && n.hitv === hit && n.dimv === dim) return;
+      n.hitEl = n.el;
+      n.hitv = hit;
+      n.dimv = dim;
       n.el.classList.toggle('hit', hit);
-      n.el.classList.toggle('dim', (terms.length > 0 || !!picked) && !hit);
+      n.el.classList.toggle('dim', dim);
     });
     edgeEls.forEach(e => {
       e.sdim = (terms.length > 0 || !!picked) && !(hitNode[e.from] || hitNode[e.to]);
