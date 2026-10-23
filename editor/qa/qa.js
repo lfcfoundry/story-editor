@@ -8,6 +8,8 @@
      node qa.js quick --webkit    the quick suites on Firefox, then the same ones on WebKitGTK;  --webkit-only runs just the WebKitGTK lane
      node qa.js sample    contract plus a rotating quarter of the quick suites (and any whose files changed): a cheap look between edits,
                           never the check before delivery
+     node qa.js smart --since origin/main   pick the suites by the files that differ from that git revision (right on a fresh checkout or a new session); writes no .stamp
+     node qa.js <tier> --plan           print the suites that would run and stop
      node qa.js <tier> --only lite      run only suites whose name contains "lite"
      node qa.js <tier> --verbose        print each suite's own output as well (it is always saved in logs/)
      node qa.js <tier> --against <rev> [--expect-fail]
@@ -97,6 +99,8 @@ const verbose = args.includes('--verbose');
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : '';
 const against = args.includes('--against') ? args[args.indexOf('--against') + 1] : '';
 const expectFail = args.includes('--expect-fail');
+const since = args.includes('--since') ? args[args.indexOf('--since') + 1] : ''; /* pick by what differs from this git revision, not by the time of the last green run */
+const PLAN = args.includes('--plan'); /* print the suites that would run, run nothing */
 const WEBKIT_ONLY = args.includes('--webkit-only'); /* run just the WebKitGTK lane (no Firefox, no Node-only checks): for looking at that browser alone */
 /* WebKitGTK (the third approved browser) runs after Firefox, and after Chromium in the full check, one browser at a time. The full check includes it;
    the quick, smart and sample tiers add it with --webkit; --no-webkit leaves it out of the full check. */
@@ -138,7 +142,14 @@ const pairStat = (label, file) => {
 const stampFile = HERE + '.stamp';
 const stamp = fs.existsSync(stampFile) ? fs.statSync(stampFile).mtimeMs : 0;
 const mtime = f => (fs.existsSync(ED + f) ? fs.statSync(ED + f).mtimeMs : 0);
-const changed = SOURCES.filter(f => mtime(f) > stamp);
+/* --since <rev>: the files that differ from that revision (committed, edited or new). A fresh checkout or a new session has no useful .stamp, so this picks the right suites there. */
+const gitChanged = rev => {
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: ED, encoding: 'utf8' }).stdout.trim();
+  const list = (a) => spawnSync('git', a, { cwd: top, encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
+  const rel = new Set([...list(['diff', '--name-only', rev, '--']), ...list(['ls-files', '--others', '--exclude-standard'])]);
+  return SOURCES.filter(f => rel.has('editor/' + f));
+};
+const changed = since ? gitChanged(since) : SOURCES.filter(f => mtime(f) > stamp);
 
 /* --against <rev>: build the editor as it was at that revision, in a temporary copy of the repository, and point the suites at it */
 let worktree = '';
@@ -217,8 +228,13 @@ lane('chromium');
 lane('webkit');
 if (EPIPHANY) EPI_JOBS.forEach(([label, file]) => { if (!only || label.includes(only) || file.includes(only)) jobs.push({ label, cmd: ['env', 'WEBKIT=epiphany', 'node', file, 'webkit'], lane: 'epiphany' }); });
 
-if (tier === 'smart' || tier === 'sample') console.log('changed since the last all-green run:', changed.join(', ') || 'nothing');
+if (tier === 'smart' || tier === 'sample') console.log(since ? `changed since ${since}:` : 'changed since the last all-green run:', changed.join(', ') || 'nothing');
 if (skipped.length) console.log('left out because their history shows the changed files never broke them (5 or more runs): ' + [...new Set(skipped)].join(', ') + ' (a full check still runs them)');
+if (PLAN) { /* --plan: say what would run, run nothing */
+  console.log(`plan: ${jobs.length} jobs`);
+  jobs.forEach(j => console.log('  ' + j.label));
+  process.exit(0);
+}
 /* Runs one job in the background (so two browsers can work at once) and resolves with its result. */
 const run = job => new Promise(done => {
   const t = Date.now();
@@ -285,7 +301,15 @@ const runOne = async job => {
 const worker = async () => { for (let job; (job = queue.shift()); ) await runOne(job); };
 (async () => {
 await waitForServer();
+/* a WebKit browser that starts while the last one is still shutting down fails once with "session not created": wait for the real exit (at most 25 s, then go on; the retry of a failing suite stays) */
+const waitWebkitExit = async lane => {
+  const t = Date.now();
+  while (Date.now() - t < 25000 && spawnSync('pgrep', ['WebKit|MiniBrowser|epiphany']).status === 0) await new Promise(r => setTimeout(r, 250));
+  const sec = (Date.now() - t) / 1000;
+  if (sec >= 0.5) console.log(`waited ${sec.toFixed(1)} s for the last WebKit browser to exit before ${lane}`);
+};
 for (const lane of ['firefox', 'chromium', 'webkit', 'epiphany']) {
+  if ((lane === 'webkit' || lane === 'epiphany') && jobs.some(j => j.lane === lane)) await waitWebkitExit(lane);
   queue = jobs.filter(j => j.lane === lane && !SOLO[j.label]).sort(byTime);
   await Promise.all(Array.from({ length: lane === 'webkit' && !process.env.QA_JOBS ? Math.min(WORKERS, 5) : WORKERS }, worker)); /* WebKitGTK: 5 at a time (lane alone, 35 suites: 5 -> 187 s and 0 flaky, 7 -> 241 s and 4 flaky) */
   /* suites that need the machine to themselves run last, one at a time */
@@ -305,6 +329,6 @@ if (!bad && tier === 'full' && !only && !WEBKIT_ONLY) { /* the check counts of t
   rows.forEach(r => { if (r.passes) counts[r.label] = r.passes; });
   fs.writeFileSync(countsFile, JSON.stringify(counts, null, 1));
 }
-if (!bad && tier !== 'quick' && tier !== 'sample' && !only && !WEBKIT_ONLY) fs.writeFileSync(stampFile, new Date().toISOString());
+if (!bad && tier !== 'quick' && tier !== 'sample' && !only && !WEBKIT_ONLY && !since) fs.writeFileSync(stampFile, new Date().toISOString());
 process.exit(bad ? 1 : 0);
 })();

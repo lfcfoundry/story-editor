@@ -7,6 +7,8 @@ not program. The short version for both: **run one line, read one summary.**
 cd qa
 node qa.js quick     about 1 minute  after any change: the suites that catch most breakage, on Firefox
 node qa.js smart     quick, plus every suite whose watched files changed since the last all-green run
+node qa.js smart --since origin/main   the same, but by the files that differ from that git revision (right in a fresh checkout or a new session, where .stamp means nothing; writes no .stamp)
+node qa.js <tier> --plan             print the suites that would run, run nothing
 node qa.js full      about 6 minutes  the check before a file is delivered: everything on Firefox, Chromium and WebKitGTK, one browser at a time
 node qa.js full --only lite     only suites with "lite" in the name        --verbose  also print each suite's own output
 node qa.js full --reset-counts  accept a smaller number of checks on purpose (see "lost checks" below)
@@ -181,3 +183,9 @@ still total about 45 s of suite time in the quick tier; `smart` re-runs nearly e
 ## Does the contract test notice a deliberate bug? (`mutants.py`)
 
 `python3 qa/mutants.py` (about 20 seconds) puts 14 one-line bugs into the game rules, one at a time, in a copy of `core.js` and runs `contract.mjs` on each. All 14 are caught (checked 2026-10-14); two of them are changes that do not alter the game (an odds shortcut at 2, the default top limit of a number that the loader always fills in) and used to survive until the contract compared the paragraphs and choices shown with a plain-words reading. Add a line to `MUTANTS` whenever a rule changes; a "SURVIVED" line that is not marked equivalent means the contract has a gap. The contract itself now stops after `CONTRACT_TIMEOUT_S` seconds (90) instead of hanging when a rule loops.
+
+## Picking suites by what changed, and waiting for WebKit to exit
+
+- `--since <rev>` takes the changed files from git (`git diff --name-only <rev>` plus new files) instead of from file times against `.stamp`, so a new session or a fresh checkout runs only the suites the branch touched. `--plan` prints the list and stops. Proof (2026-10-22): no change against HEAD plans only the quick suites; an edit to `ui4-speed.js` adds `top5-safe` and `top5-new`; an edit to `maplayout.js` adds `mapcull` and `mapprebuild`; `core.js` adds the checker suites. The full run before a release does not use it.
+- Before the WebKitGTK and GNOME Web lanes the runner waits for the previous WebKit browser to exit (polls the process list every 0.25 s, at most 25 s) and prints how long it waited; the retry of a failing suite stays. Measured: 1.6 s between WebKitGTK and GNOME Web in a four-browser `csp` run.
+- Fixed waits counted (2026-10-22): 477 `waitForTimeout` calls in `qa/*.js`, 188 s of literal wait in all; `engine.js` already ends them early where the page is quiet.
