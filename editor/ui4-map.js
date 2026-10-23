@@ -41,6 +41,7 @@ let mapGood = false;
 let mapBad = false;
 const mapOpts = { view: 'flow', merge: true, traffic: false, color: 'none' }; // remembered in this browser (runs always fold; see mapOpen)
 let mapOptsLoaded = false;
+let mapMoreTools = false; // the phone's toolbar shows only the layouts until the person opens it
 const mapAs = {}; // givenId -> answer: draw the map as that player sees it
 let mapOpen = {}; // folded runs the author opened up, by first page
 let mapPin = null; // the page whose neighbors stay lit (a tap, or "Show on the map")
@@ -906,7 +907,24 @@ function renderMap(main) {
       h('span', { class: 'short', text: 'Compare' })
     );
   } else chip.append(h('span', { text: 'Compare views' }));
-  const bar = h('div', { class: 'maptools', role: 'toolbar', 'aria-label': 'Map tools' }, [
+  /* phone: only the layouts show; one button opens the rest (colors, search, results), and the zoom floats over the map */
+  const moreTools = h('button', {
+    type: 'button',
+    class: 'btn small maptoggle',
+    text: 'More ▾',
+    'aria-expanded': String(mapMoreTools),
+    title: 'Colors, search and playtest results',
+    onclick(e) {
+      mapMoreTools = !mapMoreTools;
+      const b = e.currentTarget.parentNode;
+      b.classList.toggle('more', mapMoreTools);
+      e.currentTarget.setAttribute('aria-expanded', String(mapMoreTools));
+      e.currentTarget.textContent = mapMoreTools ? 'Less ▴' : 'More ▾';
+    }
+  });
+  if (mapMoreTools) moreTools.textContent = 'Less ▴';
+  const bar = h('div', { class: `maptools${mapMoreTools ? ' more' : ''}`, role: 'toolbar', 'aria-label': 'Map tools' }, [
+    moreTools,
     viewGroup,
     colorGroup,
     h('span', { class: 'mapgrp' }, [mergeBtn, sizeBtn, asBtn]),

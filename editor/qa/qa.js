@@ -236,7 +236,8 @@ const lane = engine => SUITES.forEach(s => {
   if (engine === 'chromium' && tier !== 'full' && !against) return; /* Chromium only in the full check */
   if (engine === 'webkit' && !WEBKIT) return; /* WebKitGTK only when asked for (--webkit) or in the full check */
   if (only && !s.name.includes(only)) return;
-  jobs.push({ label: `${s.name} ${engine}`, cmd: routineFuzz(s.name, ['node', s.file, engine]), lane: engine });
+  const fcmd = routineFuzz(s.name, ['node', s.file, engine]);
+  jobs.push({ label: `${s.name} ${engine}`, cmd: fcmd, lane: engine, short: fcmd[0] === 'env' });
 });
 lane('firefox');
 lane('chromium');
@@ -264,7 +265,7 @@ const run = job => new Promise(done => {
     const fails = failLines(out);
     const passes = passCount(out);
     /* fewer checks than the last all-green run means some were skipped, which is a failure too */
-    const had = COUNTS[job.label];
+    const had = job.short ? 0 : COUNTS[job.label]; /* a half-size routine fuzz run is meant to run fewer checks */
     if (had && passes < had) fails.push(`only ${passes} checks ran; the last all-green run had ${had} (qa.js --reset-counts accepts a smaller number on purpose)`);
     done({ ok: code === 0 && !fails.length, out, fails, passes, sec: (Date.now() - t) / 1000 });
   });
