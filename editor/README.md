@@ -114,7 +114,7 @@ build; raise the ceiling in `BUDGETS` (build.py) on purpose, with a reason, or t
 - **Error log.** `logError(where, err)` (ui1-state.js) keeps the last five errors (where, the message, the function names it was
   inside; line numbers mean little in a packed file). Every `catch` that carries on instead of telling the person calls it, and
   uncaught errors and unhandled promises are logged too. The Speed report lists them, and its Save as file button keeps the whole report as a text file.
-- **Speed report.** `ui4-speed.js` on `field-report.js` (the shared field-report 1.0.1 module, copied here unchanged and packed
+- **Speed report.** `ui4-speed.js` on `field-report.js` (the shared field-report 1.0.2 module, copied here unchanged and packed
   first): Options → Speed report, or `#report` on the address, opens the report in a window (Copy report, Save speed report,
   Save error log). Five quick taps in the top-left corner open the same two saves anywhere. Start-up, heavy
   tasks and every error are always kept in memory (frames, the last 3,600, from the Record frames button in the window, because an always-running frame loop slowed the Map's first frames in Firefox); the editor adds tab-switch, checker and map timings. The report holds timings
