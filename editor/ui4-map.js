@@ -2435,29 +2435,30 @@ function renderMap(main) {
     applySearch(false);
     if (litId) light(litId);
   }
+  const SLICE_MS = 4;
   let revealRaf = 0,
     frameRaf = 0;
-  /** In animation frames of at most about 6 ms: first what the window shows, then a margin around it. */
+  /** In animation frames of at most about 4 ms of drawing (plus about 4 ms of restyling, so each stays under the 8 ms rule): first what the window shows, then a margin around it. */
   function drawFrames() {
     cancelAnimationFrame(frameRaf);
     frameRaf = requestAnimationFrame(() => {
       if (!box.isConnected) return;
       const t0 = performance.now();
-      let r = drawIn(wantRect(0), 6),
+      let r = drawIn(wantRect(0), SLICE_MS),
         k = r.k;
       if (!r.more) {
-        r = drawIn(wantRect(0.3), Math.max(1, 6 - (performance.now() - t0)));
+        r = drawIn(wantRect(0.3), Math.max(1, SLICE_MS - (performance.now() - t0)));
         k += r.k;
       }
       if (k) restyle();
       if (r.more) drawFrames();
     });
   }
-  /** Draws what the window shows now (the first screenful at once) and carries on with the margin. */
+  /** Draws what the window shows now, in the same small slices, and carries on with the margin. */
   function reveal() {
     cancelAnimationFrame(revealRaf);
     if (!cullOn || !box.isConnected) return;
-    const a = drawIn(wantRect(0), 14);
+    const a = drawIn(wantRect(0), SLICE_MS);
     if (a.k) restyle();
     drawFrames();
   }
