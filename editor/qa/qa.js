@@ -175,17 +175,26 @@ if (!against && SOURCES.some(f => mtime(f) > builtAt)) {
 }
 
 /* the one suite that needs a web page to talk to: a small local server on the work folder */
-const PORT = String(20000 + Math.floor(Math.random() * 20000)); /* a port of its own each run: a server left over from an earlier run (it may serve a folder that no longer exists) can never be mistaken for this one */
-process.env.QA_PORT = PORT;
-const server = spawn('python3', ['-m', 'http.server', PORT, '--bind', '127.0.0.1'], { cwd: HERE + 'work', stdio: 'ignore' });
+let PORT = '';
+let server = null;
 process.on('exit', () => { try { server.kill(); } catch (e) { /* gone */ } });
-/* the first suite to need the server must not start before it is listening (it used to fail once, then pass on the retry) */
-const waitForServer = async () => {
-  for (let i = 0; i < 100; i++) {
-    if (await new Promise(ok => { const c = require('net').connect(+PORT, '127.0.0.1'); c.on('connect', () => { c.destroy(); ok(true); }); c.on('error', () => ok(false)); })) return;
-    await new Promise(r => setTimeout(r, 100));
+/* a port of its own each run: a server left over from an earlier run (it may serve a folder that no longer exists) can never be mistaken for this one.
+   If the server does not come up (a port that is taken, or the server exits at once), another port is tried, up to 5 times, and the run says so. */
+const listening = port => new Promise(ok => { const c = require('net').connect(+port, '127.0.0.1'); c.on('connect', () => { c.destroy(); ok(true); }); c.on('error', () => ok(false)); });
+const startServer = async () => {
+  for (let tries = 1; tries <= 5; tries++) {
+    PORT = String(20000 + Math.floor(Math.random() * 20000));
+    server = spawn('python3', ['-m', 'http.server', PORT, '--bind', '127.0.0.1'], { cwd: HERE + 'work', stdio: 'ignore' });
+    for (let i = 0; i < 30; i++) {
+      if (await listening(PORT)) { process.env.QA_PORT = PORT; return; }
+      await new Promise(r => setTimeout(r, 100));
+    }
+    try { server.kill(); } catch (e) { /* gone */ }
+    console.log(`the local server did not start on port ${PORT} (try ${tries} of 5)`);
   }
+  console.log('FAIL the local server would not start; the suites that need a web page will fail');
 };
+/* the first suite to need the server must not start before it is listening (it used to fail once, then pass on the retry) */
 
 /* First line of every run: the browsers this run really drives, read from the programs themselves (never from a label), so a run cannot be
    reported under the wrong browser. Chromium is only used by the full check, --against and the phone/touch suites. */
@@ -300,7 +309,7 @@ const runOne = async job => {
 };
 const worker = async () => { for (let job; (job = queue.shift()); ) await runOne(job); };
 (async () => {
-await waitForServer();
+await startServer();
 /* a WebKit browser that starts while the last one is still shutting down fails once with "session not created": wait for the real exit (at most 25 s, then go on; the retry of a failing suite stays) */
 const waitWebkitExit = async lane => {
   const t = Date.now();
