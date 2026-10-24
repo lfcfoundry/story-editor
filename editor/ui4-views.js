@@ -792,8 +792,13 @@ function scheduleCheck() {
 }
 /** Runs the checker now and refreshes whatever shows its results. */
 function runCheck() {
+  if (checkInWorker()) return; // a big story is checked in the background; checkDone finishes the job
   const already = analysis && analysisFor === cur; // the map may have analyzed this exact version already
   freshAnalysis();
+  afterCheck(already);
+}
+/** Whatever shows the checker's result takes it in. */
+function afterCheck(already) {
   freshWriting();
   renderTop();
   if (view === 'write') {
@@ -808,13 +813,83 @@ function runCheck() {
   }
   mapPrebuildSoon(); // a big story's Map layout is built in the background, ready for when the Map tab opens
 }
+/**
+ * A story whose last check took more than CHECK_HYBRID_MS is checked after an edit in a background worker, so the page stays free to
+ * draw while you type (the status line says "Checking" until the answer comes). Smaller stories, the Check and Map tabs, and any
+ * browser without workers check right away on the page, as always. The worker sends back what can travel (problems, warnings, endings,
+ * counts); samples, why, canArrive and explain are made on the page when something asks (see lazyExplainers).
+ */
+const CHECK_HYBRID_MS = 8;
+const checkPre = { worker: null, bad: false, seq: 0, text: '', ms: 0, posted: 0, done: 0, dropped: 0 };
+let checkLastMs = 0; // how long the last check took (on the page or in the worker)
+function checkInWorker() {
+  if (checkPre.bad || window.__checkWorker === false || !window.Worker || view === 'check' || view === 'map') return false;
+  if (checkLastMs <= (window.__checkHybridMs ?? CHECK_HYBRID_MS) || (analysis && analysisFor === cur)) return false;
+  if (!checkPre.worker) {
+    try {
+      const url = URL.createObjectURL(new Blob([checkWorkerSource()], { type: 'text/javascript' }));
+      const w = new Worker(url);
+      w.onmessage = checkDone;
+      w.onerror = () => {
+        checkPre.bad = true; // the page checks for itself from now on
+        w.terminate();
+        checkPre.worker = null;
+        scheduleCheck();
+      };
+      checkPre.worker = w;
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      checkPre.bad = true; // no workers here (or the page rules forbid them)
+      return false;
+    }
+  }
+  checkPre.text = cur;
+  checkPre.posted++;
+  checkPre.worker.postMessage({ seq: ++checkPre.seq, text: cur });
+  return true;
+}
+/** The worker's answer: used only if it is still the story on the page and nothing has checked it on the page meanwhile. */
+function checkDone(e) {
+  const m = e.data;
+  if (m.seq !== checkPre.seq) return;
+  if (m.error) {
+    checkPre.bad = true;
+    checkPre.worker?.terminate();
+    checkPre.worker = null;
+    logError('checker worker', new Error(m.error));
+    runCheck();
+    return;
+  }
+  checkLastMs = m.ms;
+  if (checkPre.text !== cur || (analysis && analysisFor === cur)) {
+    checkPre.dropped++;
+    return;
+  }
+  checkPre.done++;
+  checkPre.ms = m.ms;
+  analysis = lazyExplainers(m.r);
+  speedNote('checker (in a worker)', m.ms, `${analysis.states} situations`);
+  analysis.notes = (analysis.notes || []).concat(editorNotes());
+  analysisFor = cur;
+  afterCheck(false);
+}
+/** The explainers a worker cannot send: made on the page, once, the first time something asks. */
+function lazyExplainers(r) {
+  let full = null;
+  const real = () => (full ||= analyze(project));
+  ['samples', 'why', 'canArrive', 'explain'].forEach(k => {
+    r[k] = (...a) => real()[k](...a);
+  });
+  return r;
+}
 /** The checker's result for the story as it is now, re-using the last result when nothing has changed since. */
 function freshAnalysis() {
   if (analysis && analysisFor === cur) return analysis;
   const t0 = performance.now();
   try {
     analysis = analyze(project);
-    speedNote('checker', performance.now() - t0, `${analysis.states} situations`);
+    checkLastMs = performance.now() - t0;
+    speedNote('checker', checkLastMs, `${analysis.states} situations`);
   } catch (e) {
     logError('checker', e);
     analysis = {

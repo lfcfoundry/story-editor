@@ -11,7 +11,7 @@ await ctx.addInitScript(()=>{ if(!localStorage.getItem('story-editor-v1-settings
   window.showSaveFilePicker=function(o){ window.__pickerOpen++; return (window.__pickGate||Promise.resolve()).then(()=>new Promise(r=>setTimeout(()=>r({createWritable:()=>Promise.resolve({ _c:'', write(b){ return b.text().then(t=>{this._c+=t;}); }, close(){ window.__saves.push({name:o.suggestedName,text:this._c}); return Promise.resolve(); } })}),600))); }; });
 const pg=await ctx.newPage();
 const logs=[];pg.on('console',m=>{if(['error','warning'].includes(m.type()))logs.push(m.type()+': '+m.text())});pg.on('pageerror',e=>logs.push('PAGEERR '+e.message));
-const reqs=[];pg.on('request',r=>{if(!r.url().startsWith('file:')&&!r.url().startsWith('data:'))reqs.push(r.url())});
+const reqs=[];pg.on('request',r=>{if(!r.url().startsWith('file:')&&!r.url().startsWith('data:')&&!r.url().startsWith('blob:'))reqs.push(r.url())});
 await pg.goto(FILE);await pg.waitForTimeout(300);
 const P=()=>pg.evaluate(()=>JSON.parse(JSON.stringify(window.__editor.project)));
 const page=async n=>{const pr=await P();return pr.passages.find(p=>p.name===n)};
