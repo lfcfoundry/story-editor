@@ -1796,11 +1796,13 @@ function renderWrite(main) {
       $('#main .fxveil')?.remove();
       $('#main .fxbtn')?.setAttribute('aria-expanded', 'false');
     };
-    const btn = h('button', { type: 'button', class: 'fxbtn', 'aria-haspopup': 'dialog', 'aria-expanded': String(fxOpen), title: 'The page type (page or ending) and what the player gets or loses on arriving', onclick: () => ((fxOpen = true), mountFxSheet(main, fx, close)) }, [
-      h('span', { text: fxSummary(p) }),
+    const long = fxSummary(p);
+    const btn = h('button', { type: 'button', class: 'fxbtn', 'aria-haspopup': 'dialog', 'aria-expanded': String(fxOpen), 'aria-label': long, title: 'The page type (page or ending) and what the player gets or loses on arriving', onclick: () => ((fxOpen = true), mountFxSheet(main, fx, close)) }, [
+      h('span', { class: 'fxtxt', text: long.replace('Page type and effects: ', '') }),
       h('span', { class: 'fxcaret', text: '▴', 'aria-hidden': 'true' })
     ]);
-    wrap.appendChild(btn);
+    /* it sits at the end of the icon row, which has the room, so it costs no row of its own */
+    (wrap.querySelector('.pbrow') || wrap).appendChild(btn);
     if (fxOpen) setTimeout(() => $('#main .fxsheet') || mountFxSheet(main, fx, close, true), 0);
   } else wrap.appendChild(fx);
   wrap.appendChild(textSection(p));
