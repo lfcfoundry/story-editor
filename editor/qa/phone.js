@@ -28,6 +28,14 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, tourDone: true, 
   const small = await pg.evaluate(() => [...document.querySelectorAll('#tabs button')].filter(x => x.getBoundingClientRect().height < 40).length);
   ok(small === 0, 'every tab is at least 40 px tall');
 
+  /* Items: the explanation is folded on a phone, one tap opens it */
+  await pg.click('#tabs button:has-text("Items")'); await pg.waitForTimeout(400);
+  const hf = await pg.evaluate(() => { const d = document.querySelector('#main .hintfold'); return d ? { open: d.open, sum: d.querySelector('summary').textContent, h: Math.round(d.getBoundingClientRect().height) } : null; });
+  ok(hf && !hf.open && hf.h < 40, 'Items: the explanation is folded on a phone: ' + JSON.stringify(hf));
+  await pg.evaluate(() => { document.querySelector('#main .hintfold summary').click(); }); await pg.waitForTimeout(150);
+  ok(await pg.evaluate(() => document.querySelector('#main .hintfold').getBoundingClientRect().height > 80), 'Items: one tap on it shows the explanation');
+  await pg.click('#tabs button:has-text("Write")'); await pg.waitForTimeout(300);
+
   /* one-row top bar */
   const top = await box('#top');
   ok(top && top.h <= 62, 'the top bar is one row: ' + (top && top.h));

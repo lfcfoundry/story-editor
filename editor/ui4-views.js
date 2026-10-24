@@ -149,13 +149,15 @@ function addShownAs(it) {
  * the player), how many places use it, and delete.
  */
 function renderItems(main) {
-  const wrap = h('div', { class: 'wrap items' }, [
-    h('div', {
-      class: 'hint',
-      text: adv('items')
+  const introText = adv('items')
         ? 'Objects are things a player carries (a key, a phone). States are conditions they are in (sick, brave). Numbers are scores that go up and down (Courage, Money). Givens are answered before the story starts (who the player is). All of them can decide which text and choices appear.'
         : 'Objects are things a player carries (a key, a phone). States are conditions they are in (sick, brave). Both can decide which text and choices appear.'
-    })
+;
+  /* on a phone the explanation folds away (it took 95 of 800 px on every visit); on a computer it stays open as before */
+  const wrap = h('div', { class: 'wrap items' }, [
+    phoneLayout()
+      ? h('details', { class: 'hintfold' }, [h('summary', { text: 'What are objects, states and numbers?' }), h('div', { class: 'hint', text: introText })])
+      : h('div', { class: 'hint', text: introText })
   ]);
   /** A number: its name, lowest, highest and starting value, Show, uses, delete. */
   function statLine(it) {
