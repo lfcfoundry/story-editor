@@ -52,8 +52,9 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, tourDone: true, 
   ok(db && db.shown && db.y < 70 && db.h <= 56, 'the page-name bar is pinned under the top bar: ' + JSON.stringify(db));
   const ta = await pg.evaluate(() => { const t = document.querySelector('#main textarea'); return t ? t.getBoundingClientRect().top : -1; });
   ok(ta > 0 && ta < 400, 'the first paragraph starts in the upper half of the screen: ' + ta);
-  const fx = await pg.evaluate(() => { const d = document.querySelector('#main .fxbtn'); return d ? [!!document.querySelector('#main .fxsheet'), d.textContent] : null; });
-  ok(fx && fx[0] === false && /Page type and effects/.test(fx[1]), 'page type and effects are one line, sheet shut: ' + JSON.stringify(fx));
+  ok(ta > 0 && ta < 330, 'with the page type button in the icon row, the first paragraph starts higher (under 330 px): ' + ta);
+  const fx = await pg.evaluate(() => { const d = document.querySelector('#main .fxbtn'); return d ? [!!document.querySelector('#main .fxsheet'), d.getAttribute('aria-label') + ' | ' + d.textContent, !!d.closest('.pbrow')] : null; });
+  ok(fx && fx[0] === false && fx[2] && /Page type and effects/.test(fx[1]), 'page type and effects sit in the icon row as one short button, sheet shut: ' + JSON.stringify(fx));
 
   /* history ‹ › and the ↑ settings button */
   const first = await pname();
