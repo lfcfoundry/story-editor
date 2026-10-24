@@ -992,8 +992,7 @@ function pageSettings() {
   const m = $('#main');
   if (!m) return;
   m.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  const fold = m.querySelector('.fxfold');
-  if (fold) fold.open = true; // the type and effects are part of the page's settings
+  m.querySelector('.fxbtn')?.click(); // the type and effects are part of the page's settings
   const bar = m.querySelector('.pagebar');
   if (bar) {
     bar.classList.remove('flash');

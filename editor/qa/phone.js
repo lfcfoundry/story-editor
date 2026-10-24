@@ -52,8 +52,8 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, tourDone: true, 
   ok(db && db.shown && db.y < 70 && db.h <= 56, 'the page-name bar is pinned under the top bar: ' + JSON.stringify(db));
   const ta = await pg.evaluate(() => { const t = document.querySelector('#main textarea'); return t ? t.getBoundingClientRect().top : -1; });
   ok(ta > 0 && ta < 400, 'the first paragraph starts in the upper half of the screen: ' + ta);
-  const fx = await pg.evaluate(() => { const d = document.querySelector('#main details.fxfold'); return d ? [d.open, d.querySelector('summary').textContent] : null; });
-  ok(fx && fx[0] === false && /Page type and effects/.test(fx[1]), 'page type and effects are folded to one line: ' + JSON.stringify(fx));
+  const fx = await pg.evaluate(() => { const d = document.querySelector('#main .fxbtn'); return d ? [!!document.querySelector('#main .fxsheet'), d.textContent] : null; });
+  ok(fx && fx[0] === false && /Page type and effects/.test(fx[1]), 'page type and effects are one line, sheet shut: ' + JSON.stringify(fx));
 
   /* history ‹ › and the ↑ settings button */
   const first = await pname();
@@ -66,8 +66,16 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, tourDone: true, 
   ok((await pname()) === second, 'the › button goes forward again');
   await pg.evaluate(() => { document.getElementById('main').scrollTop = 600; });
   await pg.locator('#drawerbar .dsettings').click(); await pg.waitForTimeout(400);
-  const st = await pg.evaluate(() => [document.getElementById('main').scrollTop, document.querySelector('#main details.fxfold').open]);
-  ok(st[0] < 20 && st[1] === true, '↑ scrolls to the top and opens the page type and effects: ' + st.join(' '));
+  const st = await pg.evaluate(() => [document.getElementById('main').scrollTop, !!document.querySelector('#main .fxsheet')]);
+  ok(st[0] < 20 && st[1] === true, '↑ scrolls to the top and opens the page type and effects sheet: ' + st.join(' '));
+  /* the sheet: Done and a tap outside put it away, and it stays open across a re-draw */
+  await pg.evaluate(() => { const E = window.__editor; E.refresh(); }); await pg.waitForTimeout(300);
+  ok(await pg.evaluate(() => !!document.querySelector('#main .fxsheet')), 'the sheet stays open when the page is redrawn');
+  await pg.locator('#main .fxdone').click(); await pg.waitForTimeout(200);
+  ok(await pg.evaluate(() => !document.querySelector('#main .fxsheet') && !document.querySelector('#main .fxveil')), 'Done puts the sheet away');
+  await pg.locator('#main .fxbtn').click(); await pg.waitForTimeout(200);
+  await pg.evaluate(() => document.querySelector('#main .fxveil').click()); await pg.waitForTimeout(200);
+  ok(await pg.evaluate(() => !document.querySelector('#main .fxsheet')), 'a tap outside puts the sheet away');
 
   /* swipe the bar */
   const order = await pg.evaluate(() => [...document.querySelectorAll('#side li button.pg, #side .pgrow, #side li[data-id]')].length);

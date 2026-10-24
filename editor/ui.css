@@ -908,6 +908,15 @@ body.typing #main.v-write{padding-bottom:20px}
 .fxfold>summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:.9rem;min-height:40px;display:flex;align-items:center}
 .fxfold[open]>summary{border-bottom:1px solid var(--line)}
 .fxfold>.effects{padding:8px}
+.fxbtn{display:flex;align-items:center;justify-content:space-between;width:100%;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:inherit;font:inherit;font-weight:600;font-size:.9rem;padding:10px 12px;min-height:40px;text-align:left}
+.fxveil{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.35)}
+.fxsheet{position:fixed;left:0;right:0;bottom:0;z-index:71;max-height:75vh;overflow:auto;background:var(--panel);border-top:1px solid var(--line);border-radius:14px 14px 0 0;padding:0 12px calc(12px + env(safe-area-inset-bottom,0px));animation:fxup .18s ease-out;touch-action:pan-y}
+.fxsheet.still{animation:none}
+.fxhandle{display:flex;justify-content:center;padding:10px 0 12px;touch-action:none}
+.fxhandle span{width:40px;height:4px;border-radius:2px;background:var(--line)}
+.fxdone{width:100%;margin-top:10px;min-height:40px}
+@keyframes fxup{from{transform:translateY(100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.fxsheet{animation:none}}
 /* touch screens: the few remaining small targets (map icons and chips, checkboxes, segmented buttons) */
 @media (hover:none) and (pointer:coarse){
   .mapico{width:38px;height:36px}
