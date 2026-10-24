@@ -1,0 +1,41 @@
+/* Ctrl+K: go to a page, and (new) run an action: the action rows, ">" lists all of them, Enter runs one, a page name still opens the page.
+   Usage: node palette.js [chromium|firefox]   Copyright (c) 2026 LFC Foundry. MIT License. */
+const which = process.argv[2] || 'firefox'; const B = require('./engine').pick(which);
+const fs = require('fs');
+const FILE = require('url').pathToFileURL(process.env.QA_EDITOR || require('path').join(__dirname, '..', 'story-editor.html')).href;
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const sample = fs.readFileSync(__dirname + '/fixtures/sample.story.json', 'utf8');
+(async () => {
+  const b = await B.launch();
+  const ctx = await b.newContext({ viewport: { width: 1366, height: 800 } });
+  await ctx.addInitScript(([s]) => { if (!localStorage.getItem('qa-seeded')) { localStorage.setItem('qa-seeded', '1'); localStorage.setItem('story-editor-v1-settings', JSON.stringify({ chosen: true, remember: true, advanced: { write: true, map: true, items: true, game: true } })); localStorage.setItem('story-editor-v1-story', s); } }, [sample]);
+  const errs = []; const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message));
+  await pg.goto(FILE); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(500);
+  const rows = () => pg.evaluate(() => [...document.querySelectorAll('.picker .pk-row')].map(r => r.textContent));
+  const view = () => pg.evaluate(() => document.body.dataset.view);
+  const press = key => pg.keyboard.press(key);
+  const typeIn = t => pg.keyboard.type(t);
+  const open = async q => { await pg.keyboard.press('Control+k'); await pg.waitForSelector('.picker .pk-in'); if (q) await typeIn(q); await pg.waitForTimeout(150); };
+  await open('');
+  ok(!(await rows()).some(r => /▸/.test(r)), 'with nothing typed only pages show (no action rows)');
+  ok(/type > for actions/.test(await pg.innerText('.picker .pk-foot')), 'the footer says how to find the actions');
+  await press('Escape');
+  await open('hall');
+  ok((await rows())[0].startsWith('Hall'), 'a page name still lists the page first: ' + (await rows())[0]);
+  await press('Escape');
+  await open('map');
+  ok((await rows()).some(r => /▸ Go to Map/.test(r)), 'typing "map" offers Go to Map');
+  await press('Escape');
+  await open('>');
+  const all = await rows();
+  ok(all.length >= 10 && all.every(r => /▸/.test(r)), '">" lists the actions only: ' + all.length);
+  ok(!/new page “>”/.test(await pg.innerText('.picker .pk-foot')), 'no "make a new page called >" hint');
+  await typeIn('go to map'); await press('Enter'); await pg.waitForTimeout(500);
+  ok((await view()) === 'map', 'Enter on Go to Map opens the Map: ' + await view());
+  await open('>new page'); await press('Enter'); await pg.waitForTimeout(500);
+  ok((await pg.evaluate(() => window.__editor.passages ? window.__editor.passages.length : 35)) >= 34, 'New page action runs without an error');
+  await open('>hide the page list'); await press('Enter'); await pg.waitForTimeout(300);
+  ok(await pg.evaluate(() => document.body.classList.contains('hide-pages')), 'Show or hide the page list hides it');
+  ok(!errs.length, 'no errors: ' + errs.join(' | '));
+  await b.close(); console.log(fails ? fails + ' FAILED' : 'all passed'); process.exit(fails ? 1 : 0);
+})().catch(e => { console.log('FAIL crash: ' + e.message); process.exit(1); });

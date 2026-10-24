@@ -749,7 +749,7 @@ function showShortcuts() {
         { class: 'keys' },
         [].concat(
           row([mod, 'S'], 'Save the story to its file (the first time, choose where)'),
-          row([mod, 'K'], 'Go to a page: type part of its name, Enter opens it (or makes it, if it does not exist yet: Ctrl+Enter)'),
+          row([mod, 'K'], 'Go to a page: type part of its name, Enter opens it (or makes it, if it does not exist yet: Ctrl+Enter). Type > to run an action instead (Go to Map, Export game, Undo…)'),
           row([mod, 'Shift', 'F'], 'Find and replace in all the words of the story'),
           row([mod, 'Shift', 'Enter'], 'In a paragraph: split the page at the cursor. The rest of the words and the choices move to a new page'),
           row(['Alt', '↑ ↓'], 'In a choice or paragraph box: move it up or down (the ⋮⋮ grip does the same with the mouse)'),
@@ -817,7 +817,7 @@ function showGuide() {
           'Tabs: {pen} Write to build pages, {mapi} Map to see the shape, {items} Items for objects and states, Check to find problems, {play} Play to try it, then Export game.'
         ]),
         sec('The Write tab, top to bottom', [
-          ['Getting around: Ctrl+K (or Go to… above the page list) jumps to any page by typing part of its name. Choosing where a choice leads works the same way: click the page name on the choice, type, press Enter. Go › opens that page and ‹ › at the top step back and forward through the pages you have been on. “From” shows which pages lead to this one. The panel buttons at the top of each side list hide it to give the writing more room.',
+          ['Getting around: Ctrl+K (or Go to… above the page list) jumps to any page by typing part of its name; type > there to run an action (switch tab, New page, Export game, Undo, hide a side list). Choosing where a choice leads works the same way: click the page name on the choice, type, press Enter. Go › opens that page and ‹ › at the top step back and forward through the pages you have been on. “From” shows which pages lead to this one. The panel buttons at the top of each side list hide it to give the writing more room.',
           'Getting around: the page name bar at the top stays put. Tap the name to jump to any page by typing part of its name, ‹ › to step back and forward through the pages you have been on, or swipe the bar left or right for the next or previous page in the list. Pages opens the full list, Items the objects. Choosing where a choice leads works the same way: tap the page name on the choice, type, and tap a match. “From” shows which pages lead to this one.'],
           ['Quicker writing: click an item in the right-hand list to put it in the open page’s Gets box, Shift+click for Loses. Paste a scene whose choice lines start with -, • or > and they become choices. Ctrl+Shift+Enter in a paragraph splits the page at the cursor. Drag the ⋮⋮ grip to reorder choices and paragraphs (or press Alt+↑ or Alt+↓ inside one). “Next to write” opens the next empty page. Options holds smart quotes and the writing text size.',
           'Quicker writing: tap an item in the Items list to put it in the open page’s Gets box; press and hold it for Loses. Paste a scene whose choice lines start with -, • or > and they become choices. Drag the ⋮⋮ grip with a finger to reorder choices and paragraphs. To split a page, put the cursor where the next page should begin and choose “Split this page at the cursor” in the page’s ⋯ menu. “Next to write” opens the next empty page. Options holds smart quotes and the writing text size.'],

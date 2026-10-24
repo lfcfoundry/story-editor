@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 23
+- Ctrl+K (or Go to…) now also runs actions: type part of an action's name (map, export, undo, new page) or type > to see them all, then Enter. Page names work exactly as before, and with nothing typed the list is the same pages as before.
 - On a phone, the Map's toolbar is now one row of layout buttons plus a More button (colors, search and playtest results sit behind it), and the zoom buttons float over the map. The map area is about 25% taller (552 to 690 px on a 390 x 844 screen). The map itself draws exactly as before.
 
 ## October 22
