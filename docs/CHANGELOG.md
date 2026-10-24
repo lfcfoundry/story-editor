@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 24
+- On a phone, the Items tab's explanation paragraph is folded behind "What are objects, states and numbers?", so the list starts about 95 px higher (about one more item on screen). One tap opens it; on a computer it stays open as before.
 - The Map's key now stays shown or hidden the way you left it, even after you reload or come back later. Before, it opened on top of the Start page every time on a laptop.
 
 ## October 23
