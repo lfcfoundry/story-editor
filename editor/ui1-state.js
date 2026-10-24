@@ -131,9 +131,11 @@ function touchOnly() {
   if (touchForce !== null) return touchForce;
   return typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
+/** The phone layout: a narrow screen, or a touch screen turned on its side (short and wide). */
+const PHONE_Q = '(max-width: 820px), (max-height: 500px) and (pointer: coarse)';
 /** True while the narrow-screen (phone) layout is in use. */
 function phoneLayout() {
-  return typeof matchMedia === 'function' && matchMedia('(max-width: 820px)').matches;
+  return typeof matchMedia === 'function' && matchMedia(PHONE_Q).matches;
 }
 /** Keeps a preference in this browser, but only while "Remember preferences" is on. */
 function savePref(key, value) {

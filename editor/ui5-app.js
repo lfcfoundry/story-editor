@@ -1324,7 +1324,7 @@ function startTour() {
   ]);
   const root = h('div', { id: 'tour' }, [h('div', { class: 'tour-block' }), hole, card]);
   document.body.appendChild(root);
-  const phone = () => matchMedia('(max-width: 820px)').matches;
+  const phone = () => matchMedia(PHONE_Q).matches;
   let i = -1;
   let cur = null; // the step on show
   let token = 0;
