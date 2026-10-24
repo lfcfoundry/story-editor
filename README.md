@@ -41,7 +41,7 @@ npm test                    # packages up to date, README samples, every package
 npm run editor              # build the editor: editor/story-editor.html (needs Python 3 and one npm install)
 ```
 
-The browser suites (Firefox and Chromium) are in `editor/qa`; see its README. For people and AI helpers: [AGENTS.md](AGENTS.md), [llms.txt](llms.txt), [CONTRIBUTING.md](CONTRIBUTING.md). History and measurements: [docs/](docs/README.md).
+The browser suites (Firefox, Chromium and WebKitGTK) are in `editor/qa`; see its README. For people and AI helpers: [AGENTS.md](AGENTS.md), [llms.txt](llms.txt), [CONTRIBUTING.md](CONTRIBUTING.md). History and measurements: [docs/](docs/README.md).
 
 ## Your stories stay yours
 
@@ -67,6 +67,8 @@ The first time you open the editor it offers a short spotlight tour of the main 
 
 ## Handy while writing
 
+- **Actions from the keyboard:** in the Ctrl+K box, type `>` to list actions (go to a tab, play, new page, export, undo, show or hide the lists) and press Enter to run one.
+- **On a phone,** the page type and effects open as a sheet that slides up from the bottom, the Map's toolbar folds its less-used tools behind "More", and the Map remembers whether you left its key shown or hidden.
 - **Find and replace** (Ctrl+Shift+F, or **Find...** above the page list) searches every page name, heading, paragraph and choice.
 - **Unfinished flag:** the bookmark button on a page marks it as unfinished; the Check tab lists them.
 - **Why can't players reach this page?** is in a page's ... menu, and the Check tab lists pages no simulated player reached.
@@ -85,7 +87,7 @@ phones, tablets and computers.
 Current Firefox, Chrome, Edge and Safari on computers, Android and iPhone/iPad. Exported games work in somewhat older browsers than the
 editor does (roughly Chrome/Edge 80, Firefox 74, iOS 13.4 for games; Chrome/Edge 98, Firefox 98, iOS 15.4 for the editor).
 
-**Browsers used to test each release.** The latest release was tested in Firefox 158.0, ungoogled Chromium 155.0.8059.39-1, WebKitGTK 2.52.6 and GNOME Web (Epiphany) 46.5, one at a time. The exact browsers for every release are in the maintainers' full technical changelog. The short list of changes is in [docs/CHANGELOG.md](docs/CHANGELOG.md).
+**Browsers used to test each release.** The latest release was tested in Firefox 158.0, ungoogled Chromium 155.0.8059.39-1 and WebKitGTK 2.52.6, one at a time. The exact browsers for every release are in the maintainers' full technical changelog. The short list of changes is in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## More from LFC Foundry
 

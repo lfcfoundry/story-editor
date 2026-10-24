@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 24
+- README: the keyboard actions (Ctrl+K, then `>`) and the phone changes are described, and the test browsers read Firefox, Chromium and WebKitGTK (GNOME Web was dropped from testing).
 - On a phone, "Page type and effects" now opens as a sheet that slides up from the bottom (Done, a tap outside, or a pull down on the handle puts it away), so the page text no longer jumps down when you open it, and the Gets and Loses boxes get the full width. The one-line summary above the text is unchanged.
 - On a phone, the Items tab's explanation paragraph is folded behind "What are objects, states and numbers?", so the list starts about 95 px higher (about one more item on screen). One tap opens it; on a computer it stays open as before.
 - The Map's key now stays shown or hidden the way you left it, even after you reload or come back later. Before, it opened on top of the Start page every time on a laptop.
