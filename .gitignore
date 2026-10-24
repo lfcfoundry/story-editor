@@ -7,3 +7,4 @@ editor/qa/counts.json
 *.whl
 __pycache__/
 editor/qa/ledger.jsonl
+editor/qa/.resume/

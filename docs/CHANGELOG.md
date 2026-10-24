@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 24
+- The test runner can pick up after a machine restart: `qa.js full --resume` skips the suite-and-browser cells that already passed on the same sources, and `qa.js --status` shows how far a run got and whether the machine restarted. Nothing changes for the editor.
 - On a big story (a check that takes more than 8 ms), the check after an edit now runs in a background worker, so typing is not interrupted: the longest pause after an edit in a 300-page stress story went from 51 to 25 ms in Chromium, 37 to 19 ms in Firefox and 40 to 32 ms in WebKitGTK. The status line says "Checking" for a moment before the answer. Everything else checks on the page as before (the Check and Map tabs, small stories, and browsers without workers).
 - README: the keyboard actions (Ctrl+K, then `>`) and the phone changes are described, and the test browsers read Firefox, Chromium and WebKitGTK (GNOME Web was dropped from testing).
 - On a phone, "Page type and effects" now opens as a sheet that slides up from the bottom (Done, a tap outside, or a pull down on the handle puts it away), so the page text no longer jumps down when you open it, and the Gets and Loses boxes get the full width. The one-line summary above the text is unchanged.

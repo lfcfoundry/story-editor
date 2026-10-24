@@ -125,6 +125,34 @@ const readLedger = () => {
   return fs.readFileSync(LEDGER, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean);
 };
 const ledger = readLedger();
+/* ---- resume ledger: a finished (tier, suite, browser) cell is written to .resume/<fingerprint>.jsonl, so after a machine restart the same command with --resume
+   skips the cells that already passed on exactly these sources and browsers, and --status says how far a run got and whether the machine restarted since ---- */
+const RESUME = args.includes('--resume');
+const bootId = () => { try { return fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim(); } catch (e) { return 'unknown'; } };
+const fingerprint = () => {
+  const h = require('crypto').createHash('sha256');
+  const files = SOURCES.map(f => ED + f).concat(fs.readdirSync(HERE).filter(f => /\.(c?js|mjs)$/.test(f)).sort().map(f => HERE + f));
+  files.forEach(f => { try { h.update(f + '\0').update(fs.readFileSync(f)); } catch (e) { /* a source that is not there counts as empty */ } });
+  h.update([process.env.FIREFOX_PATH, process.env.CHROMIUM_PATH, process.env.WEBKIT].join('|'));
+  return h.digest('hex').slice(0, 16);
+};
+const FP = fingerprint();
+const RESUME_DIR = HERE + '.resume/';
+const RESUME_FILE = RESUME_DIR + FP + '.jsonl';
+const readCells = () => (fs.existsSync(RESUME_FILE) ? fs.readFileSync(RESUME_FILE, 'utf8').split('\n').filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(Boolean) : []);
+if (args.includes('--status')) {
+  const cells = readCells();
+  const alive = spawnSync('pgrep', ['-f', 'qa/qa.js (quick|smart|full|sample)']).stdout.toString().split('\n').filter(x => x && +x !== process.pid).length > 0;
+  console.log(`sources fingerprint ${FP}: ${cells.length} finished cells (${cells.filter(c => c.mark === 'pass*').length} passed on retry)`);
+  ['firefox', 'chromium', 'webkit'].forEach(l => console.log(`  ${l}: ${cells.filter(c => c.lane === l).length} cells`));
+  if (cells.length) {
+    const last = cells[cells.length - 1];
+    console.log(`last cell: ${last.tier} ${last.label}, ${last.t}`);
+    console.log(last.boot === bootId() ? 'machine: same boot as the last cell' : 'machine: RESTARTED since the last cell; run the same command again with --resume');
+  } else console.log('no finished cells for these sources yet');
+  console.log(alive ? 'a qa.js run is alive' : 'no qa.js run is alive');
+  process.exit(0);
+}
 if (args.includes('--history')) {
   const by = {};
   ledger.filter(e => !e.only && !e.against).forEach(e => {
@@ -297,6 +325,9 @@ const report = (job, mark, r) => {
   try { fs.appendFileSync(LEDGER, JSON.stringify({ run: RUN, t: new Date().toISOString(), tier, label: job.label, mark, sec: Math.round(r.sec), changed, only: !!only, against: !!against }) + '\n'); } catch (e) { /* the ledger is a convenience */ }
   const slug = job.label.replace(/\W+/g, '-');
   const suite = job.label.split(' ')[0];
+  if (mark !== 'FAIL' && !against) { /* a finished cell, for --resume and --status */
+    try { fs.mkdirSync(RESUME_DIR, { recursive: true }); fs.appendFileSync(RESUME_FILE, JSON.stringify({ tier, label: job.label, lane: job.lane, mark, sec: Math.round(r.sec), passes: r.passes, boot: bootId(), t: new Date().toISOString() }) + '\n'); } catch (e) { /* no ledger, no resume */ }
+  }
   console.log(`${mark.padEnd(5)} ${r.sec.toFixed(1).padStart(6)} s  ${job.label}`);
   if (verbose) console.log(r.out.split('\n').map(l => '        ' + l).join('\n'));
   if (mark === 'FAIL') console.log(r.fails.slice(0, 8).map(l => '        ' + l.slice(0, 200)).join('\n') + `\n        (full output: qa/logs/${slug}.log)` + (against ? '' : `\n        next: read the failing lines above in qa/logs/${slug}.log; run only this suite with: node qa.js ${tier === 'sample' ? 'quick' : tier} --only ${suite}`));
@@ -317,6 +348,18 @@ const runOne = async job => {
   report(job, mark, r);
 };
 const worker = async () => { for (let job; (job = queue.shift()); ) await runOne(job); };
+/* --resume: cells that already passed on these exact sources (same tier) are not run again; their check counts are kept for the all-green record */
+const DONE = new Map(RESUME && !against ? readCells().filter(c => c.tier === tier).map(c => [c.label, c]) : []);
+let resumedCells = 0;
+const skip = job => {
+  const c = DONE.get(job.label);
+  if (!c) return false;
+  resumedCells++;
+  rows.push({ mark: c.mark, sec: 0, label: job.label, passes: c.passes, resumed: true });
+  return true;
+};
+if (RESUME && DONE.size) console.log(`resume: ${DONE.size} cells already passed on these sources are not run again (qa.js --status shows them)`);
+
 (async () => {
 await startServer();
 /* a WebKit browser that starts while the last one is still shutting down fails once with "session not created": wait for the real exit (at most 25 s, then go on; the retry of a failing suite stays) */
@@ -328,12 +371,12 @@ const waitWebkitExit = async lane => {
 };
 for (const lane of ['firefox', 'chromium', 'webkit', 'epiphany']) {
   if ((lane === 'webkit' || lane === 'epiphany') && jobs.some(j => j.lane === lane)) await waitWebkitExit(lane);
-  queue = jobs.filter(j => j.lane === lane && !SOLO[j.label]).sort(byTime);
+  queue = jobs.filter(j => j.lane === lane && !SOLO[j.label] && !skip(j)).sort(byTime);
   await Promise.all(Array.from({ length: lane === 'webkit' && !process.env.QA_JOBS ? Math.min(WORKERS, 5) : WORKERS }, worker)); /* WebKitGTK: 5 at a time (lane alone, 35 suites: 5 -> 187 s and 0 flaky, 7 -> 241 s and 4 flaky) */
   /* suites that need the machine to themselves run last, one at a time */
-  for (const j of jobs.filter(j => j.lane === lane && SOLO[j.label])) { queue = [j]; await worker(); }
+  for (const j of jobs.filter(j => j.lane === lane && SOLO[j.label] && !skip(j))) { queue = [j]; await worker(); }
 }
-if (!bad && !against) { rows.forEach(r => { TIMES[r.label] = Math.round(r.sec); }); fs.writeFileSync(timesFile, JSON.stringify(TIMES, null, 1)); }
+if (!bad && !against) { rows.filter(r => !r.resumed).forEach(r => { TIMES[r.label] = Math.round(r.sec); }); fs.writeFileSync(timesFile, JSON.stringify(TIMES, null, 1)); }
 const slow = rows.slice().sort((a, b) => b.sec - a.sec).slice(0, 3).map(r => `${r.label} ${r.sec.toFixed(0)} s`).join(', ');
 console.log(`\n${tier}: ${rows.length} suites, ${rows.filter(r => r.mark === 'pass').length} pass, ${rows.filter(r => r.mark === 'pass*').length} pass* (flaky), ${bad} FAIL, ${((Date.now() - T0) / 1000).toFixed(0)} s in all. Slowest: ${slow}`);
 if (bad && !against) console.log(`Next: fix the first failure above, then run only that suite (the "next:" line under it); finish with: node qa.js ${tier === 'sample' ? 'quick' : tier}`);
