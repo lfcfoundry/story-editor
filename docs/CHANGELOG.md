@@ -5,6 +5,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 24
+- On a phone turned sideways, the editor now uses the phone layout with the six tabs in a rail down the left edge and a slimmer top bar, so the page gets the full height: on a 844 x 390 screen the Write tab shows about 3 lines of text where it showed 1 (it used the computer layout with a three-row header before).
+- On big screens (2200 px wide or more, such as a QHD or 4K monitor at 100%), the text and controls are drawn 25% larger and the side lists are a little wider. Smaller screens are unchanged.
+- The hidden radio buttons of the page-type and item-type controls no longer make the whole page scroll on short screens.
 - On a phone, the Play tab's note ("This is exactly how your exported game behaves...") now sits below the story instead of above it, so the story starts about 62 px higher and the second choice shows on the first screen. Computers are unchanged.
 - On a phone, the "Page type and effects" button now sits at the end of the icon row instead of on a row of its own, so the page's text starts about 52 px higher (about one more line on screen). It still opens the same bottom sheet.
 - The test runner can pick up after a machine restart: `qa.js full --resume` skips the suite-and-browser cells that already passed on the same sources, and `qa.js --status` shows how far a run got and whether the machine restarted. Nothing changes for the editor.

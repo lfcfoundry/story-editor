@@ -104,7 +104,7 @@ function placeChrome() {
 
 function wirePhone() {
   placeChrome();
-  ['(max-width: 820px)', '(hover: none) and (pointer: coarse)'].forEach(q => matchMedia(q).addEventListener('change', placeChrome));
+  [PHONE_Q, '(hover: none) and (pointer: coarse)'].forEach(q => matchMedia(q).addEventListener('change', placeChrome));
   document.addEventListener('focusin', e => {
     const el = e.target;
     if (!typingPossible() || !el?.matches?.(TYPING_FIELD) || !el.closest('#main')) return;
