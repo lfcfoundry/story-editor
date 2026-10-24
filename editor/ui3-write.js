@@ -1789,11 +1789,19 @@ function renderWrite(main) {
   const fx = effectsRow(p);
   fx.prepend(pageBar.seg);
   if (phoneLayout()) {
-    /* on a phone the type and effect boxes fold away behind one line, so the page opens onto its words */
-    const fold = h('details', { class: 'fxfold' }, [h('summary', { text: fxSummary(p), title: 'The page type (page or ending) and what the player gets or loses on arriving' }), fx]);
-    fold.open = fxOpen;
-    fold.addEventListener('toggle', () => (fxOpen = fold.open));
-    wrap.appendChild(fold);
+    /* on a phone the type and effect boxes sit in a sheet that slides up from the bottom, so the page text never jumps */
+    const close = () => {
+      fxOpen = false;
+      $('#main .fxsheet')?.remove();
+      $('#main .fxveil')?.remove();
+      $('#main .fxbtn')?.setAttribute('aria-expanded', 'false');
+    };
+    const btn = h('button', { type: 'button', class: 'fxbtn', 'aria-haspopup': 'dialog', 'aria-expanded': String(fxOpen), title: 'The page type (page or ending) and what the player gets or loses on arriving', onclick: () => ((fxOpen = true), mountFxSheet(main, fx, close)) }, [
+      h('span', { text: fxSummary(p) }),
+      h('span', { class: 'fxcaret', text: '▴', 'aria-hidden': 'true' })
+    ]);
+    wrap.appendChild(btn);
+    if (fxOpen) setTimeout(() => $('#main .fxsheet') || mountFxSheet(main, fx, close, true), 0);
   } else wrap.appendChild(fx);
   wrap.appendChild(textSection(p));
   wrap.appendChild(choicesSection(p));
@@ -1831,8 +1839,30 @@ function renderWrite(main) {
   renderPageNotes();
 }
 
-/** Whether the phone's folded "page type and effects" line is open; kept while you move between pages. */
+/** Whether the phone's page type and effects sheet is open; kept while you move between pages. */
 let fxOpen = false;
+/** Slides the page type and effects up from the bottom; a tap outside, Escape or a pull down on the handle puts it away. */
+function mountFxSheet(main, fx, close, still) {
+  $('#main .fxsheet')?.remove();
+  $('#main .fxveil')?.remove();
+  const handle = h('div', { class: 'fxhandle', role: 'button', tabindex: '0', 'aria-label': 'Close page type and effects', onclick: close, onkeydown: e => (e.key === 'Enter' || e.key === ' ') && close() }, [h('span')]);
+  const sheet = h('div', { class: 'fxsheet' + (still ? ' still' : ''), role: 'dialog', 'aria-label': 'Page type and effects' }, [handle, fx, h('button', { type: 'button', class: 'btn small fxdone', text: 'Done', onclick: close })]);
+  let y0 = null;
+  handle.addEventListener('touchstart', e => (y0 = e.touches[0].clientY), { passive: true });
+  handle.addEventListener('touchmove', e => {
+    if (y0 !== null) sheet.style.transform = `translateY(${Math.max(0, e.touches[0].clientY - y0)}px)`;
+  }, { passive: true });
+  handle.addEventListener('touchend', e => {
+    const d = y0 === null ? 0 : e.changedTouches[0].clientY - y0;
+    y0 = null;
+    sheet.style.transform = '';
+    if (d > 60) close();
+  });
+  const veil = h('div', { class: 'fxveil', onclick: close });
+  sheet.addEventListener('keydown', e => e.key === 'Escape' && (e.stopPropagation(), close()));
+  main.append(veil, sheet);
+  $('#main .fxbtn')?.setAttribute('aria-expanded', 'true');
+}
 /** The words on that folded line: the page type, then what the page gives, takes and changes. */
 function fxSummary(p) {
   const bits = [p.ending ? (p.valence === 'good' ? 'Good ending' : p.valence === 'bad' ? 'Bad ending' : 'Ending') : 'Page'];

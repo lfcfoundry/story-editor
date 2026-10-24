@@ -169,10 +169,11 @@ await ph.tap('#drawerbar button >> nth=0');await ph.waitForTimeout(300);
 ok(await ph.isVisible('#side'),'phone: Pages drawer opens');
 await ph.tap('#pages button:has-text("Shore")');await ph.waitForTimeout(300);
 ok(await ph.inputValue('#pname')==='Shore','phone: choosing a page opens it and closes the drawer');
-// add item via select on touch (no drag); on a phone the effects boxes are folded under "Page type and effects"
-await ph.tap('#main .fxfold > summary');await ph.waitForTimeout(200);
+// add item via select on touch (no drag); on a phone the effects boxes are in a sheet opened by "Page type and effects"
+await ph.tap('#main .fxbtn');await ph.waitForTimeout(300);
 await ph.selectOption('[data-box=gets] select','i_flare');
 ok((await ph.evaluate(()=>window.__editor.project.passages.find(p=>p.name==='Shore').gives)).includes('i_flare'),'phone: add item via menu');
+await ph.tap('#main .fxdone');await ph.waitForFunction(()=>!document.querySelector('#main .fxveil'));
 // long press menu on page in drawer
 await ph.waitForFunction(()=>document.querySelector('#side').getBoundingClientRect().right<=0); /* the drawer must be shut again before the button is tapped (the button toggles it) */
 await ph.tap('#drawerbar button >> nth=0');await ph.waitForFunction(()=>{const s=document.querySelector('#side');return s&&s.getBoundingClientRect().left>=0&&s.getBoundingClientRect().width>0;}); /* the drawer has finished sliding in */
