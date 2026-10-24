@@ -1636,6 +1636,7 @@ function renderPlay(main) {
     if (s.last) replay(s.last);
   };
   pinsBtn.onclick = () => pinnedDialog(replay);
+  const playHint = h('div', { class: 'hint', text: 'This is exactly how your exported game behaves. Nothing you do here is saved.' });
   const wrap = h('div', { class: 'wrap' }, [
     h('h2', { class: 'sec', text: 'Play it' }),
     h('div', { class: 'row' }, [
@@ -1663,8 +1664,9 @@ function renderPlay(main) {
     gRow.length ? h('div', { class: 'row gpicks' }, gRow) : null,
     routeRow,
     routeNoteEl,
-    h('div', { class: 'hint', text: 'This is exactly how your exported game behaves. Nothing you do here is saved.' }),
-    box
+    phoneLayout() ? null : playHint,
+    box,
+    phoneLayout() ? playHint : null
   ]);
   main.appendChild(wrap);
   function start(id, flags, seed) {

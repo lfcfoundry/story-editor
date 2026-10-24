@@ -170,6 +170,12 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, tourDone: true, 
   ok(await pg.evaluate(() => !!document.querySelector('#top > .brandwrap')) && !(await box('#top > .brandwrap')).shown && !(await box('#stats')).shown, 'on a phone the logo goes back to the (hidden) top bar and the counters stay in the ⋯ menu');
   await pg.setViewportSize({ width: 390, height: 844 });
 
+  /* Play: the note sits below the story on a phone so the story starts higher, and above it on a computer */
+  await pg.evaluate(() => { window.__editor.touch(true); window.__editor.setView('play'); }); await pg.waitForTimeout(400);
+  const ph = await pg.evaluate(() => { const hs = [...document.querySelectorAll('#main .wrap > .hint')].find(e => /exactly how your exported/.test(e.textContent)); const bx = document.querySelector('#main .playbox'); return hs && bx ? { hint: Math.round(hs.getBoundingClientRect().y), box: Math.round(bx.getBoundingClientRect().y) } : null; });
+  ok(ph && ph.hint > ph.box && ph.box < 400, 'phone Play: the note is below the story and the story starts high: ' + JSON.stringify(ph));
+  await pg.evaluate(() => { window.__editor.setView('write'); }); await pg.waitForTimeout(200);
+
   /* desktop widths are unchanged */
   await pg.setViewportSize({ width: 1200, height: 850 }); await pg.evaluate(() => window.__editor.touch(null)); await pg.waitForTimeout(500);
   const dt = await box('#tabrow');
