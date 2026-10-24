@@ -84,7 +84,7 @@ let storageOk = true; // false if this browser refuses to save (private mode, et
 const SETTINGS_KEY = `${STORE}-settings`;
 const PREF_KEYS = [`${STORE}-theme`, `${STORE}-map`, `${STORE}-prefs`];
 const settings = { remember: true, chosen: false, advanced: { write: false, map: false, items: false, game: false } };
-const prefs = { editorFont: 'ui', wpm: 230, sort: 'written', quotes: false, wsize: 'm', pagesOpen: true, itemsOpen: true, paraMax: 150, pageMax: 600, writingIgnore: [], swipeTip: false };
+const prefs = { editorFont: 'ui', wpm: 230, sort: 'written', quotes: false, wsize: 'm', pagesOpen: true, itemsOpen: true, mapKey: null, paraMax: 150, pageMax: 600, writingIgnore: [], swipeTip: false };
 /** Saves the preferences (kept between visits only while "Remember preferences" is on). */
 function savePrefs() {
   savePref(`${STORE}-prefs`, JSON.stringify(prefs));
@@ -106,6 +106,7 @@ function loadSettings() {
     if (['s', 'm', 'l', 'x'].includes(p?.wsize)) prefs.wsize = p.wsize; // 'x' is Extra large (it used to fail to come back after a reload)
     if (p?.pagesOpen === false) prefs.pagesOpen = false;
     if (p?.itemsOpen === false) prefs.itemsOpen = false;
+    if (typeof p?.mapKey === 'boolean') prefs.mapKey = p.mapKey; // the Map key stays shown or hidden as the writer left it
     if (p?.swipeTip === true) prefs.swipeTip = true;
     if (Number.isFinite(p?.paraMax)) prefs.paraMax = Math.max(30, Math.min(2000, Math.round(p.paraMax)));
     if (Number.isFinite(p?.pageMax)) prefs.pageMax = Math.max(100, Math.min(20000, Math.round(p.pageMax)));

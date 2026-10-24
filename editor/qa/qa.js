@@ -85,6 +85,7 @@ const SUITES = [
   S('fix2', 'fix2.js', EDITOR, false),
   S('dlg', 'dlg.js', EDITOR, false),
   S('inter', 'inter.js', EDITOR, false),
+  S('mapkey', 'mapkey.js', ['ui4-map.js', 'ui1-state.js'], false),
   S('palette', 'palette.js', ['ui2-widgets.js', 'ui3-write.js', 'ui5-app.js'], false),
   S('mapcull', 'mapcull.js', ['ui4-map.js', 'maplayout.js', 'ui.css', 'core.js'], false),
   S('mapprebuild', 'mapprebuild.js', ['ui4-map.js', 'maplayout.js', 'ui4-views.js', 'core.js'], false)

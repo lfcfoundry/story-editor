@@ -255,7 +255,7 @@ let mapKeyPos = null; // where it was dragged to
  * is on the map right now; the map calls key.update(present) whenever the picture changes.
  */
 function mapKey() {
-  if (mapKeyOpen === null) mapKeyOpen = window.innerWidth > 700;
+  if (mapKeyOpen === null) mapKeyOpen = prefs.mapKey ?? window.innerWidth > 700;
   const mk = (tag, a, kids = []) => {
     const e = document.createElementNS(SVGNS, tag);
     for (const k in a) e.setAttribute(k, a[k]);
@@ -318,6 +318,8 @@ function mapKey() {
     onclick(e) {
       if (e.detail === 0) {
         mapKeyOpen = !mapKeyOpen;
+        prefs.mapKey = mapKeyOpen;
+        savePrefs();
         sync();
       }
     }
@@ -367,6 +369,8 @@ function mapKey() {
       head.classList.remove('moving');
       if (!moved) {
         mapKeyOpen = !mapKeyOpen;
+        prefs.mapKey = mapKeyOpen;
+        savePrefs();
         sync();
         place();
       }
