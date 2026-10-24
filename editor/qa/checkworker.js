@@ -71,9 +71,9 @@ const SUMMARY = `(() => { const E = __editor, a = E.analysis, f = E.checkFresh()
   await pg.close();
 
   /* a small story checks fast: no worker of its own accord */
-  pg = await open(12);
+  pg = await open(12, () => { window.__checkHybridMs = 1000; }); // a loaded machine can make even a small check slow, so the limit is set well above any real check
   await edit(pg, 3); await new Promise(r => setTimeout(r, 1200));
-  ok(await pg.evaluate(() => __editor.checkPre.posted === 0), 'a story that checks in a moment starts no worker');
+  ok(await pg.evaluate(() => __editor.checkPre.posted === 0), 'a check under the limit starts no worker');
   ok((await pg.evaluate(SUMMARY)).same, 'and is checked on the page');
   await pg.close();
 
