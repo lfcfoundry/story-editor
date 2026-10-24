@@ -85,10 +85,12 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
   /* ---------- 7. the map key follows the window ---------- */
   {
     const pg = await page('');
-    await pg.evaluate(() => __editor.setView('map')); await nap(700);
+    await pg.evaluate(() => __editor.setView('map'));
     const placed = () => pg.evaluate(() => { const k = document.querySelector('.fkey'); return k ? (k.style.top || '') : 'nokey'; });
+    await until(pg, () => { const k = document.querySelector('.fkey'); return k && k.style.top; }); /* the key is placed after the Map has drawn: wait for it, not a fixed 0.7 s */
     const t1 = await placed();
-    await pg.setViewportSize({ width: 560, height: 800 }); await nap(500);
+    await pg.setViewportSize({ width: 560, height: 800 });
+    await until(pg, () => { const k = document.querySelector('.fkey'); return k && !k.style.top; });
     const t2 = await placed();
     ok(t1 !== '' && t2 === '', `the key sits above Start on a wide window (${t1}) and goes back to its corner when the window becomes narrow (${t2 || 'corner'})`);
     await pg.setViewportSize({ width: 1280, height: 900 }); await nap(500);
