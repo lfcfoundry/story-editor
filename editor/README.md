@@ -193,7 +193,7 @@ The checks live outside this folder (in the session's `qa/` kit; its README expl
 (about 1 minute, Firefox 158) after a change, `node qa.js full` (about 4 minutes, Firefox 158 then Chromium side by side) before a file
 is delivered. The build itself already runs the contract test, the font check, the script-tag checks and the size budget.
 
-**Browsers used to test each release:** The latest release was tested in Firefox 158.0, ungoogled Chromium 155.0.8059.39-1, WebKitGTK 2.52.6 and GNOME Web (Epiphany) 46.5, one at a time. The exact browsers for every release are in the maintainers' full technical changelog. The short list of changes is in [../docs/CHANGELOG.md](../docs/CHANGELOG.md).
+**Browsers used to test each release:** The latest release was tested in Firefox 158.0, ungoogled Chromium 155.0.8059.39-1 and WebKitGTK 2.52.6, one at a time. The exact browsers for every release are in the maintainers' full technical changelog. The short list of changes is in [../docs/CHANGELOG.md](../docs/CHANGELOG.md).
 
 - **Matching rules, audited Oct 8 2026.** Every place that decides by reading text was tried with lines made to fool it. Fixed:
   the contract's name scan flagged a *comment* that mentioned an unknown `kl…` name, and could not see a rule using a helper with another
