@@ -779,6 +779,26 @@ function goToPage() {
   pagePicker({
     title: 'Go to a page…',
     allowNew: true,
+    commands: [
+      ['Go to Write', () => setView('write')],
+      ['Go to Map', () => setView('map')],
+      ['Go to Items', () => setView('items')],
+      ['Go to Check', () => setView('check'), 'Check the story for traps and unreachable endings'],
+      ['Go to Game', () => setView('game')],
+      ['Play the story', () => setView('play')],
+      ['New page', () => newPage('Untitled page')],
+      ['Export game', quickExport, 'Turn the story into one HTML file anyone can play'],
+      ['Undo', undo],
+      ['Redo', redo],
+      ['Show or hide the page list', () => toggleSide('pages')],
+      ['Show or hide the item list', () => toggleSide('items')]
+    ]
+      .filter(([name]) => {
+        const t = /^Go to (\w+)$/.exec(name);
+        const b = t && $(`#tabs [data-tab="${t[1].toLowerCase()}"]`);
+        return !t || (b && getComputedStyle(b).display !== 'none'); // a tab the writer keeps hidden is not offered
+      })
+      .map(([name, run, hint]) => ({ name, run, hint })),
     onPick: openPage,
     onNew: name => newPage(name || 'Untitled page')
   });

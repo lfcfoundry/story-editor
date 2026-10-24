@@ -974,7 +974,15 @@ function pagePicker(o) {
     }
     rows = pages.map(p => ({ p }));
     const typed = input.value.trim();
-    if (o.allowNew) {
+    /* actions (Ctrl+K): shown when what was typed matches an action's name, or all of them after ">" */
+    if (o.commands && typed) {
+      const all = typed[0] === '>';
+      const toks = (all ? typed.slice(1) : typed).toLowerCase().split(/\s+/).filter(Boolean);
+      const hits = o.commands.filter(c => toks.every(t => c.name.toLowerCase().includes(t)));
+      if (all) rows = [];
+      rows.push(...hits.slice(0, all ? 20 : 4).map(c => ({ p: null, cmd: c })));
+    }
+    if (o.allowNew && typed[0] !== '>') {
       const nr = { p: null };
       if (!rows.length || (!typed && o.newFirst)) rows.unshift(nr);
       else rows.push(nr);
@@ -987,7 +995,7 @@ function pagePicker(o) {
         {
           id,
           role: 'option',
-          class: r.p ? 'pk-row' : 'pk-row pk-new',
+          class: r.p ? 'pk-row' : r.cmd ? 'pk-row pk-cmd' : 'pk-row pk-new',
           'aria-selected': 'false',
           onmousedown: e => e.preventDefault(),
           onmousemove: () => {
@@ -1001,13 +1009,15 @@ function pagePicker(o) {
               h('span', { class: 'pk-ic' }, icons(r.p)),
               h('span', { class: 'pk-sn', text: r.p.heading ? `${r.p.heading} · ${pageSnippet(r.p, 70)}` : pageSnippet(r.p, 80) })
             ]
-          : [h('span', { class: 'pk-nm', text: newName() ? `＋ New page “${newName()}”` : '＋ New page' })]
+          : r.cmd
+            ? [h('span', { class: 'pk-nm', text: `▸ ${r.cmd.name}` }), r.cmd.keys ? h('span', { class: 'pk-sn', text: r.cmd.keys }) : null]
+            : [h('span', { class: 'pk-nm', text: newName() ? `＋ New page “${newName()}”` : '＋ New page' })]
       );
       list.appendChild(r.el);
     });
     at = Math.min(at, Math.max(0, rows.length - 1));
     mark(at, true);
-    foot.textContent = `↑ ↓ choose · Enter picks${o.allowNew && typed ? ` · Ctrl+Enter makes a new page “${typed.length > 24 ? `${typed.slice(0, 23)}…` : typed}”` : ''} · Esc closes`;
+    foot.textContent = `↑ ↓ choose · Enter picks${o.commands && !typed ? ' · type > for actions' : ''}${o.allowNew && typed && typed[0] !== '>' ? ` · Ctrl+Enter makes a new page “${typed.length > 24 ? `${typed.slice(0, 23)}…` : typed}”` : ''} · Esc closes`;
   }
   function mark(i, quiet) {
     at = i;
@@ -1028,13 +1038,18 @@ function pagePicker(o) {
         prev.appendChild(
           h('div', { class: 'hint', text: p.ending ? 'An ending.' : `${p.choices.length} ${p.choices.length === 1 ? 'choice' : 'choices'}.` })
         );
-      } else prev.appendChild(h('div', { class: 'pk-ptext', text: 'Makes a new, empty page and opens it.' }));
+      } else if (rows[i].cmd) prev.appendChild(h('div', { class: 'pk-ptext', text: rows[i].cmd.hint || rows[i].cmd.name }));
+      else prev.appendChild(h('div', { class: 'pk-ptext', text: 'Makes a new, empty page and opens it.' }));
     } else input.removeAttribute('aria-activedescendant');
   }
   function choose(i, forceNew) {
     const r = rows[i];
     const nm = newName();
     closePicker(false);
+    if (r && r.cmd && !forceNew) {
+      r.cmd.run();
+      return;
+    }
     if (forceNew || (r && !r.p)) {
       if (o.onNew) o.onNew(nm);
     } else if (r && o.onPick) o.onPick(r.p);
@@ -1058,7 +1073,7 @@ function pagePicker(o) {
       mark(rows.length - 1);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if ((e.ctrlKey || e.metaKey) && o.allowNew && input.value.trim()) choose(at, true);
+      if ((e.ctrlKey || e.metaKey) && o.allowNew && input.value.trim() && input.value.trim()[0] !== '>') choose(at, true);
       else if (rows.length) choose(at);
     } else if (e.key === 'Escape') {
       e.preventDefault();

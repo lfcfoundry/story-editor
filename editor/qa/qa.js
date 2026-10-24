@@ -85,6 +85,7 @@ const SUITES = [
   S('fix2', 'fix2.js', EDITOR, false),
   S('dlg', 'dlg.js', EDITOR, false),
   S('inter', 'inter.js', EDITOR, false),
+  S('palette', 'palette.js', ['ui2-widgets.js', 'ui3-write.js', 'ui5-app.js'], false),
   S('mapcull', 'mapcull.js', ['ui4-map.js', 'maplayout.js', 'ui.css', 'core.js'], false),
   S('mapprebuild', 'mapprebuild.js', ['ui4-map.js', 'maplayout.js', 'ui4-views.js', 'core.js'], false)
 ];
@@ -110,9 +111,8 @@ const WEBKIT = WEBKIT_ONLY || args.includes('--webkit') || (tier === 'full' && !
 /* two WebKitGTK windows in one browser hang about half the time when other suites load the machine (30 s alone, 3 of 3 runs) */
 const SOLO = { 'twowin webkit': 'two windows in one WebKitGTK', 'csp gnome-web': 'one browser at a time', 'epismoke gnome-web': 'one browser at a time', 'walk gnome-web': 'one browser at a time' };
 const NOT_IN_WEBKIT = { ffsmoke: 'it checks the Firefox stand-in itself', touch1: 'WebKitGTK 2.52.6 has no touch events' };
-/* GNOME Web 46.5 (Epiphany) is the fourth approved test browser. It refuses WebDriver clicks, so it gets a short lane of its own, after WebKitGTK and also one at a time:
-   the policy check (csp), a smoke check with script clicks (epismoke) and the WebAssembly checker walk (walk). The full check includes it; --epiphany adds it to any tier; --no-webkit leaves it out with WebKitGTK. */
-const EPIPHANY = !WEBKIT_ONLY && (args.includes('--epiphany') || (tier === 'full' && WEBKIT)) && !args.includes('--no-webkit');
+/* GNOME Web (Epiphany) was dropped from testing on 2026-10-24 (Jawad): the test browsers are Firefox, Chromium and WebKitGTK. The lane code stays off; epismoke.js is no longer run. */
+const EPIPHANY = false;
 const EPI_JOBS = [['csp gnome-web', 'csp.js'], ['epismoke gnome-web', 'epismoke.js'], ['walk gnome-web', 'walk.js']];
 const RUN = new Date().toISOString();
 
