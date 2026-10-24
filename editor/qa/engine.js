@@ -20,7 +20,10 @@ if (!MOTION) {
     const PG = require(require('path').join(require('../../packages/qa-kit/src/resolve.cjs').dirOf('playwright-core'), 'lib/client/page')).Page.prototype;
     const wf = PG.waitForFunction;
     PG.waitForFunction = async function (fn, ...rest) {
-      if (/getElementById\((['"])splash\1\)/.test(String(fn))) await this.evaluate(() => { document.getElementById('splash')?.remove(); document.body && document.body.classList.remove('splashing'); }).catch(() => {});
+      if (/getElementById\((['"])splash\1\)/.test(String(fn))) await this.evaluate(() => { /* a watcher, not a single removal (the app creates the splash after the page starts; see bidi.js) */
+        const drop = () => { document.getElementById('splash')?.remove(); document.body && document.body.classList.remove('splashing'); };
+        drop(); if (!window.__noSplash) { window.__noSplash = new MutationObserver(drop); window.__noSplash.observe(document, { childList: true, subtree: true }); }
+      }).catch(() => {});
       return wf.call(this, fn, ...rest);
     };
   } catch (e) { /* different Playwright layout: the splash is simply waited out */ }
