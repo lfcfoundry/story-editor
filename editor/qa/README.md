@@ -16,6 +16,8 @@ node qa.js sample    about 1 minute  a cheap look between edits: the contract te
 node qa.js quick --webkit      add WebKitGTK as the third browser (Firefox first, then WebKitGTK; the full tier does this by itself)
 node qa.js full --no-webkit    the full tier on Firefox and Chromium only
 node qa.js quick --webkit-only run only the WebKitGTK lane (nothing is written to .stamp or counts.json)
+node qa.js full --resume       after a machine restart: skip the (tier, suite, browser) cells that already passed on exactly these sources and browsers (a cell is recorded in .resume/<fingerprint>.jsonl when it passes)
+node qa.js --status           how many cells are done for the current sources, per browser, the last one, whether the machine restarted since, and whether a qa.js run is alive
 node qa.js quick --against <rev> [--expect-fail]   run against the editor as built from an older git revision (see below)
 node qa.js --history  how each suite has done over the recorded runs
 ```
