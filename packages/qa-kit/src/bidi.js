@@ -133,7 +133,10 @@ class Page {
     const src = String(fn);
     if (src.includes("getElementById('splash')") || src.includes('getElementById("splash")')) {
       /* the opening never blocks anything; do not sit through it (see the top of this file) */
-      await this.pp.evaluate(() => { document.getElementById('splash')?.remove(); document.body && document.body.classList.remove('splashing'); }).catch(() => {});
+      await this.pp.evaluate(() => { /* a watcher, not a single removal: the app creates the splash a moment after the page starts, so a removal made now would miss it and the test would wait the 4.4 s out */
+        const drop = () => { document.getElementById('splash')?.remove(); document.body && document.body.classList.remove('splashing'); };
+        drop(); if (!window.__noSplash) { window.__noSplash = new MutationObserver(drop); window.__noSplash.observe(document, { childList: true, subtree: true }); }
+      }).catch(() => {});
     }
     await this._front();
     const h = await this.pp.waitForFunction(fn, { timeout: o.timeout ?? this.timeout, polling: o.polling || 'raf' }, arg);

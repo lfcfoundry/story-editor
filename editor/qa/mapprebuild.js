@@ -58,7 +58,7 @@ const SAME = `(() => {
   ok(await waitBuilt(pg, 2), 'a new layout is built for the edited story');
   ok(await pg.evaluate(SAME) === 'same', 'and it too equals the usual layout: ' + await pg.evaluate(SAME));
   /* opening the Map uses it and draws */
-  const drew = await pg.evaluate(async () => { __editor.setView('map'); await new Promise(r => setTimeout(r, 600)); return document.querySelectorAll('.mapbox g.node').length; });
+  const drew = await pg.evaluate(async () => { __editor.setView('map'); for (let t = 0; t < 100 && !document.querySelector('.mapbox g.node'); t++) await new Promise(r => setTimeout(r, 100)); return document.querySelectorAll('.mapbox g.node').length; }); /* waits for the first boxes (up to 10 s), not a fixed 0.6 s */
   ok(drew > 0, 'the Map opens and draws boxes (' + drew + ')');
   ok(!(await pg.evaluate(() => __editor.mapPre.bad)), 'the worker never gave up');
   await pg.close();
@@ -71,7 +71,7 @@ const SAME = `(() => {
   pg = await open(300, () => { window.__mapPrebuild = false; });
   await nap(2500);
   ok(await built(pg) === 0, 'with window.__mapPrebuild=false nothing is built in the background');
-  const d2 = await pg.evaluate(async () => { __editor.setView('map'); await new Promise(r => setTimeout(r, 600)); return document.querySelectorAll('.mapbox g.node').length; });
+  const d2 = await pg.evaluate(async () => { __editor.setView('map'); for (let t = 0; t < 100 && !document.querySelector('.mapbox g.node'); t++) await new Promise(r => setTimeout(r, 100)); return document.querySelectorAll('.mapbox g.node').length; }); /* waits for the first boxes (up to 10 s), not a fixed 0.6 s */
   ok(d2 > 0, 'the Map still opens and draws boxes on its own (' + d2 + ')');
   await pg.close();
 
