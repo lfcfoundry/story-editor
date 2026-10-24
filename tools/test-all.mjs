@@ -22,7 +22,8 @@ const steps = [
   ['editor checker in WebAssembly equals JavaScript', ['node', 'editor/wasm-equiv.mjs', '60', '1']],
   ['Map choke points equal the plain way', ['node', 'editor/choke-equiv.mjs', '2000', '1']],
   ['Map crossing count: WebAssembly equals JavaScript', ['node', 'editor/cross-equiv.mjs', '400', '99']],
-  ['Map layout: the background worker equals the page build', ['node', 'editor/map-worker-equiv.mjs', '60', '7']]
+  ['Map layout: the background worker equals the page build', ['node', 'editor/map-worker-equiv.mjs', '60', '7']],
+  ['Checker: the background worker equals the page check', ['node', 'editor/check-worker-equiv.mjs', '120', '3']]
 ];
 /* Two at a time (the machine has two cores; the longest step, story-map, runs on its own worker from the start). */
 const run = ([name, cmd]) =>
