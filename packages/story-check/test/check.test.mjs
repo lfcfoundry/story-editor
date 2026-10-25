@@ -27,8 +27,87 @@ test('a story with a dead end, an unreachable ending and a missing key is report
   const r = analyze(normalizeProject(s));
   assert.ok(r.problems.some(p => /does not lead anywhere/.test(p.msg)));
   assert.ok(r.problems.some(p => /nobody can reach it/.test(p.msg)));
+  assert.ok(r.problems.some(p => p.pid === vault.id && p.code === 'unreachable-page'));
+  assert.ok(r.problems.some(p => p.pid === attic.id && p.code === 'unreachable-page'));
+  const whyVault = r.why(vault.id);
+  assert.equal(whyVault.reachable, false);
+  assert.deepEqual(whyVault.incoming[0].blockers, [{ kind: 'needs', id: key.id }]);
   const vaultEnd = r.endings.find(e => e.name === 'Vault');
   assert.equal(vaultEnd.reachable, false); // needs a key that exists nowhere
+});
+
+test('a conditional route available for one Given answer is reachable', () => {
+  const story = makeProject('Given answer');
+  const start = story.passages[0];
+  start.blocks[0].text = 'Start.';
+  const first = makeItem('First answer', 'state');
+  const second = makeItem('Second answer', 'state');
+  story.items.push(first, second);
+  story.givens.push({ id: 'who', question: 'Who are you?', options: [first.id, second.id] });
+  const end = makePassage('Second answer ending');
+  end.ending = true;
+  end.blocks[0].text = 'Done.';
+  const choice = makeChoice('Choose the second answer', end.id);
+  choice.needs = [second.id];
+  start.choices.push(choice);
+  story.passages.push(end);
+
+  const analysis = analyze(normalizeProject(story));
+  assert.equal(analysis.why(end.id).reachable, true);
+  assert.equal(analysis.why(end.id).incoming[0].offered, true);
+  assert.equal(analysis.endings.find(e => e.pid === end.id).reachable, true);
+  assert.equal(analysis.problems.some(problem => problem.pid === end.id && problem.code === 'unreachable-page'), false);
+});
+
+test('cycles terminate and disconnected cycles are unreachable', () => {
+  const story = makeProject('Cycles');
+  const start = story.passages[0];
+  start.blocks[0].text = 'Start.';
+  const loop = makePassage('Loop');
+  const islandA = makePassage('Island A');
+  const islandB = makePassage('Island B');
+  start.choices.push(makeChoice('Enter loop', loop.id));
+  loop.choices.push(makeChoice('Go back', start.id));
+  islandA.choices.push(makeChoice('To B', islandB.id));
+  islandB.choices.push(makeChoice('To A', islandA.id));
+  story.passages.push(loop, islandA, islandB);
+
+  const analysis = analyze(normalizeProject(story));
+  assert.equal(analysis.truncated, false);
+  assert.equal(analysis.why(loop.id).reachable, true);
+  assert.equal(analysis.why(islandA.id).reachable, false);
+  assert.equal(analysis.why(islandB.id).reachable, false);
+  assert.equal(analysis.problems.find(problem => problem.pid === islandA.id).code, 'unreachable-page');
+  assert.equal(analysis.problems.find(problem => problem.pid === islandB.id).code, 'unreachable-page');
+});
+
+test('a truncated analysis leaves an undiscovered linked page indeterminate', () => {
+  const story = makeProject('Truncated');
+  const start = story.passages[0];
+  start.blocks[0].text = 'Start.';
+  const middle = makePassage('Middle');
+  const end = makePassage('End');
+  end.ending = true;
+  start.choices.push(makeChoice('Continue', middle.id));
+  middle.choices.push(makeChoice('Finish', end.id));
+  story.passages.push(middle, end);
+
+  const analysis = analyze(normalizeProject(story), 1);
+  assert.equal(analysis.truncated, true);
+  assert.equal(analysis.why(end.id).reachable, null);
+  assert.equal(analysis.endings.find(ending => ending.pid === end.id).reachable, null);
+  assert.equal(analysis.problems.some(problem => problem.pid === end.id && problem.code === 'unreachable-page'), false);
+});
+
+test('a normalized missing destination is reported as a broken choice', () => {
+  const story = makeProject('Missing destination');
+  const start = story.passages[0];
+  start.blocks[0].text = 'Start.';
+  start.choices.push(makeChoice('Go nowhere', 'missing-page'));
+
+  const analysis = analyze(normalizeProject(story));
+  assert.ok(analysis.problems.some(problem => problem.pid === start.id && /does not lead anywhere yet/.test(problem.msg)));
+  assert.equal(analysis.problems.some(problem => problem.pid === start.id && problem.code === 'unreachable-page'), false);
 });
 
 test('a fixed story passes', () => {

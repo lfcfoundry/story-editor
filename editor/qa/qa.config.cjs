@@ -34,6 +34,7 @@ module.exports = {
     S('touch1', 'touch1.js', EDITOR, true, ['chromium']),
     S('top10-export', 'top10-export.js', ['core.js', 'player.js', 'game.css', 'ui5-app.js'], true),
     S('top10-player', 'top10-player.js', ['core.js', 'player.js', 'game.css'], true),
+    S('reachability', 'reachability.js', ['core.js', 'ui4-views.js'], true),
     S('top10-editor', 'top10-editor.js', EDITOR, true),
     S('write1', 'write1.js', EDITOR, true),
     S('write2', 'write2.js', EDITOR, true),
