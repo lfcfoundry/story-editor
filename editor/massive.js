@@ -12,7 +12,7 @@ function massiveExample() {
   /* a room: its name, its key, three ways in, and the sentences that give it a feel */
   const ROOMS = [
     ['Atrium', 'Brass key', ['east colonnade', 'marble stair', 'ticket hall'], ['A skylight drips onto a floor of black and white tiles.', 'Somewhere above you a clock has stopped at ten past three.', 'Dust lies in neat stripes where trolleys used to run.']],
-    ['Reading Rooms', 'Salt key', ['long tables', 'card catalogue', 'quiet gallery'], ['Green lamps still burn over desks nobody has used for years.', 'The books here are swollen and smell of the sea.', 'A pencil lies across an open ledger, as if its owner just stepped out.']],
+    ['Reading Rooms', 'Salt key', ['long tables', 'card catalog', 'quiet gallery'], ['Green lamps still burn over desks nobody has used for years.', 'The books here are swollen and smell of the sea.', 'A pencil lies across an open ledger, as if its owner just stepped out.']],
     ['Stacks', 'Iron key', ['aisle of maps', 'aisle of letters', 'ladder aisle'], ['The shelves lean like trees in a gale.', 'Every spine is stamped with a number and nothing else.', 'Your steps echo a moment later than they should.']],
     ['Flooded Cellars', 'Tide key', ['stone steps', 'rowing gallery', 'pump room'], ['Black water laps at the lowest shelves.', 'A rowing boat is tied to a pillar, its oars shipped.', 'Something knocks softly on the pipes and stops when you listen.']],
     ['Map Room', 'Chart key', ['globe hall', 'plotting desk', 'compass floor'], ['Charts of coasts that no longer exist cover every wall.', 'A brass compass in the floor points a little to the left of north.', 'Pins mark a route that circles back on itself.']],
