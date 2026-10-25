@@ -84,12 +84,12 @@ const check = (condition, message) => {
       window.__editor.refresh();
     });
     await page.click('#tabs button:has-text("Check"), [role=tab]:has-text("Check")');
-    const unreachableIssue = page.locator('#main .issue.bad').filter({ hasText: 'Unreachable QA page” can never be reached' });
+    const unreachableIssue = page.locator('#main .issue.bad:has-text("Unreachable QA page” can never be reached")');
     await unreachableIssue.waitFor({ state: 'visible', timeout: 10000 });
     check((await unreachableIssue.locator('button:has-text("Why?")').count()) === 1, 'confirmed unreachable finding offers Why?');
-    const unreachableDeadEnd = page.locator('#main .issue.bad').filter({ hasText: 'Unreachable QA page” is a dead end' });
+    const unreachableDeadEnd = page.locator('#main .issue.bad:has-text("Unreachable QA page” is a dead end")');
     check((await unreachableDeadEnd.locator('button:has-text("Why?")').count()) === 0, 'unrelated problem on that page has no Why? action');
-    const reachableDeadEnd = page.locator('#main .issue.bad').filter({ hasText: 'Reachable QA dead end” is a dead end' });
+    const reachableDeadEnd = page.locator('#main .issue.bad:has-text("Reachable QA dead end” is a dead end")');
     check((await reachableDeadEnd.locator('button:has-text("Why?")').count()) === 0, 'reachable passage finding has no Why? action');
     await unreachableIssue.locator('button:has-text("Why?")').click();
     const whyDialog = page.locator('dialog').last();

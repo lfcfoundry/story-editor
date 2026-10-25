@@ -2,8 +2,8 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
-## Unreleased
-- Tools can recognize confirmed unreachable-page findings without relying on their wording.
+## 1.1.0 · 2026-10-24
+- Problems about a page that can never be reached now carry `code: 'unreachable-page'`, so tools can recognize them without relying on the wording of the message. Nothing else changes; the field is only present on those problems.
 
 ## 1.0.3 · 2026-10-18
 - Nothing changes for you. Inside, the checker can now hand stories with 31 to 64 items and number groups to the WebAssembly walk too (the Story Editor does: up to 44 times faster on big ones); on its own it works as before.
