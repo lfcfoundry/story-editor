@@ -787,7 +787,7 @@ var StoryCheck = (() => {
     const problems = [];
     const warnings = [];
     const notes = [];
-    const P = (pid, msg) => problems.push({ pid, msg });
+    const P = (pid, msg, code) => problems.push(code ? { pid, msg, code } : { pid, msg });
     const W = (pid, msg) => warnings.push({ pid, msg });
     const N = (pid, msg) => notes.push({ pid, msg });
     const label = (p) => `“${p.name || "Untitled page"}”`;
@@ -928,7 +928,8 @@ var StoryCheck = (() => {
     orphan.forEach(
       (id) => P(
         id,
-        `No choice leads to ${label(byId[id])}, so nobody can reach it${byId[id].ending ? " (this ending can never happen)" : ""}. Link a choice to it, or delete it.`
+        `No choice leads to ${label(byId[id])}, so nobody can reach it${byId[id].ending ? " (this ending can never happen)" : ""}. Link a choice to it, or delete it.`,
+        "unreachable-page"
       )
     );
     const endingsAll = order.filter((p) => p.ending);
@@ -1437,7 +1438,8 @@ var StoryCheck = (() => {
           if (!orphan.has(p.id))
             P(
               p.id,
-              `${label(p)} can never be reached: the choices that lead to it never appear for any player who gets that far${p.ending ? ", so nobody can get this ending" : ""}.`
+              `${label(p)} can never be reached: the choices that lead to it never appear for any player who gets that far${p.ending ? ", so nobody can get this ending" : ""}.`,
+              "unreachable-page"
             );
           return;
         }

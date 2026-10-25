@@ -979,6 +979,7 @@ function renderCheck(main) {
   }
   function issue(kind, it) {
     const p = it.pid ? byId(it.pid) : null;
+    const canExplainReachability = kind === 'bad' && p && it.code === 'unreachable-page';
     return h('div', { class: `issue ${kind}` }, [
       it.items
         ? h('span', { class: 'iico' }, [
@@ -996,6 +997,19 @@ function renderCheck(main) {
               setView('items');
             }
           })
+        : null,
+      p
+        ? canExplainReachability
+          ? h('button', {
+              class: 'btn small',
+              type: 'button',
+              text: 'Why?',
+              title: 'Explain why players cannot reach this page',
+              onclick: function () {
+                whyDialog(p.id);
+              }
+            })
+          : null
         : null,
       p
         ? h('button', {

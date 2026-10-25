@@ -1,6 +1,6 @@
 {
   "name": "story-check",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Exact checker for branching stories with items, numbers and dice: dead ends, unreachable pages, endings no player can reach. Zero dependencies.",
   "license": "MIT",
   "author": "LFC Foundry",
