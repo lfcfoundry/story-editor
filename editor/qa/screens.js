@@ -76,9 +76,11 @@ async function open(b, opts) {
     const m = await pg.evaluate(() => { const p = document.getElementById('morepop'); const r = p.getBoundingClientRect(); const bars = [document.getElementById('tabrow'), document.querySelector('.pinbar')].filter(e => e && e.getClientRects().length).map(e => e.getBoundingClientRect().top); return { top: Math.round(r.top), bottom: Math.round(r.bottom), tabTop: Math.round(document.getElementById('tabrow').getBoundingClientRect().top), scrolls: p.scrollHeight > p.clientHeight + 1, z: getComputedStyle(p).zIndex, pinTop: bars.length ? Math.round(Math.min(...bars)) : null }; });
     ok(m.bottom <= m.tabTop + 1, h + ' px tall: the ⋯ menu ends above the tab bar: ' + JSON.stringify(m));
     ok(m.scrolls, h + ' px tall: the ⋯ menu is longer than the screen and scrolls');
+    ok(await pg.evaluate(() => { const p = document.getElementById('morepop'); return p.classList.contains('more') && getComputedStyle(p, '::after').content.includes('▾'); }), h + ' px tall: at the top of a long menu the "more below" arrow shows');
     await pg.evaluate(() => { const p = document.getElementById('morepop'); p.scrollTop = p.scrollHeight; }); await pg.waitForTimeout(150);
     const last = await pg.evaluate(() => { const p = document.getElementById('morepop'); const bs = p.querySelectorAll('button'); const lb = bs[bs.length - 1].getBoundingClientRect(); const pr = p.getBoundingClientRect(); const hit = document.elementFromPoint(lb.x + lb.width / 2, lb.y + lb.height / 2); return { text: bs[bs.length - 1].textContent, inside: lb.bottom <= pr.bottom + 1 && lb.top >= pr.top, hit: !!(hit && p.contains(hit)) }; });
     ok(last.inside && last.hit, h + ' px tall: scrolled to the end, the last entry (' + last.text + ') is fully visible and not covered: ' + JSON.stringify(last));
+    ok(await pg.evaluate(() => getComputedStyle(document.getElementById('morepop'), '::after').content.includes('▾') === false), h + ' px tall: at the end of the menu the "more below" arrow is gone');
     const sizes = await pg.evaluate(() => [...document.querySelectorAll('#morepop .sizerow button')].map(e => e.getAttribute('aria-label')));
     ok(sizes.join() === 'Small,Medium,Large,Extra large', 'the text size row shows all four sizes: ' + sizes.join());
     await pg.evaluate(() => document.querySelector('#morepop .sz-x').scrollIntoView({ block: 'center' }));
@@ -102,8 +104,9 @@ async function open(b, opts) {
   await pg.click('dialog button:has-text("Load example")'); await pg.waitForTimeout(1500);
   const ms = await pg.evaluate(() => ({ pages: window.__editor.project.passages.length, title: window.__editor.project.title, items: window.__editor.project.items.length }));
   ok(ms.pages >= 300 && ms.title === 'The Drowned Archive', 'the massive example loads over 300 pages: ' + JSON.stringify(ms));
-  await pg.click('#tabs button:has-text("Check")'); await pg.waitForTimeout(1500);
-  const ct = await pg.evaluate(() => document.getElementById('main').innerText);
+  await pg.click('#tabs button:has-text("Check")');
+  let ct = '';
+  for (let i = 0; i < 30 && !/No problems found/.test(ct); i++) { await pg.waitForTimeout(250); ct = await pg.evaluate(() => document.getElementById('main').innerText); }
   ok(/No problems found/.test(ct) && /endings can be reached/.test(ct), 'the checker finds no problems and reaches every ending: ' + ct.replace(/\s+/g, ' ').slice(0, 200));
   await pg.click('#tabs button:has-text("Map")'); await pg.waitForTimeout(2500);
   const nodes = await pg.evaluate(() => document.querySelectorAll('.node').length);

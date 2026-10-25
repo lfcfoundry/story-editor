@@ -266,6 +266,7 @@ textarea.in.mono{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
 #toast:not(.show){opacity:0;pointer-events:none;transform:translate(-50%,8px)}
 .menu{position:relative}
 .menu .pop{position:absolute;right:0;top:calc(100% + 4px);background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);min-width:230px;z-index:40;display:flex;flex-direction:column;padding:4px;max-height:calc(100vh - var(--tabh,0px) - 72px - env(safe-area-inset-bottom,0px));max-height:calc(100dvh - var(--tabh,0px) - 72px - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain}
+.menu .pop.more::after{content:'▾';position:sticky;bottom:-4px;flex:none;display:block;height:30px;margin:-26px -4px -4px;line-height:36px;font-size:1.15rem;text-align:center;color:var(--fg);background:linear-gradient(to bottom,transparent,var(--paper) 65%);pointer-events:none}
 .menu .pop button{text-align:left;border:0;background:none;padding:8px 10px;cursor:pointer}
 .menu .pop button:hover{background:var(--lampbg)}
 .menu .pop hr,.ctx hr{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}

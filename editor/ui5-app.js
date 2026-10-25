@@ -1570,6 +1570,9 @@ function dropMenu(btn, pop, entries) {
   btn.setAttribute('aria-haspopup', 'menu');
   btn.setAttribute('aria-expanded', 'false');
   pop.setAttribute('role', 'menu');
+  /* a long menu shows a soft fade and a small arrow while more entries wait below */
+  const hint = () => pop.classList.toggle('more', pop.scrollHeight - pop.scrollTop - pop.clientHeight > 4);
+  pop.addEventListener('scroll', hint, { passive: true });
   const fill = () => {
     pop.textContent = '';
     entries().forEach(en => {
@@ -1591,6 +1594,7 @@ function dropMenu(btn, pop, entries) {
                 e.stopPropagation();
                 fn();
                 fill();
+                hint();
               }
             })
           )
@@ -1618,6 +1622,7 @@ function dropMenu(btn, pop, entries) {
       fill();
     }
     pop.hidden = !open;
+    if (open) hint();
     btn.setAttribute('aria-expanded', String(open));
     if (open) {
       // keep the menu on screen: open leftward from the button's right edge; if that runs off the left
