@@ -90,7 +90,7 @@ starter = starter.replace("<", "\\u003c")
 
 # ---- the editor's script
 ui = "(function () {\n'use strict';\n\n" + "\n".join(read(f) for f in UI_PARTS) + "\n})();\n"
-script = "'use strict';\n\n" + read("field-report.js") + "\n" + read("core.js") + "\n" + read("checkwalk.js") + "\n" + read("checkworker.js") + "\n" + read("maplayout.js") + "\n" + read("twine.js") + "\n" + read("routes.js") + "\n" + read("changes.js") + "\n" + read("helpers.js") + "\n" + read("player.js") + "\n" + ui
+script = "'use strict';\n\n" + read("field-report.js") + "\n" + read("core.js") + "\n" + read("checkwalk.js") + "\n" + read("checkworker.js") + "\n" + read("maplayout.js") + "\n" + read("twine.js") + "\n" + read("routes.js") + "\n" + read("changes.js") + "\n" + read("massive.js") + "\n" + read("helpers.js") + "\n" + read("player.js") + "\n" + ui
 script = re.sub(r"</(script)", r"<\\/\1", script, flags=re.I)  # any capitalization ends a script tag in HTML
 # ---- the version stamp shown on the splash: when this file was built, as YYYY.MM.DD.HHMM in US Eastern time, 24-hour clock, e.g. "2026.10.08.2320" (the owner's format from Oct 8 2026 on)
 now = datetime.datetime.now(ZoneInfo("America/New_York"))

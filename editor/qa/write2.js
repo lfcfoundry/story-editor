@@ -77,8 +77,8 @@ await pg.click('#main .block >> nth=0 >> textarea');await pg.keyboard.press('Con
 ok(await pg.inputValue('#main .block >> nth=0 >> textarea')==='"x"','switched off: straight quotes stay');
 /* ---- text size ---- */
 const fs0=await pg.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('#main textarea')).fontSize));
-await pg.click('#optbtn');await pg.click('#optpop >> text=Writing text size');await pg.waitForTimeout(150);
-await pg.click('#optbtn');await pg.click('#optpop >> text=Writing text size');await pg.waitForTimeout(150);
+await pg.click('#optbtn');await pg.click('#optpop .sz-l');await pg.waitForTimeout(150);
+await pg.click('#optpop .sz-x');await pg.waitForTimeout(150);
 const fs1=await pg.evaluate(()=>parseFloat(getComputedStyle(document.querySelector('#main textarea')).fontSize));
 ok(fs1>fs0,'text size grows ('+fs0+' → '+fs1+' px)');
 /* ---- wide layout ---- */

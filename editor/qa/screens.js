@@ -69,5 +69,49 @@ async function open(b, opts) {
     ok(pg.errs.length === 0, 'no script errors sideways: ' + pg.errs.join(' | '));
     await ctx.close();
   }
+  /* ---- long menus on a phone: they scroll above the bottom bars, and the text size is four taps ---- */
+  for (const [w, h] of [[390, 700], [390, 560]]) {
+    [ctx, pg] = await open(b, { viewport: { width: w, height: h } });
+    await pg.click('#morebtn'); await pg.waitForTimeout(300);
+    const m = await pg.evaluate(() => { const p = document.getElementById('morepop'); const r = p.getBoundingClientRect(); const bars = [document.getElementById('tabrow'), document.querySelector('.pinbar')].filter(e => e && e.getClientRects().length).map(e => e.getBoundingClientRect().top); return { top: Math.round(r.top), bottom: Math.round(r.bottom), tabTop: Math.round(document.getElementById('tabrow').getBoundingClientRect().top), scrolls: p.scrollHeight > p.clientHeight + 1, z: getComputedStyle(p).zIndex, pinTop: bars.length ? Math.round(Math.min(...bars)) : null }; });
+    ok(m.bottom <= m.tabTop + 1, h + ' px tall: the ⋯ menu ends above the tab bar: ' + JSON.stringify(m));
+    ok(m.scrolls, h + ' px tall: the ⋯ menu is longer than the screen and scrolls');
+    await pg.evaluate(() => { const p = document.getElementById('morepop'); p.scrollTop = p.scrollHeight; }); await pg.waitForTimeout(150);
+    const last = await pg.evaluate(() => { const p = document.getElementById('morepop'); const bs = p.querySelectorAll('button'); const lb = bs[bs.length - 1].getBoundingClientRect(); const pr = p.getBoundingClientRect(); const hit = document.elementFromPoint(lb.x + lb.width / 2, lb.y + lb.height / 2); return { text: bs[bs.length - 1].textContent, inside: lb.bottom <= pr.bottom + 1 && lb.top >= pr.top, hit: !!(hit && p.contains(hit)) }; });
+    ok(last.inside && last.hit, h + ' px tall: scrolled to the end, the last entry (' + last.text + ') is fully visible and not covered: ' + JSON.stringify(last));
+    const sizes = await pg.evaluate(() => [...document.querySelectorAll('#morepop .sizerow button')].map(e => e.getAttribute('aria-label')));
+    ok(sizes.join() === 'Small,Medium,Large,Extra large', 'the text size row shows all four sizes: ' + sizes.join());
+    await pg.evaluate(() => document.querySelector('#morepop .sz-x').scrollIntoView({ block: 'center' }));
+    await pg.click('#morepop .sz-x'); await pg.waitForTimeout(200);
+    const st = await pg.evaluate(() => ({ body: document.body.classList.contains('wsize-x'), open: !document.getElementById('morepop').hidden, on: document.querySelector('#morepop .sz-x').getAttribute('aria-checked') }));
+    ok(st.body && st.open && st.on === 'true', 'one tap on Extra large applies it, keeps the menu open and marks it: ' + JSON.stringify(st));
+    await pg.click('#morepop .sz-s'); await pg.waitForTimeout(200);
+    ok(await pg.evaluate(() => document.body.classList.contains('wsize-s') && !document.body.classList.contains('wsize-x')), 'and one tap on Small goes straight back down');
+    ok(pg.errs.length === 0, 'no script errors with the menus: ' + pg.errs.join(' | '));
+    await ctx.close();
+  }
+  /* the File menu on a computer window that is not very tall also scrolls instead of running off the screen */
+  [ctx, pg] = await open(b, { viewport: { width: 1280, height: 420 } });
+  await pg.click('#menubtn'); await pg.waitForTimeout(300);
+  const fm = await pg.evaluate(() => { const p = document.getElementById('menupop'); const r = p.getBoundingClientRect(); return { bottom: Math.round(r.bottom), h: innerHeight, scrolls: p.scrollHeight > p.clientHeight + 1 }; });
+  ok(fm.bottom <= fm.h && fm.scrolls, '420 px tall window: the File menu fits and scrolls: ' + JSON.stringify(fm));
+  await ctx.close();
+  /* ---- the massive example ---- */
+  [ctx, pg] = await open(b, { viewport: { width: 1280, height: 800 } });
+  await pg.click('#menubtn'); await pg.click('#menupop >> text=Massive example'); await pg.waitForTimeout(300);
+  await pg.click('dialog button:has-text("Load example")'); await pg.waitForTimeout(1500);
+  const ms = await pg.evaluate(() => ({ pages: window.__editor.project.passages.length, title: window.__editor.project.title, items: window.__editor.project.items.length }));
+  ok(ms.pages >= 300 && ms.title === 'The Drowned Archive', 'the massive example loads over 300 pages: ' + JSON.stringify(ms));
+  await pg.click('#tabs button:has-text("Check")'); await pg.waitForTimeout(1500);
+  const ct = await pg.evaluate(() => document.getElementById('main').innerText);
+  ok(/No problems found/.test(ct) && /endings can be reached/.test(ct), 'the checker finds no problems and reaches every ending: ' + ct.replace(/\s+/g, ' ').slice(0, 200));
+  await pg.click('#tabs button:has-text("Map")'); await pg.waitForTimeout(2500);
+  const nodes = await pg.evaluate(() => document.querySelectorAll('.node').length);
+  ok(nodes > 20, 'the Map draws the part of the big story in view: ' + nodes + ' boxes');
+  await pg.click('#menubtn'); await pg.click('#menupop >> text=Example story'); await pg.waitForTimeout(300);
+  await pg.click('dialog button:has-text("Load example")'); await pg.waitForTimeout(1200);
+  ok(await pg.evaluate(() => window.__editor.project.title === 'The Keeper’s Light' && window.__editor.project.passages.length === 34), 'the small example is still one pick away');
+  ok(pg.errs.length === 0, 'no script errors with the examples: ' + pg.errs.join(' | '));
+  await ctx.close();
   await b.close(); console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error('CRASH', e); process.exit(2); });

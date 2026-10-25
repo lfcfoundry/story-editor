@@ -65,8 +65,9 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
   /* ---------- 5. "Extra large" writing text survives a reload ---------- */
   {
     const pg = await page('');
-    for (let i = 0; i < 2; i++) { await pg.click('#optbtn'); await pg.click('#optpop >> text=/Writing text size/'); await nap(150); }
-    ok(await pg.evaluate(() => document.body.classList.contains('wsize-x')), 'two clicks reach Extra large (Medium, Large, Extra large)');
+    await pg.click('#optbtn'); await pg.click('#optpop .sz-x'); await nap(150);
+    ok(await pg.evaluate(() => document.body.classList.contains('wsize-x')), 'one tap on the fourth size reaches Extra large');
+    ok(await pg.evaluate(() => !document.getElementById('optpop').hidden && document.querySelector('#optpop .sz-x').getAttribute('aria-checked') === 'true'), 'the menu stays open and marks the chosen size');
     await nap(300); await pg.reload(); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash')); await nap(300);
     ok(await pg.evaluate(() => document.body.classList.contains('wsize-x')), 'Extra large is still on after a reload');
     await pg.ctx.close();

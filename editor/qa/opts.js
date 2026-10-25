@@ -12,7 +12,7 @@ const ok=(c,m)=>console.log((c?'PASS ':'FAIL ')+m);
   const order = await pg.evaluate(()=>[...document.querySelectorAll('#top > *')].map(e=>e.id||e.querySelector('button')?.id||e.className).join(','));
   ok(/menu.*savebtn.*menu.*undo/.test(order) || order.indexOf('savebtn')<order.indexOf('undo'), 'order: '+order);
   await pg.locator('#menubtn').click(); const fileItems = await pg.locator('#menupop button').allInnerTexts(); await pg.keyboard.press('Escape');
-  ok(!fileItems.some(t=>/guide|shortcuts|light/i.test(t)), 'File menu: '+fileItems.join(' | '));
+  ok(!fileItems.some(t=>/guide|shortcuts|light \/ dark/i.test(t)), 'File menu: '+fileItems.join(' | '));
   await pg.locator('#optbtn').click(); const optItems = await pg.locator('#optpop button').allInnerTexts();
   console.log('  Options:', optItems.join(' | ')); await pg.screenshot({path:'work/shots/options-menu.png'}); await pg.keyboard.press('Escape');
   // simple Write
