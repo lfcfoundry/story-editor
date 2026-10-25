@@ -31,7 +31,7 @@ ok((await pg.$$('#itemlist button.moved')).length===0,'no "where things went" li
 const nChoices=sh.choices.length;
 /* a real HTML5 drag now and then starts before the page list or the choices are ready to take it (seen once in about a dozen runs of this suite on an idle machine);
    drag again only while nothing has changed, waiting up to 1.5 s each time for the change to show */
-const dragUntil=async(from,to,cond)=>{for(let t=0;t<3;t++){await pg.dragAndDrop(from,to);for(let k=0;k<15;k++){if(cond(await page('Shore')))return;await pg.waitForTimeout(100);}}};
+const dragUntil=async(from,to,cond)=>{for(let t=0;t<3;t++){if(t)console.log('NOTE the drag from',from,'needed',t+1,'tries (not a failure; see qa-guide/FLAKY-CHECKS-REGISTER.md)');await pg.dragAndDrop(from,to);for(let k=0;k<15;k++){if(cond(await page('Shore')))return;await pg.waitForTimeout(100);}}};
 await dragUntil('#pages button:has-text("Cliff")','.choice >> nth=0',x=>x.choices[0].to==='p_cliff');
 sh=await page('Shore'); ok(sh.choices[0].to==='p_cliff','drag page onto a choice relinks it');
 // drag page into empty area of choices => adds

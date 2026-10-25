@@ -13,6 +13,7 @@ runInContext(`${read('core.js')}\n${read('player.js')}\n${read('maplayout.js')}\
 const C = ctx.C;
 let seed = Number(process.argv[3] || 1);
 const N = Number(process.argv[2] || 200);
+let hostileFailed = false; // damaged or hostile files; kept apart from `bad`, which counts stories that differ
 const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
 const pick = a => a[Math.floor(rnd() * a.length)];
 const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
@@ -246,7 +247,7 @@ let crashes = 0, refused = 0, opened = 0;
     }
   }
   console.log(`${crashes ? 'FAIL' : 'PASS'} damaged Twine files: ${opened} opened, ${refused} refused in plain words, ${crashes} crashed`);
-  if (crashes) bad++;
+  if (crashes) hostileFailed = true;
 }
 /* hostile files must not hang the editor or crash it */
 {
@@ -269,10 +270,10 @@ let crashes = 0, refused = 0, opened = 0;
     if (ms > 6000) { slow++; console.log(`SLOW ${name} (${code}): ${ms} ms`); }
   }
   console.log(`${slow ? 'FAIL' : 'PASS'} hostile files: ${cases.length * 2} runs, each finished in under 6 seconds without crashing`);
-  if (slow) bad++;
+  if (slow) hostileFailed = true;
 }
 const share = flagged / Math.max(1, pagesTotal);
 console.log(`${bad ? 'FAIL' : 'PASS'} ${N} random stories, each in SugarCube and Harlowe: ${checked} page-states compared, ${bad} stories differ; ${flagged} of ${pagesTotal} pages flagged unfinished and skipped (${(share * 100).toFixed(1)}%)`);
 if (share > 0.08) { console.log(`FAIL too many pages were flagged unfinished (${(share * 100).toFixed(1)}%, limit 8%)`); process.exit(1); }
-if (bad) process.exit(1);
+if (bad || hostileFailed) process.exit(1);
 

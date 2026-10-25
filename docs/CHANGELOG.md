@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 25
+- Twine import now refuses a story whose code nests more than 300 levels deep with the same plain message as before ("nested so deeply that it cannot be read"), at once; it used to stop only when the engine ran out of stack, which took anywhere from 40 ms to 8 seconds. Stories nested under 300 levels read exactly as before. Steadier checks: the Map picture check waits for two identical pictures, the Twine check reports damaged-file failures apart from story differences.
 - Long menus (the ⋯ menu and File on a phone, any menu on a short window) now scroll and stop above the bottom bars, so every entry can be reached; before, the bottom of the list sat under the page bar and the tab bar. A soft fade and a small ▾ arrow at the bottom of a long menu show that more entries (such as Advanced…) wait below; it goes away at the end of the list.
 - Writing text size is now four buttons (Small, Medium, Large, Extra large) in the Options menu, one tap each, and the menu stays open so you can watch the boxes change. It used to cycle one size per click.
 - Two examples in the File menu: "The Keeper's Light" (34 pages, the small one) and "The Drowned Archive" (over 300 pages in twelve rooms, with keys, locked doors, side pages, good and bad endings), to see how the checker and the Map handle a big story. It is built when you pick it, so it adds almost nothing to the file.
