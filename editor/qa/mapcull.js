@@ -98,6 +98,17 @@ async function run(b, culled) {
       null,
       { polling: 50, timeout: 20000 }
     );
+  /* a picture is taken only once two in a row are the same: a count of boxes that stopped changing does not prove the drawing is finished, and under load the window is drawn a little late */
+  const still = async () => {
+    let prev = Buffer.from(await pg.screenshot({}));
+    for (let i = 0; i < 40; i++) {
+      await pg.waitForTimeout(150);
+      const now = Buffer.from(await pg.screenshot({}));
+      if (now.equals(prev)) return now;
+      prev = now;
+    }
+    return prev;
+  };
   const r = { culled, errs };
   const t0 = Date.now();
   await pg.evaluate(() => __editor.setView('map'));
@@ -114,7 +125,7 @@ async function run(b, culled) {
       .join('|')
   );
   r.keyShown = await pg.evaluate(() => !!document.querySelector('.fkey') && !document.querySelector('.fkey').hidden);
-  r.shot0 = Buffer.from(await pg.screenshot({}));
+  r.shot0 = await still();
   /* search count */
   await pg.locator('.maptools input').first().fill('lamp');
   await pg.waitForTimeout(400);
@@ -143,7 +154,7 @@ async function run(b, culled) {
   });
   await pg.waitForTimeout(200);
   await settle();
-  r.shot1 = Buffer.from(await pg.screenshot({}));
+  r.shot1 = await still();
   /* the whole map (Fit zooms out until every box is in view) */
   await pg.locator('.maptools button:has-text("Fit")').click();
   await pg.waitForTimeout(300);
@@ -163,7 +174,7 @@ async function run(b, culled) {
   await settle();
   r.nodesAll = await pg.evaluate(() => [...document.querySelectorAll('.mapbox g.node')].map(e => e.getAttribute('data-id')).join(','));
   r.edgesAll = await pg.evaluate(() => [...document.querySelectorAll('.mapbox path.edge')].map(e => e.getAttribute('d')).join(';'));
-  r.shot2 = Buffer.from(await pg.screenshot({}));
+  r.shot2 = await still();
   await ctx.close();
   return r;
 }
