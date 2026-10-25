@@ -265,7 +265,8 @@ textarea.in.mono{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
 #toast{position:fixed;left:50%;bottom:18px;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:4px;z-index:70;max-width:90vw;box-shadow:var(--shadow);transition:opacity .2s,transform .2s}
 #toast:not(.show){opacity:0;pointer-events:none;transform:translate(-50%,8px)}
 .menu{position:relative}
-.menu .pop{position:absolute;right:0;top:calc(100% + 4px);background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);min-width:230px;z-index:20;display:flex;flex-direction:column;padding:4px}
+.menu .pop{position:absolute;right:0;top:calc(100% + 4px);background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow);min-width:230px;z-index:40;display:flex;flex-direction:column;padding:4px;max-height:calc(100vh - var(--tabh,0px) - 72px - env(safe-area-inset-bottom,0px));max-height:calc(100dvh - var(--tabh,0px) - 72px - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain}
+.menu .pop.more::after{content:'▾';position:sticky;bottom:-4px;flex:none;display:block;height:30px;margin:-26px -4px -4px;line-height:36px;font-size:1.15rem;text-align:center;color:var(--fg);background:linear-gradient(to bottom,transparent,var(--paper) 65%);pointer-events:none}
 .menu .pop button{text-align:left;border:0;background:none;padding:8px 10px;cursor:pointer}
 .menu .pop button:hover{background:var(--lampbg)}
 .menu .pop hr,.ctx hr{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
@@ -963,3 +964,10 @@ body[data-view=play] #stats{display:none}
 /* Big screens (a 27-inch QHD or a 4K monitor at 100%): the text and everything sized in rem is drawn 25% larger, so it reads as easily as on a laptop.
    Sizes only; nothing is scaled with zoom, so the Map and every drag keep their exact pointer maths. */
 @media (min-width:2200px) and (min-height:1200px){html{font-size:20px}body{font-size:18.75px}#side{width:300px}#itemside{width:270px}}
+
+/* The text size row in the Options menu: four sizes of "A", one tap each. */
+.menu .pop .sizerow{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:6px 10px 8px}
+.menu .pop .sizerow .sizelbl{flex:1 0 100%;color:var(--muted);font-size:.8rem}
+.menu .pop .sizerow button{flex:1 1 0;min-width:0;min-height:40px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--field);padding:4px 0;line-height:1}
+.menu .pop .sizerow button.on{background:var(--lampbg);border-color:var(--lamp);font-weight:700}
+.menu .pop .sizerow .sz-s{font-size:.8rem}.menu .pop .sizerow .sz-m{font-size:1rem}.menu .pop .sizerow .sz-l{font-size:1.25rem}.menu .pop .sizerow .sz-x{font-size:1.55rem}

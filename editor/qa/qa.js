@@ -40,7 +40,7 @@ const LOGS = HERE + 'logs/';
 fs.mkdirSync(LOGS, { recursive: true });
 fs.mkdirSync(HERE + 'work/shots', { recursive: true });
 
-const SOURCES = ['core.js', 'checkwalk.js', 'checkworker.js', 'player.js', 'maplayout.js', 'game.css', 'ui.css', 'ui1-state.js', 'ui2-widgets.js', 'ui3-write.js', 'ui4-map.js', 'ui4-views.js', 'ui4-speed.js', 'ui5-app.js', 'twine.js', 'routes.js', 'changes.js', 'helpers.js', 'ui4-status.js', 'ui4-helpers.js', 'ui4-phone.js', 'translate.js', 'build.py', 'build-game.mjs', 'minify.mjs', 'contract.mjs'];
+const SOURCES = ['core.js', 'checkwalk.js', 'checkworker.js', 'player.js', 'maplayout.js', 'game.css', 'ui.css', 'ui1-state.js', 'ui2-widgets.js', 'ui3-write.js', 'ui4-map.js', 'ui4-views.js', 'ui4-speed.js', 'ui5-app.js', 'twine.js', 'routes.js', 'changes.js', 'massive.js', 'helpers.js', 'ui4-status.js', 'ui4-helpers.js', 'ui4-phone.js', 'translate.js', 'build.py', 'build-game.mjs', 'minify.mjs', 'contract.mjs'];
 const EDITOR = SOURCES.filter(f => f !== 'contract.mjs');
 const GAME = ['core.js', 'player.js', 'game.css', 'build-game.mjs'];
 

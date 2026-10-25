@@ -4,6 +4,11 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 25
+- Long menus (the ⋯ menu and File on a phone, any menu on a short window) now scroll and stop above the bottom bars, so every entry can be reached; before, the bottom of the list sat under the page bar and the tab bar. A soft fade and a small ▾ arrow at the bottom of a long menu show that more entries (such as Advanced…) wait below; it goes away at the end of the list.
+- Writing text size is now four buttons (Small, Medium, Large, Extra large) in the Options menu, one tap each, and the menu stays open so you can watch the boxes change. It used to cycle one size per click.
+- Two examples in the File menu: "The Keeper's Light" (34 pages, the small one) and "The Drowned Archive" (over 300 pages in twelve rooms, with keys, locked doors, side pages, good and bad endings), to see how the checker and the Map handle a big story. It is built when you pick it, so it adds almost nothing to the file.
+
 ## October 24
 - In the Check report, a passage the checker proves can never be reached now has a "Why?" button that opens the explanation (which choice would lead there and what is missing). The story-check package is now version 1.1.0.
 - On a phone turned sideways, the editor now uses the phone layout with the six tabs in a rail down the left edge and a slimmer top bar, so the page gets the full height: on a 844 x 390 screen the Write tab shows about 3 lines of text where it showed 1 (it used the computer layout with a three-row header before).

@@ -29,10 +29,13 @@ ok(!(await pg.$('[data-box=hands]')),'Hands over is hidden for now');
 ok((await pg.$$('#itemlist button.moved')).length===0,'no "where things went" list while Hands over is hidden');
 // drag page onto a choice dest
 const nChoices=sh.choices.length;
-await pg.dragAndDrop('#pages button:has-text("Cliff")','.choice >> nth=0');
+/* a real HTML5 drag now and then starts before the page list or the choices are ready to take it (seen once in about a dozen runs of this suite on an idle machine);
+   drag again only while nothing has changed, waiting up to 1.5 s each time for the change to show */
+const dragUntil=async(from,to,cond)=>{for(let t=0;t<3;t++){await pg.dragAndDrop(from,to);for(let k=0;k<15;k++){if(cond(await page('Shore')))return;await pg.waitForTimeout(100);}}};
+await dragUntil('#pages button:has-text("Cliff")','.choice >> nth=0',x=>x.choices[0].to==='p_cliff');
 sh=await page('Shore'); ok(sh.choices[0].to==='p_cliff','drag page onto a choice relinks it');
 // drag page into empty area of choices => adds
-await pg.dragAndDrop('#pages button:has-text("Hall")','section.sect >> nth=1 >> .sech');
+await dragUntil('#pages button:has-text("Hall")','section.sect >> nth=1 >> .sech',x=>x.choices.length===nChoices+1);
 sh=await page('Shore'); ok(sh.choices.length===nChoices+1,'drop page on Choices header adds a linked choice');
 // Enter adds a choice
 await pg.waitForFunction(n=>document.querySelectorAll('.clabel').length>=n,nChoices+1,{timeout:5000}).catch(()=>{});for(let t=0;t<4;t++){await pg.click('.clabel >> nth=0');if(await pg.waitForFunction(()=>document.activeElement&&document.activeElement.classList.contains('clabel'),null,{timeout:1500}).then(()=>true,()=>false))break;} /* the box is drawn and has the focus before Enter is sent (under load WebKitGTK sent it too early and it was lost) */

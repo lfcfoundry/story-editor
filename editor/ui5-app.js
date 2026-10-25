@@ -617,10 +617,17 @@ function freshExample() {
   p.id = uid('s_');
   return p;
 }
-function loadExample() {
-  ask('Load the example story?', 'This replaces your current story with “The Keeper’s Light”. You can undo this.', 'Load example').then(ok => {
+/** The massive example (massive.js), with its own id, like freshExample. */
+function freshMassive() {
+  const p = normalizeProject(massiveExample());
+  p.id = uid('s_');
+  return p;
+}
+function loadExample(massive) {
+  const name = massive ? 'The Drowned Archive' : 'The Keeper’s Light';
+  ask('Load the example story?', `This replaces your current story with “${name}”${massive ? ' (over 300 pages, to see the checker and the Map at work on a big story)' : ''}. You can undo this.`, 'Load example').then(ok => {
     if (ok) {
-      replaceProject(freshExample(), 'Example loaded.');
+      replaceProject(massive ? freshMassive() : freshExample(), 'Example loaded.');
       rememberFile(null);
       savedText = null;
       renderTop();
@@ -643,12 +650,12 @@ function applyTextSize() {
   const b = document.body;
   ['s', 'm', 'l', 'x'].forEach(k => b.classList.toggle(`wsize-${k}`, prefs.wsize === k && k !== 'm'));
 }
-function cycleTextSize() {
-  const order = ['s', 'm', 'l', 'x'];
-  prefs.wsize = order[(order.indexOf(prefs.wsize) + 1) % order.length];
+/** Picks one of the four writing text sizes straight away (the menu shows all four, so nobody has to cycle). */
+function setTextSize(k) {
+  if (!WSIZE_NAMES[k]) return;
+  prefs.wsize = k;
   savePrefs();
   applyTextSize();
-  toast(`Writing text size: ${WSIZE_NAMES[prefs.wsize]}.`);
 }
 function toggleQuotes() {
   prefs.quotes = !prefs.quotes;
@@ -1563,10 +1570,37 @@ function dropMenu(btn, pop, entries) {
   btn.setAttribute('aria-haspopup', 'menu');
   btn.setAttribute('aria-expanded', 'false');
   pop.setAttribute('role', 'menu');
+  /* a long menu shows a soft fade and a small arrow while more entries wait below */
+  const hint = () => pop.classList.toggle('more', pop.scrollHeight - pop.scrollTop - pop.clientHeight > 4);
+  pop.addEventListener('scroll', hint, { passive: true });
   const fill = () => {
     pop.textContent = '';
     entries().forEach(en => {
       if (!en) return pop.appendChild(h('hr'));
+      if (en.row) {
+        /* a row of choices (text size): every choice is one tap, and the menu stays open */
+        const grp = h('div', { class: 'sizerow', role: 'group', 'aria-label': en.label, title: en.title || null }, [h('div', { class: 'sizelbl', text: en.label })]);
+        en.row.forEach(([name, fn, on, key]) =>
+          grp.appendChild(
+            h('button', {
+              type: 'button',
+              role: 'menuitemradio',
+              class: `sz-${key}${on ? ' on' : ''}`,
+              'aria-checked': String(on),
+              'aria-label': name,
+              title: name,
+              text: 'A',
+              onclick(e) {
+                e.stopPropagation();
+                fn();
+                fill();
+                hint();
+              }
+            })
+          )
+        );
+        return pop.appendChild(grp);
+      }
       pop.appendChild(
         h('button', {
           type: 'button',
@@ -1588,6 +1622,7 @@ function dropMenu(btn, pop, entries) {
       fill();
     }
     pop.hidden = !open;
+    if (open) hint();
     btn.setAttribute('aria-expanded', String(open));
     if (open) {
       // keep the menu on screen: open leftward from the button's right edge; if that runs off the left
@@ -1787,7 +1822,8 @@ function init() {
     ['Translations…', translationsDialog, 'Save the story’s words as a sheet for translators, bring the translated sheet back, and give the game a language menu.'],
     null,
     ['New story', newStory, 'Start an empty story.'],
-    ['Example story', loadExample, 'Load the example story to look around.'],
+    ['Example story: The Keeper’s Light', () => loadExample(false), 'Load the small example story (34 pages) to look around.'],
+    ['Massive example: The Drowned Archive', () => loadExample(true), 'Load a big example story (over 300 pages) to see how the checker and the Map handle a story this size.'],
     null,
     ['Save manuscript (.md)…', exportManuscript, 'Save all the words of the story as one Markdown text file: every page with its choices and where they lead. For proofreading; it has no rules in it.'],
     ['Save test script (.md)…', exportTestScript, 'Save a checklist of routes through the story that together take every choice at least once, with a box to tick for each step. For testers and proofreaders.'],
@@ -1815,7 +1851,11 @@ function init() {
         toggleQuotes,
         'While you type in the Write tab, " and \' become curly quotes and two hyphens become a dash (—).'
       ],
-      [`Writing text size: ${WSIZE_NAMES[prefs.wsize]}`, cycleTextSize, 'Make the words in the Write tab’s boxes smaller or larger. Each click goes to the next size.'],
+      {
+        label: 'Writing text size',
+        title: 'Make the words in the Write tab’s boxes smaller or larger. Tap a size; the menu stays open so you can see it change.',
+        row: Object.keys(WSIZE_NAMES).map(k => [WSIZE_NAMES[k], () => setTextSize(k), (prefs.wsize || 'm') === k, k])
+      },
       [
         `${settings.remember ? '✓ ' : ''}Remember preferences`,
         toggleRemember,
