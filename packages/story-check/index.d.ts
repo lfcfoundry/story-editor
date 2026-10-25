@@ -2,7 +2,8 @@
 import type { Project } from '../story-format/index.js';
 export * from '../story-format/index.js';
 
-export interface Finding { pid: string; msg: string }
+export type FindingCode = 'unreachable-page';
+export interface Finding { pid: string; msg: string; code?: FindingCode }
 export interface PathStep { [key: string]: unknown }
 export interface EndingReport {
   pid: string; name: string; heading: string; valence: '' | 'good' | 'bad';
