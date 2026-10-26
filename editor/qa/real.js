@@ -15,23 +15,38 @@ const reqs=[];pg.on('request',r=>{if(!r.url().startsWith('file:')&&!r.url().star
 await pg.goto(FILE);await pg.waitForTimeout(300);
 const P=()=>pg.evaluate(()=>JSON.parse(JSON.stringify(window.__editor.project)));
 const page=async n=>{const pr=await P();return pr.passages.find(p=>p.name===n)};
+/* A drag that waits for the page's own events instead of guessing time. Playwright decides in Chromium whether a drag has started with a zero-delay check right after
+   the first move; under load the page's dragstart comes later, so it never sends the drag events (the page sees dragstart and nothing else: no dragenter, dragover or drop;
+   found by logging events in 240 drags with a full run beside them, about 4% failed). So: press, nudge until the page reports dragstart, move onto the target, and
+   release only when a dragover has landed on its centre. Only Chromium has this problem (Firefox and WebKit run their own drags and do not take this route); still retried (and says so) in case something else goes wrong. */
+const boxOf=async sel=>{for(let k=0;k<40;k++){try{await pg.locator(sel).first().scrollIntoViewIfNeeded({timeout:1000});const b=await pg.locator(sel).first().boundingBox();if(b)return b;}catch(e){}await pg.waitForTimeout(50);}throw new Error('no box for '+sel);};
+const gatedDrag=async(from,to)=>{
+  await pg.evaluate(()=>{window.__dl=window.__dl||{start:0,x:-1,y:-1};if(!window.__dlOn){window.__dlOn=1;document.addEventListener('dragstart',()=>window.__dl.start++,true);document.addEventListener('dragover',e=>{window.__dl.x=e.clientX;window.__dl.y=e.clientY},true);}window.__dl.start=0;window.__dl.x=-1;window.__dl.y=-1;});
+  const a=await boxOf(from);await boxOf(to);
+  await pg.mouse.move(a.x+a.width/2,a.y+a.height/2);await pg.mouse.down();
+  for(let i=1;i<=4;i++){await pg.mouse.move(a.x+a.width/2+i*3,a.y+a.height/2+i*2);if(await pg.evaluate(()=>window.__dl.start))break;await pg.waitForTimeout(30);}
+  await pg.waitForFunction(()=>window.__dl.start>0,null,{timeout:2000}).catch(()=>{});
+  const z=await boxOf(to);const tx=Math.round(z.x+z.width/2),ty=Math.round(z.y+z.height/2);
+  await pg.mouse.move(tx,ty,{steps:8});
+  await pg.waitForFunction(([x,y])=>Math.abs(window.__dl.x-x)<=2&&Math.abs(window.__dl.y-y)<=2,[tx,ty],{timeout:2000}).catch(()=>{});
+  await pg.mouse.up();
+};
+const drag=(from,to)=>/chrom/i.test(which)?gatedDrag(from,to):pg.dragAndDrop(from,to);
+const dragUntil=async(from,to,cond)=>{for(let t=0;t<3;t++){if(t)console.log('NOTE the drag from',from,'needed',t+1,'tries (not a failure; see qa-guide/FLAKY-CHECKS-REGISTER.md)');await drag(from,to);for(let k=0;k<15;k++){if(cond(await page('Shore')))return;await pg.waitForTimeout(100);}}};
 // start on Keeper's Light; click page
 await pg.click('#pages button:has-text("Shore")');
 ok(await pg.inputValue('#pname')==='Shore','click page in list opens it');
 // drag item onto Gets box
-await pg.dragAndDrop('#itemlist button:has-text("Flare pistol")','[data-box=gets]');
+await drag('#itemlist button:has-text("Flare pistol")','[data-box=gets]');
 let sh=await page('Shore'); ok(sh.gives.includes('i_flare'),'drag object onto Gets');
-await pg.dragAndDrop('#itemlist button:has-text("Dealt with Pell")','[data-box=gets]');
+await drag('#itemlist button:has-text("Dealt with Pell")','[data-box=gets]');
 sh=await page('Shore'); ok(sh.gives.includes('i_pell'),'drag state onto the same Gets box');
-await pg.dragAndDrop('#itemlist button:has-text("Can of oil")','[data-box=loses]');
+await drag('#itemlist button:has-text("Can of oil")','[data-box=loses]');
 sh=await page('Shore'); ok(sh.takes.includes('i_oil')&&!sh.sends.i_oil,'drag onto Loses');
 ok(!(await pg.$('[data-box=hands]')),'Hands over is hidden for now');
 ok((await pg.$$('#itemlist button.moved')).length===0,'no "where things went" list while Hands over is hidden');
 // drag page onto a choice dest
 const nChoices=sh.choices.length;
-/* a real HTML5 drag now and then starts before the page list or the choices are ready to take it (seen once in about a dozen runs of this suite on an idle machine);
-   drag again only while nothing has changed, waiting up to 1.5 s each time for the change to show */
-const dragUntil=async(from,to,cond)=>{for(let t=0;t<3;t++){if(t)console.log('NOTE the drag from',from,'needed',t+1,'tries (not a failure; see qa-guide/FLAKY-CHECKS-REGISTER.md)');await pg.dragAndDrop(from,to);for(let k=0;k<15;k++){if(cond(await page('Shore')))return;await pg.waitForTimeout(100);}}};
 await dragUntil('#pages button:has-text("Cliff")','.choice >> nth=0',x=>x.choices[0].to==='p_cliff');
 sh=await page('Shore'); ok(sh.choices[0].to==='p_cliff','drag page onto a choice relinks it');
 // drag page into empty area of choices => adds
@@ -135,7 +150,7 @@ const nBefore=(await pg.evaluate(()=>window.__editor.project.passages.length));
 await pg.click('#main button:has-text("+ Choice")');await pg.waitForFunction(()=>document.activeElement&&document.activeElement.classList.contains('clabel')); /* the new box takes focus one turn after the click; typing before that goes nowhere */
 await pg.keyboard.type('Climb the tower');await pg.keyboard.press('Control+Enter');await pg.waitForFunction(n=>window.__editor.project.passages.length===n+1&&document.querySelector('#pname').value==='Climb the tower',nBefore);
 ok(await pg.evaluate(n=>window.__editor.project.passages.length===n+1&&document.querySelector('#pname').value==='Climb the tower',nBefore),'Ctrl+Enter creates and opens the linked page');
-await pg.waitForTimeout(800);
+await pg.waitForSelector('#pagenotes .pn',{timeout:10000}).catch(()=>{}); /* the checker's notes arrive when its run ends, not after a fixed pause (3 of 24 runs failed a fixed 800 ms with a full run beside them) */
 ok(await pg.isVisible('#pagenotes .pn'),'checker notes show under the page bar');
 await pg.click('#tabs button:has-text("Map")');
 await pg.dblclick('.mapbox',{position:{x:1215,y:200}});
