@@ -40,8 +40,16 @@ The editor is one 297 KB file. A finished game is 42 KB for 34 pages and 43 KB f
 
 ## Try an example story
 
-- [Play The Keeper's Light](https://lfcfoundry.github.io/story-editor/examples/the-keepers-light.html): 34 pages, four objects, three states, a game file of 42 KB that works offline.
-- [Play The Drowned Archive](https://lfcfoundry.github.io/story-editor/examples/the-drowned-archive.html): 316 pages, twelve keys, locked doors and 15 endings; the checker finishes it with no problems.
+- [Play The Keeper's Light](https://lfcfoundry.github.io/story-editor/examples/the-keepers-light.html): you step off the supply boat onto Gull Rock to relieve the keeper for the winter, and the great lamp is dark. 34 pages, 8 endings, four objects, three states, a game file of 42 KB that works offline. A typical playthrough is 10 to 14 choices, about 7 minutes (shortest 3 choices, longest 22).
+- [Play The Drowned Archive](https://lfcfoundry.github.io/story-editor/examples/the-drowned-archive.html): a flooded archive with a clock stopped at ten past three. 316 pages, 15 endings, twelve keys and locked doors; the checker finishes it with no problems. A typical playthrough is about 70 choices, around 12 minutes (shortest 6 choices, longest 111).
+- Playthrough times are estimates from the checker's shortest routes at about 200 words a minute plus a few seconds per choice, not timings of real readers.
+
+![The Keeper's Light on a desktop screen](examples/img/the-keepers-light-desktop.png) ![The Keeper's Light on a phone](examples/img/the-keepers-light-phone.png)
+
+The Story Page Map of The Keeper's Light with the good paths lit in green:
+
+![The Story Page Map of The Keeper's Light with the good paths lit](examples/img/story-page-map.png)
+
 - To open one in the editor: [download The Keeper's Light as a .story.json](examples/the-keepers-light.story.json) and use Open, or choose File, then Example story or Massive example.
 
 ## Code you can reuse
