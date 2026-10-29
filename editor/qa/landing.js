@@ -18,19 +18,21 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
       pg.on('request', r => { if (!/^(file|data|blob):/.test(r.url())) reqs.push(r.url()); });
       await pg.goto(FILE);
       await pg.evaluate(t => { document.documentElement.dataset.theme = t; }, theme);
-      await pg.waitForTimeout(200);
+      await pg.waitForTimeout(process.env.SHOTS ? 2300 : 200); /* the logo draws itself in about two seconds */
       const m = await pg.evaluate(() => {
         const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
         const h1 = document.querySelector('h1');
         const mods = [...document.querySelectorAll('.mod')].map(a => a.getAttribute('href'));
         const links = [...document.querySelectorAll('a[href]')].map(a => a.getAttribute('href'));
+        const lg = document.querySelector('.logo'); const h2 = document.querySelector('h2'); const logo = lg ? { icons: lg.querySelectorAll('.ico').length, h: lg.getBoundingClientRect().height, w: lg.getBoundingClientRect().width, above: lg.getBoundingClientRect().bottom <= h2.getBoundingClientRect().top, label: lg.getAttribute('aria-label') || '' } : null;
         const cut = [...document.querySelectorAll('.tile,.mod,.btn')].filter(e => e.scrollWidth > e.clientWidth + 1).length;
-        return { h1: h1 && h1.textContent, h1vis: h1 && vis(h1), sw: document.documentElement.scrollWidth, iw: innerWidth, mods, links, cut, lang: document.documentElement.lang, title: document.title, h2s: [...document.querySelectorAll('h2')].map(e => e.textContent), rows: document.querySelectorAll('tbody tr').length, cells: [...document.querySelectorAll('td.win')].map(e => e.textContent), btns: [...document.querySelectorAll('.hero .btn')].map(a => [a.textContent, a.getAttribute('href'), vis(a)]) };
+        return { logo, h1: h1 && h1.textContent, h1vis: h1 && vis(h1), sw: document.documentElement.scrollWidth, iw: innerWidth, mods, links, cut, lang: document.documentElement.lang, title: document.title, h2s: [...document.querySelectorAll('h2')].map(e => e.textContent), rows: document.querySelectorAll('tbody tr').length, cells: [...document.querySelectorAll('td.win')].map(e => e.textContent), btns: [...document.querySelectorAll('.hero .btn')].map(a => [a.textContent, a.getAttribute('href'), vis(a)]) };
       });
       const tag = `${name}, ${theme}`;
       ok(errs.length === 0, `${tag}: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
       ok(reqs.length === 0, `${tag}: nothing is fetched from the network${reqs.length ? ': ' + reqs.join(' ') : ''}`);
       ok(m.h1 === 'Story Editor' && m.h1vis, `${tag}: the heading shows`);
+      ok(m.logo && m.logo.icons === 4 && m.logo.h >= 80 && m.logo.w > 80 && m.logo.above && /logo/.test(m.logo.label), `${tag}: the logo (heart with flag, two faces and a gift) shows above the first section: ${JSON.stringify(m.logo)}`);
       ok(m.sw <= m.iw, `${tag}: no sideways scroll (${m.sw} in ${m.iw})`);
       ok(m.cut === 0, `${tag}: no tile, link or button is cut off (${m.cut})`);
       if (name === 'laptop' && theme === 'light') {

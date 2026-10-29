@@ -67,11 +67,24 @@ footer{background:var(--soft);padding-block:36px;color:var(--muted);font-size:15
 footer a{margin-right:16px}
 @media (prefers-reduced-motion:no-preference){.btn,.mod{transition:filter .15s,border-color .15s}}
 
+.brandrow{display:flex;flex-wrap:wrap;align-items:center;gap:20px 28px;margin:10px 0 14px}
+.brandrow h1{margin:0}
+.logotile{background:#fff;border-radius:22px;padding:14px 16px;display:inline-flex;box-shadow:0 8px 30px #0006}
+.logo{display:block;height:112px;width:auto;max-width:100%}
+.logo .ico{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.logo .ico-flag{color:#1b252a}.logo .ico-flag .cloth{fill:#fff}.logo .ico-gift{color:#e06c00}.logo .ico-smile{color:#17934b}.logo .ico-frown{color:#d8332b}
+.logo-heart{fill:none;stroke:#c42f2a;stroke-width:.8;stroke-linejoin:round}
+@media (prefers-reduced-motion:no-preference){
+.logo-heart{stroke-dasharray:100;stroke-dashoffset:100;animation:draw 1.4s ease-out .2s forwards}
+.logo .ico{opacity:0;animation:pop .5s ease-out forwards}
+.logo .ico-flag{animation-delay:1.0s}.logo .ico-smile{animation-delay:1.15s}.logo .ico-frown{animation-delay:1.3s}.logo .ico-gift{animation-delay:1.45s}}
+@keyframes draw{to{stroke-dashoffset:0}}@keyframes pop{to{opacity:1}}
+@media (max-width:520px){.logo{height:84px}}
 body{margin:0}</style>
 <body>
 <header class="hero"><div class="wrap">
 <nav class="nav"><b>LFC Foundry</b><a href="https://lfcfoundry.github.io/story-editor/">Open the editor</a><a href="https://github.com/lfcfoundry/story-editor">Source code</a><a href="https://github.com/lfcfoundry">All projects</a></nav>
-<h1>Story Editor</h1><p class="pitch">Write a branching story, find out it really works, and share it as one small game file.</p><div class="btns">
+<div class="brandrow"><span class="logotile"><svg role="img" aria-label="Story Editor logo: a heart holding a checkered flag, a smiling face, a frowning face and a gift" viewBox="6 8 52 49" height="112" width="119" class="logo" focusable="false"><path class="logo-heart" pathLength="100" transform="scale(4)" d="M8 13.8C3 10.4 2 8 2 6.2A3 3 0 0 1 8 5A3 3 0 0 1 14 6.2C14 8 13 10.4 8 13.8Z"></path><svg viewBox="0 0 16 16" width="11" height="11" class="ico ico-flag" aria-hidden="true" focusable="false" x="19.5" y="21"><path d="M3.5 1.5V14.5"></path><rect x="3.5" y="2.5" width="10" height="7" class="cloth" stroke="none"></rect><rect x="3.5" y="2.5" width="3.3333333333333335" height="3.5" fill="currentColor" stroke="none"></rect><rect x="10.166666666666668" y="2.5" width="3.3333333333333335" height="3.5" fill="currentColor" stroke="none"></rect><rect x="6.833333333333334" y="6" width="3.3333333333333335" height="3.5" fill="currentColor" stroke="none"></rect><rect x="3.5" y="2.5" width="10" height="7" fill="none"></rect></svg><svg viewBox="0 0 16 16" width="11" height="11" class="ico ico-smile" aria-hidden="true" focusable="false" x="33.5" y="21"><circle cx="8" cy="8" r="6"></circle><circle cx="5.8" cy="6.6" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="10.2" cy="6.6" r="0.9" fill="currentColor" stroke="none"></circle><path d="M5.2 9.6Q8 12.4 10.8 9.6"></path></svg><svg viewBox="0 0 16 16" width="11" height="11" class="ico ico-frown" aria-hidden="true" focusable="false" x="19.5" y="34"><circle cx="8" cy="8" r="6"></circle><circle cx="5.8" cy="6.6" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="10.2" cy="6.6" r="0.9" fill="currentColor" stroke="none"></circle><path d="M5.2 11.4Q8 8.6 10.8 11.4"></path></svg><svg viewBox="0 0 16 16" width="11" height="11" class="ico ico-gift" aria-hidden="true" focusable="false" x="33.5" y="34"><rect x="2.5" y="7" width="11" height="7" rx="1"></rect><rect x="2" y="4.5" width="12" height="2.5" rx="0.8"></rect><path d="M8 4.5V14M8 4.5C6 1.5 3.5 2.5 5 4.5M8 4.5C10 1.5 12.5 2.5 11 4.5"></path></svg></svg></span><h1>Story Editor</h1></div><p class="pitch">Write a branching story, find out it really works, and share it as one small game file.</p><div class="btns">
 <a class="btn" href="https://lfcfoundry.github.io/story-editor/">Open the editor</a>
 <a class="btn alt" href="examples/the-keepers-light.html">Play an example story</a>
 <a class="btn alt" href="https://github.com/lfcfoundry/story-editor">Source code</a>
