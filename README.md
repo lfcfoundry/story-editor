@@ -24,6 +24,26 @@ Writing a branching story is easy; knowing it works is hard. A choice can lead n
 |---|---|---|---|
 | Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story. | Export makes about 25 to 50 KB for a typical story. It opens in any modern browser. | Offline, nothing sent anywhere. Save writes a .story.json you can keep. |
 
+## By the numbers
+
+Measured on 2026-10-29 in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine, from the single file the editor ships as (median of repeated runs; lower is better).
+
+| Measure (lower is better) | Chromium | Firefox | WebKitGTK |
+|---|---:|---:|---:|
+| Check after an edit, The Keeper's Light (34 pages, 649 situations) | 2 ms | 3 ms | 4 ms |
+| Check after an edit, The Drowned Archive (316 pages, 24,313 situations) | 13 ms | 14 ms | 14 ms |
+| Same check, JavaScript only (no WebAssembly) | 88 ms | 66 ms | 87 ms |
+| Open the Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
+| Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
+
+The editor is one 297 KB file. A finished game is 42 KB for 34 pages and 43 KB for 316. Every build plays 400 random stories out move by move and requires the checker to agree. Firefox rounds its timers to whole milliseconds. More on the landing page: [about.html](https://lfcfoundry.github.io/story-editor/about.html).
+
+## Try an example story
+
+- [Play The Keeper's Light](https://lfcfoundry.github.io/story-editor/examples/the-keepers-light.html): 34 pages, four objects, three states, a game file of 42 KB that works offline.
+- [Play The Drowned Archive](https://lfcfoundry.github.io/story-editor/examples/the-drowned-archive.html): 316 pages, twelve keys, locked doors and 15 endings; the checker finishes it with no problems.
+- To open one in the editor: [download The Keeper's Light as a .story.json](examples/the-keepers-light.story.json) and use Open, or choose File, then Example story or Massive example.
+
 ## Code you can reuse
 
 Everything is MIT-licensed and has no dependencies. The editor's logic was cut out into small packages, **generated from the editor's own sources** (so there is one copy to maintain, and a test fails if they drift apart). Each folder has a README (what it does, how it differs from what already exists, its limits), an `AGENTS.md` for AI helpers, TypeScript types, an example you can run, and tests that require **identical answers to the editor** on hundreds of random stories.
