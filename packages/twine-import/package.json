@@ -1,6 +1,6 @@
 {
   "name": "twine-import",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Reads Twine stories (Twine 2 HTML, Twee 3, Twine 1) and turns SugarCube and Harlowe code into rules, with a plain-words report. Zero dependencies.",
   "license": "MIT",
   "author": "LFC Foundry",

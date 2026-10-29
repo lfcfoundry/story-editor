@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 29
+- New landing page, `about.html` (https://lfcfoundry.github.io/story-editor/about.html): what the editor is, why it exists and the packages you can reuse, in the same look as the other LFC Foundry projects. The README now opens with the same summary and links to it. The editor itself is unchanged. The twine-import package is rebuilt as 1.0.1 so it carries the nesting limit added on October 25.
+
 ## October 25
 - Twine import now refuses a story whose code nests more than 300 levels deep with the same plain message as before ("nested so deeply that it cannot be read"), at once; it used to stop only when the engine ran out of stack, which took anywhere from 40 ms to 8 seconds. Stories nested under 300 levels read exactly as before. Steadier checks: the Map picture check waits for two identical pictures, the Twine check reports damaged-file failures apart from story differences.
 - Long menus (the ⋯ menu and File on a phone, any menu on a short window) now scroll and stop above the bottom bars, so every entry can be reached; before, the bottom of the list sat under the page bar and the tab bar. A soft fade and a small ▾ arrow at the bottom of a long menu show that more entries (such as Advanced…) wait below; it goes away at the end of the list.

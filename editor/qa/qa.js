@@ -62,6 +62,7 @@ const SUITES = [
   S('undohist', 'undohist.js', ['changes.js', 'ui4-status.js', 'ui1-state.js', 'ui.css', 'player.js', 'core.js'], true),
   S('reachability', 'reachability.js', ['core.js', 'checkwalk.js', 'ui4-views.js'], true),
   S('screens', 'screens.js', ['ui.css', 'ui1-state.js', 'ui4-phone.js', 'ui5-app.js', 'ui4-map.js'], true),
+  S('landing', 'landing.js', [], true),
   S('phone', 'phone.js', ['ui4-phone.js', 'ui5-app.js', 'ui3-write.js', 'ui4-status.js', 'ui1-state.js', 'ui.css', 'core.js'], true),
   S('csp', 'csp.js', ['build.py', 'core.js'], true),
   S('walk', 'walk.js', ['core.js', 'checkwalk.js'], true),

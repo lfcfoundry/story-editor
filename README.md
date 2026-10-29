@@ -1,15 +1,28 @@
+<div align="center">
+
 # Story Editor
 
-A single-file, offline editor for interactive "choose your own path" stories. You add pages and choices in your browser, the editor checks that every page and ending can really be reached, shows your story as a map, and turns each story into one small game file that anyone can play in a browser, online or offline. This is a beta.
+**Write a branching story, find out it really works, and share it as one small game file.**
 
-**How it does it:** the whole editor is one HTML file (stored compressed inside a tiny page that unpacks itself) that runs entirely in your browser. Your story is kept in your browser's own storage as you type and nothing is sent anywhere. The checker is plain JavaScript that tries every combination of items, numbers and dice a player could be in, and **Export** builds the game page from your story and zips it.
+[**Open the editor**](https://lfcfoundry.github.io/story-editor/) · [**Landing page**](https://lfcfoundry.github.io/story-editor/about.html) · [**Reusable packages**](#code-you-can-reuse)
 
-**Open the editor:** https://lfcfoundry.github.io/story-editor/
-(or download `index.html` from this page and double-click it; nothing needs installing).
+![beta](https://img.shields.io/badge/beta-informational) ![MIT](https://img.shields.io/badge/MIT-informational) ![works offline](https://img.shields.io/badge/works%20offline-informational) ![nothing uploaded](https://img.shields.io/badge/nothing%20uploaded-informational)
+
+</div>
+
+## What it is and how it works
+
+A single-file, offline editor for interactive "choose your own path" stories. You add pages and choices in your browser, the editor checks that every page and ending can be reached, shows the story as a map, and exports each story as one small game file anyone can play online or offline. The whole editor is one HTML file that runs in your browser; the story stays in your browser storage as you type. You can also download `index.html` from this page and double-click it; nothing needs installing.
 
 ## Why it exists
 
-Writing a branching story is easy; knowing that it works is hard. A choice can lead nowhere, an ending can need a key nobody can pick up, a dice check can make a page impossible to reach, and a plain text file warns you about none of it. The Story Editor exists so that someone who does not program can write such a story, be told in plain words what is wrong with it, and hand the result to a reader as one small file with no server, account or install. How it differs from Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md). Its pieces are also cut out as small packages (next section) so people and AI helpers can read, check and play the same stories from code.
+Writing a branching story is easy; knowing it works is hard. A choice can lead nowhere, an ending can need a key nobody can pick up, and a plain text file warns you about none of it. The Story Editor lets someone who does not program write such a story, be told in plain words what is wrong, and hand over one file with no server, account or install. How it differs from Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md).
+
+## Highlights
+
+| Exact checker | Story map | One small game file | Stays on your device |
+|---|---|---|---|
+| Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story. | Export makes about 25 to 50 KB for a typical story. It opens in any modern browser. | Offline, nothing sent anywhere. Save writes a .story.json you can keep. |
 
 ## Code you can reuse
 
