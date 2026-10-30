@@ -20,9 +20,9 @@ Writing a branching story is easy; knowing it works is hard. A choice can lead n
 
 ## Highlights
 
-| Exact checker | Story map | One small game file | Stays on your device |
-|---|---|---|---|
-| Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story. | Export makes about 25 to 50 KB for a typical story. It opens in any modern browser. | Offline, nothing sent anywhere. Save writes a .story.json you can keep. |
+| Works with Twine and your devices | Exact checker | Story map | One small game file | Stays on your device |
+|---|---|---|---|---|
+| Imports Twine 2 HTML, Twee 3 and Twine 1 stories, turns SugarCube and Harlowe code into rules and reports what could not carry over. Runs in Firefox, Chrome, Edge and Safari on computers, Android and iPhone or iPad; exported games run in somewhat older browsers. | Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story. | Export makes about 25 to 50 KB for a typical story. It opens in any modern browser. | Offline, nothing sent anywhere. Save writes a .story.json you can keep. |
 
 ## By the numbers
 
@@ -36,7 +36,7 @@ Measured on 2026-10-29 in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4
 | Open the Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
 | Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
 
-The editor is one 297 KB file. A finished game is 42 KB for 34 pages and 43 KB for 316. Every build plays 400 random stories out move by move and requires the checker to agree. Firefox rounds its timers to whole milliseconds. More on the landing page: [about.html](https://lfcfoundry.github.io/story-editor/about.html).
+The editor is one 298 KB file. A finished game is 42 KB for 34 pages and 45 KB for 316. Every build plays 400 random stories out move by move and requires the checker to agree. Firefox rounds its timers to whole milliseconds. More on the landing page: [about.html](https://lfcfoundry.github.io/story-editor/about.html).
 
 ## Try an example story
 
