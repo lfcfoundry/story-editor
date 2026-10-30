@@ -1,4 +1,4 @@
-/* The massive example, "The Drowned Archive": 300 pages in twelve rooms, built in code when the writer asks for it (so it adds almost nothing
+/* The massive example, "The Massive Test Story" (a generated story, not one to read for its own sake): 300 pages in twelve rooms, built in code when the writer asks for it (so it adds almost nothing
    to the file). It shows what the checker and the Map do with a big story: keys, locked doors, rooms you can leave and return to, side pages,
    good and bad endings, a few paragraphs that depend on what you carry. Seeded, so it is the same story every time.
    Copyright (c) 2026 LFC Foundry. MIT License. */
@@ -101,7 +101,7 @@ function massiveExample() {
     format: 'story-editor',
     version: 1,
     id: 's_massive',
-    title: 'The Drowned Archive',
+    title: 'The Massive Test Story',
     author: '',
     start: 'p_start',
     items,

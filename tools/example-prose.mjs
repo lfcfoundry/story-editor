@@ -1,6 +1,6 @@
 /* The example stories read well: no sentence is said twice on one page, and no page shares a sentence with a page you can step to from it.
    (Repetition is allowed in stories people write; the examples are the ones we show off.) Checks The Keeper's Light (examples/ .story.json)
-   and the built-in Massive example (built by editor/massive.js).
+   The Drowned Archive (built by tools/archive-story.mjs) and the built-in Massive example (built by editor/massive.js).
    Usage: node tools/example-prose.mjs. Copyright (c) 2026 LFC Foundry. MIT License. */
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -10,7 +10,8 @@ const sandbox = {};
 vm.runInNewContext(readFileSync(root + 'editor/massive.js', 'utf8') + '\nthis.massiveExample = massiveExample;', sandbox);
 const stories = {
   'The Keeper’s Light': JSON.parse(readFileSync(root + 'examples/the-keepers-light.story.json', 'utf8')),
-  'The Drowned Archive': sandbox.massiveExample()
+  'The Drowned Archive': JSON.parse(readFileSync(root + 'examples/the-drowned-archive.story.json', 'utf8')),
+  'The Massive Test Story': sandbox.massiveExample()
 };
 
 /* a sentence with the block that says it; two blocks that can never show together (one needs what the other forbids, or one is the "otherwise" of the other) may repeat each other */

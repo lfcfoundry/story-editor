@@ -103,7 +103,7 @@ async function open(b, opts) {
   await pg.click('#menubtn'); await pg.click('#menupop >> text=Massive example'); await pg.waitForTimeout(300);
   await pg.click('dialog button:has-text("Load example")'); await pg.waitForTimeout(1500);
   const ms = await pg.evaluate(() => ({ pages: window.__editor.project.passages.length, title: window.__editor.project.title, items: window.__editor.project.items.length }));
-  ok(ms.pages >= 300 && ms.title === 'The Drowned Archive', 'the massive example loads over 300 pages: ' + JSON.stringify(ms));
+  ok(ms.pages >= 300 && ms.title === 'The Massive Test Story', 'the massive example loads over 300 pages: ' + JSON.stringify(ms));
   await pg.click('#tabs button:has-text("Check")');
   let ct = '';
   for (let i = 0; i < 30 && !/No problems found/.test(ct); i++) { await pg.waitForTimeout(250); ct = await pg.evaluate(() => document.getElementById('main').innerText); }
