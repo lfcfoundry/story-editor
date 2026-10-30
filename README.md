@@ -36,6 +36,10 @@ Measured on 2026-10-29 in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4
 | Open the Story Page Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
 | Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
 
+### Why it is this fast
+
+These numbers are no accident. A significant effort went into making the story engine fast, so that it keeps up as stories grow. As games become far more massive, their mechanics more sophisticated, their visuals richer, and their playthroughs wildly different, logical and fun paths, the engine is built to scale with that complexity instead of slowing under it.
+
 The editor is one 298 KB file. A finished game is 42 KB for 34 pages and 45 KB for a generated 316-page story. Every build plays 400 random stories out move by move and requires the checker to agree. Firefox rounds its timers to whole milliseconds. More on the landing page: [about.html](https://lfcfoundry.github.io/story-editor/about.html).
 
 ## Try an example story
