@@ -40,11 +40,6 @@ Measured on 2026-10-29 in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4
 
 These numbers are no accident. A significant effort went into making the story engine fast, so that it keeps up as stories grow. As games become far more massive, their mechanics more sophisticated, their visuals richer, and their playthroughs wildly different, logical and fun paths, the engine is built to scale with that complexity instead of slowing under it.
 
-- The checker's hot loops run in WebAssembly, 4.7 to 6.6 times faster than the JavaScript fallback in all three browsers, with identical answers.
-- The Story Page Map is laid out ahead of time in a background worker after each check, so it opens quickly even on a large story.
-- The checker drops numbers that can no longer change the outcome and stops at a fixed limit, so a huge story finishes instead of hanging, and it says so plainly if it could not finish.
-- Every build plays 400 random stories out move by move and requires the checker to agree, so speed never comes at the cost of the answer.
-
 The editor is one 298 KB file. A finished game is 42 KB for 34 pages and 45 KB for a generated 316-page story. Every build plays 400 random stories out move by move and requires the checker to agree. Firefox rounds its timers to whole milliseconds. More on the landing page: [about.html](https://lfcfoundry.github.io/story-editor/about.html).
 
 ## Try an example story
