@@ -19,7 +19,7 @@ A single-file, offline editor for interactive (choose-your-own-adventure) storie
 | Exported game, "Standard 25-page" | about 48,700 | Embedded typeface is a large share (about 17 KB, or about 12.9 KB for plain-English stories). |
 | Same, Place code on | about 51,900 | |
 
-Source of truth (never edit the built files): `editor/core.js` (model, game rules, checker, export, no DOM), `editor/player.js` (the game), `editor/maplayout.js` (map layout and simulated players, no DOM), `editor/ui1-state.js` through `ui5-app.js` (editor screens), `editor/ui.css` and `game.css`, `editor/build.py` (joins everything and enforces budgets). `packages/*` are generated from those sources.
+Source of truth (never edit the built files): `editor/core.js` (model, game rules, checker, export, no DOM), `editor/player.js` (the game), `editor/maplayout.js` (Story Page Story Page Map layout and simulated players, no DOM), `editor/ui1-state.js` through `ui5-app.js` (editor screens), `editor/ui.css` and `game.css`, `editor/build.py` (joins everything and enforces budgets). `packages/*` are generated from those sources.
 
 Related repositories: `JS-modules` (now at https://github.com/lfcfoundry/JS-modules; small reusable browser modules and tools, with a task board), `fancy-banana`, `apple-press`, `pineapple-defense` (games, under JNFoo). Local clones in the working container: `/home/claude/story-editor`, `/home/claude/js-modules`, `/home/claude/fancy-banana`; the earlier working folder `/home/claude/twine` holds the pre-GitHub history, the starter guide and loose exports.
 
@@ -58,7 +58,7 @@ Honest comparison against `JS-modules` and the games, as of 2026-10-13. "Reuse" 
 | **Plain-words edit labels** ("Add page “The Cellar”") | `changes.js`; package `story-diff` (2026-10-17) | New. |
 | **Twine importer** (links plus SugarCube/Harlowe code turned into rules, with a plain-words report) | `twine.js`; package `twine-import` (split out of story-format 2026-10-17) | New. |
 | **Lite export** (core player plus feature modules, `@part` styles, only the chosen palette and font) | `player.js` `klFeat…`, `game.css`, `build-game.mjs`, `klFeatures()` | New. |
-| **Map layout engine** (layered, crossing reduction with stable seeding, exact least-squares placement, choke points, arc/matrix/shape/river views, simulated players, layout metrics) | `maplayout.js`; package `story-map` | New. |
+| **Story Page Map layout engine** (layered, crossing reduction with stable seeding, exact least-squares placement, choke points, arc/matrix/shape/river views, simulated players, layout metrics) | `maplayout.js`; package `story-map` | New. |
 | **Self-unzipping page with a pure-JS inflate fallback**, zipped in the browser with `CompressionStream` | `core.js` `zipPage`/`zipInflate`; package `zip-page` | Partly overlaps `JS-modules/tools/single-file-tools` (a Zopfli packer run at build time) and `lzma-pack`/`lzma-decode`. Difference: this one compresses **in the browser at export time**, which neither build-time tool can do. |
 | **LZMA-packed editor** | `editor/lzma/`, `build.py` | Reuse: packer and decoder copied from JS-modules (commit d750784). Only changes: the decoder path and `tune` may be a list of `(lc, lp, pb)` tries. Added here: base64-only (see 4.9), esbuild-minified loader, hash check. |
 | **Stock-Firefox test driver with Playwright-style calls** (over Puppeteer + WebDriver BiDi) | `packages/qa-kit/src/bidi.js` | Overlaps `marionette-lite` (Python, standard library only, drives Firefox) in goal. Difference: Node, and it speaks Playwright's call and selector surface so existing Playwright suites run unchanged on stock Firefox. |
@@ -95,7 +95,7 @@ Things that exist in the other repos and were **not** used here (so a new contex
 - Numbers are grouped by how finely the story can tell values apart (`klGroupValues`: a number tested only against 6 costs 7 situations, not 11). Dead numbers (nothing ahead can read them) are reset so equal situations merge; applied only when an unpruned run would pass 20,000 situations; proven identical on 1,500 random stories.
 - Still expensive: several wide numbers across many pages can reach the limit. Documented as an open issue.
 
-### 4.3 Making the Map fast without changing its pictures
+### 4.3 Making the Story Page Map fast without changing its pictures
 
 Test: a 300-page story, script time, median of 3 fresh loads. First visit went from 511 ms to about 245 ms in Chromium and from 797 ms to about 253 ms in Firefox; later visits 165 ms to about 70 ms (Chromium) and 280 ms to about 70-100 ms (Firefox). A dense story (300 pages, 6 to 8 choices each) went from 26-56 s to 0.4 s with identical drawings (198 layouts compared).
 
@@ -131,7 +131,7 @@ A new optional game feature is `klFeat<Name>(P)` in `player.js` (adds itself thr
 
 - One ARIA combobox page picker (`pagePicker`) used everywhere a page is chosen; drag grips as the only reorder control (pointer events, auto-scroll at the edge, Alt+Arrow keyboard fallback); split page and paste a scene as single undo steps; first-time tour built from a box-shadow hole around one area; the Map toolbar as icon toggle buttons with names and tooltips.
 - Typing stays cheap: autosave 300 ms after the last edit, top bar redrawn once per frame, undo steps merged inside 1.2 s, undo memory capped (150 steps / 24 million characters), checker runs 500 ms after typing stops and is reused until the text changes.
-- Map zoom by CSS transform while changing; panning is the browser's own scrolling.
+- Story Page Map zoom by CSS transform while changing; panning is the browser's own scrolling.
 - Calculate instead of asking the browser to measure: the opening brush stroke asked the browser for its path length (about 150 ms); it is now computed from the numbers that draw it (within 0.3 px).
 - Autosize all text boxes with one layout instead of one each (read, then write, never interleaved).
 - Animations: transform and opacity only, every one under `prefers-reduced-motion`, never more than three flashes a second over a large area.
@@ -295,7 +295,7 @@ One file and no network; edit parts, build the whole; write rules once and copy 
 | `docs/CHANGELOG.md` | Every change, newest first, with how it was tested |
 | `docs/OPTIMIZATION-CHART.md` | Every size and speed change with measurements; the older "Instructions for an AI assistant" section (some paths in it point to the old working folder) |
 | `docs/BUG-REVIEW-2026.10.12.md` | The 23 fixes, the reported-not-changed list, what was found clean |
-| `editor/README.md` | Parts, build, design notes (including the Map and Write-tab details) |
+| `editor/README.md` | Parts, build, design notes (including the Story Page Map and Write-tab details) |
 | `editor/qa/README.md` | The suites, runner rules, speed audit |
 | `packages/*/README.md` | Each package's use and limits |
 | `packages/ai-collab-kit/GUIDE.md` | Ten habits, speed recipes, pitfalls, new-project checklist |

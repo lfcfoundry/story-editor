@@ -89,7 +89,7 @@ The editor exposes `window.__editor.touch(true | false | null)` and `__editor.ty
 | **Middle area at least 1100 px** (typically a window of about 1600 or more) | The Write screen sets the text and the choices side by side in two columns (`#main.wide`). Measured on the middle area with a `ResizeObserver`, because the side lists change how much room there really is. |
 | **821 and wider** | The two side lists can be hidden with a small toggle in each list's header (`sidetog`). Below 821 the toggles do not exist because the lists are drawers. |
 | **820 and under (phone layout)** | The big change; section 4. |
-| **700 and under** | Button text labels (Save, Options, Undo, Redo, "game" after Export) and the two-line app name are hidden everywhere; title base shrinks to 80 px. The map's toolbar wraps into rows (section 5.6). The map key starts closed (it starts open above 700). The map's "key beside the start page" placement is skipped. The report panel docks to the bottom. |
+| **700 and under** | Button text labels (Save, Options, Undo, Redo, "game" after Export) and the two-line app name are hidden everywhere; title base shrinks to 80 px. The Story Page Story Page Map's toolbar wraps into rows (section 5.6). The Story Page Map key starts closed (it starts open above 700). The Story Page Story Page Map's "key beside the start page" placement is skipped. The report panel docks to the bottom. |
 | **640 and under** | Check-tab condition lines let their dropdowns use the full width; the strips get 44 px tall. |
 | **600 and under** | Page picker becomes a nearly full-width panel at the top; the page heading box gets a 120 px base; the word count line is dropped; and (on touch phones) the counters are not on screen at all. The dropdown-anchored pickers only anchor to their button above 600. |
 | **560 and under** | Items-tab lines wrap; the "uses" count is dropped. |
@@ -116,10 +116,10 @@ Everything in this list was chosen with the owner as "make the phone UI more use
 - **Side lists are drawers**: the Pages list slides in from the left (86% of the width, at most 320 px), the Items list from the right; a dimming scrim sits behind; tapping outside closes. Choosing a page closes the drawer.
 - **Typing mode** (4.3).
 - **The pinned "+ Choice / Play" bar** sits above the tab bar when not typing.
-- **Bigger targets**: icon buttons 40 px; small buttons about 34 px tall; map icons 38×36 px; checkboxes and radios 20 px; segmented switch buttons at least 36 px; grips (the ⋮⋮ drag handle) padded to a finger. Menus' items 12 px padding.
+- **Bigger targets**: icon buttons 40 px; small buttons about 34 px tall; Story Page Map icons 38×36 px; checkboxes and radios 20 px; segmented switch buttons at least 36 px; grips (the ⋮⋮ drag handle) padded to a finger. Menus' items 12 px padding.
 - **The small grey hint lines that explain mouse actions** (`.hint.tip`) are hidden; the Items list's own hint says "tap = Gets · press and hold = more" instead.
 - **Wording**: the first-time tour, the Quick guide and menus say "tap" and "press and hold", never "click", "Ctrl", "Shift+click", "right-click" or "hover". The guide gains a "Using a phone or tablet" section at the top. Sentences with shortcuts exist in two versions, chosen by `touchOnly()` (the guide's `line()` takes either a string or `[computerText, touchText]`).
-- **Press and hold replaces right-click** everywhere a right-click menu exists (pages in the list and on the map, items, choices, the map background). An item's menu has Gets and Loses (or "Add a change" for a number) because Shift+click does not exist.
+- **Press and hold replaces right-click** everywhere a right-click menu exists (pages in the list and on the Story Page Map, items, choices, the Story Page Map background). An item's menu has Gets and Loses (or "Add a change" for a number) because Shift+click does not exist.
 - **Drag has a menu equivalent** everywhere.
 
 ### 4.2 Narrow window on a computer (no touch) — the `brandlow` case
@@ -187,11 +187,11 @@ Items: one compact line per item; below 560 px lines wrap. Check: lists wrap; co
 
 Two columns (options, live preview) on wide screens. At 820 and under it becomes one column with the live preview **first and sticky** at the top (at most 34% of the screen height, scrolling inside) so a change can be seen while scrolling the options.
 
-### 5.6 Map
+### 5.6 Story Page Map (the Map tab)
 
 - The toolbar holds icon buttons (views, colors, merge, size) with names given by tooltip. Wide: one row.
 - 700 and under: **wraps into rows** instead of scrolling sideways (a scrolling toolbar hides tools): view icons first, zoom at the right, then color icons, then the search box full width. On touch the icons are 38×36 px, on a computer 31×30 px. Chip labels shorten ("6 crossings" etc.).
-- The map key starts open only above 700 px.
+- The Story Page Map key starts open only above 700 px.
 - Tapping a page once lights up its neighbors; tapping again edits it (computer: hover lights, click edits).
 
 ### 5.7 Dialogs, menus, pickers, tooltips, toasts
@@ -304,7 +304,7 @@ Reasoning: on a phone every pixel of height counts (each 20 px line is about 2.4
 - **A toast covered the bottom tab bar** and swallowed a tab tap. Raise it above the bar.
 - **A badge on a tab icon overlapped the label** when the tab had no icon; give every tab an icon and place the badge on the icon.
 - **A tab bar that scrolls sideways hides tabs.** Six equal columns with a tiny label always fit; icon plus label at 0.68 rem is enough.
-- **A map toolbar that scrolled sideways hid tools.** Wrapping into rows (two or three on a phone) shows everything.
+- **A Story Page Map toolbar that scrolled sideways hid tools.** Wrapping into rows (two or three on a phone) shows everything.
 - **iOS zooms into any field under 16 px.** All fields are 16 px on touch.
 - **The keyboard changes the page's height, not its width.** Any "close on resize" logic must compare widths only, or a menu closes the moment the keyboard opens.
 - **`interactive-widget=resizes-content`** in the viewport meta makes Chrome on Android shrink the page for the keyboard; iOS Safari ignores it and covers the page, so the key row is also lifted by `--kb` from `visualViewport`.
