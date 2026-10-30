@@ -4,7 +4,7 @@
 
 **Write a branching story, find out it really works, and share it as one small game file.**
 
-[**Open the editor**](https://lfcfoundry.github.io/story-editor/) · [**Landing page**](https://lfcfoundry.github.io/story-editor/about.html) · [**Reusable packages**](#code-you-can-reuse)
+[**Open the editor**](https://lfcfoundry.github.io/story-editor/play/) · [**Landing page**](https://lfcfoundry.github.io/story-editor/) · [**Reusable packages**](#code-you-can-reuse)
 
 ![beta](https://img.shields.io/badge/beta-informational) ![MIT](https://img.shields.io/badge/MIT-informational) ![works offline](https://img.shields.io/badge/works%20offline-informational) ![nothing uploaded](https://img.shields.io/badge/nothing%20uploaded-informational)
 

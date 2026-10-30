@@ -1,10 +1,10 @@
-/* The landing page (about.html): no errors, nothing fetched, fits phone and laptop in light and dark, links are well formed and the package pages it names exist.
+/* The landing page (index.html): no errors, nothing fetched, fits phone and laptop in light and dark, links are well formed and the package pages it names exist.
    Usage: node landing.js [firefox|chromium|webkit]   SHOTS=1 keeps pictures in work/shots. Copyright (c) 2026 LFC Foundry. MIT License. */
 const which = process.argv[2] || 'firefox';
 const B = require('./engine').pick(which);
 const fs = require('fs');
 const path = require('path');
-const FILE = require('url').pathToFileURL(process.env.QA_LANDING || path.join(__dirname, '..', '..', 'about.html')).href;
+const FILE = require('url').pathToFileURL(process.env.QA_LANDING || path.join(__dirname, '..', '..', 'index.html')).href;
 let fails = 0;
 const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {
@@ -39,7 +39,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
       ok(m.cut === 0, `${tag}: no tile, link or button is cut off (${m.cut})`);
       if (name === 'laptop' && theme === 'light') {
         ok(m.lang === 'en' && m.title === 'Story Editor', 'page language and title are set');
-        ok(m.btns.length === 3 && m.btns.every(x => x[2]) && m.btns[0][1] === 'https://lfcfoundry.github.io/story-editor/' && m.btns[1][1] === 'examples/the-keepers-light.html', 'the three hero buttons show, the first opens the editor and the second plays the example: ' + JSON.stringify(m.btns));
+        ok(m.btns.length === 3 && m.btns.every(x => x[2]) && m.btns[0][1] === 'https://lfcfoundry.github.io/story-editor/play/' && m.btns[1][1] === 'examples/the-keepers-light.html', 'the three hero buttons show, the first opens the editor and the second plays the example: ' + JSON.stringify(m.btns));
         const root0 = path.join(__dirname, '..', '..');
         const rel = m.links.filter(h => !/^https:/.test(h));
         ok(m.links.filter(h => /^https:/.test(h)).every(h => /^https:\/\/(lfcfoundry\.github\.io\/|github\.com\/lfcfoundry(\/|$))/.test(h)), 'every web link goes to the project or its pages');
