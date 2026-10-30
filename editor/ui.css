@@ -620,7 +620,13 @@ table.scores .task{background:var(--panel)}
 table.scores td.best{font-weight:800;color:var(--ok)}
 table.scores tr.cur td:first-child{font-weight:700;color:var(--lamp)}
 
-.scorechip .short{display:none}
+.scorechip .short,.critpills .short,.playpill .short{display:none}
+/* medium windows: the toolbar keeps one row by using the short labels (names stay in the tooltips) */
+@media (min-width:701px) and (max-width:1279px){
+  .maptools .full{display:none}.maptools .short{display:inline}
+  .maptools .searchwrap{min-width:3.5rem;flex:1 1 3.5rem}.maptools .mapsearch{min-width:3.5rem}
+  .maptools .zlabel{min-width:2.4em}
+}
 @media (max-width:700px){
   .mapwrapall{padding:6px 8px 0}
   /* phones: one row of tools that scrolls sideways, so the map keeps the screen */

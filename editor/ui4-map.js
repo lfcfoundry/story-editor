@@ -844,6 +844,7 @@ function renderMap(main) {
         type: 'button',
         class: cls + (get() ? ' on' : ''),
         'aria-pressed': String(get()),
+        'aria-label': text,
         disabled: nodeView && reachableKinds[cls] ? null : true,
         title: !nodeView
           ? 'Crit paths show in Flow, Top-down, Spine, Given lanes and Arc views.'
@@ -858,7 +859,7 @@ function renderMap(main) {
           applyPaths();
         }
       },
-      [h('i', { 'aria-hidden': 'true' }), text]
+      [h('i', { 'aria-hidden': 'true' }), h('span', { class: 'full', text }), h('span', { class: 'short', text: text.replace(' path', '') })]
     );
     b._get = get;
     return b;
@@ -938,10 +939,10 @@ function renderMap(main) {
       ? h('button', {
           type: 'button',
           class: 'scorechip playpill',
-          text: 'Playtest results',
+          'aria-label': 'Playtest results',
           title: 'What simulated players do in your story: how runs end, the most- and least-seen pages, and where players get stuck.',
           onclick: () => playReport()
-        })
+        }, [h('span', { class: 'full', text: 'Playtest results' }), h('span', { class: 'short', text: 'Playtest' })])
       : null,
     chip,
     h('span', { class: 'row tight' }, [
