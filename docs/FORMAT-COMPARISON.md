@@ -19,7 +19,7 @@ The comparison covers five formats, each with the editor people most often write
 | Runs on | Any modern browser, online or offline (one file); phones too | Desktop app and browser | Mac, Windows, Linux | Windows, macOS, Linux (inside VS Code) | CSIDE: desktop app and a web version that needs a Dropbox account |
 | Main way of writing | A form per page: text, then choices pointing at other pages | Passage cards on a map; type in a dialog | Type the script; the story plays beside it | Type the script (VS Code) | Type the script |
 | Live preview | Play tab; "Test from here" starts at any page | Play and Test from here | Replays as you type and returns to your last spot | Preview with the real Yarn Spinner runtime; choose options | CSIDE runs the game in the app (changes need a re-run); the extension runs it in the browser |
-| Map or graph | Several views, from a flow to a "story shape"; click a page to open it | Cards with arrows; broken links in red; empty pages dotted; start page marked | — | Graph of nodes, drag and auto-layout, colors, clusters, sticky notes | The extension has a scene outline |
+| Map or graph | The Story Page Map: several views, from a flow to a "story shape"; click a page to open it | Cards with arrows; broken links in red; empty pages dotted; start page marked | — | Graph of nodes, drag and auto-layout, colors, clusters, sticky notes | The extension has a scene outline |
 | Finds problems | Check tab: unreachable pages, dead ends, unreachable endings, traps, many writing slips; explains why | Story Details counts passages, links and broken links | Issues list of errors, warnings and TODOs that jumps to the line | Error checking with quick fixes | Error highlighting; CSIDE has Autotest and Randomtest built in, the extension runs Randomtest and Quicktest |
 | Finding things | Ctrl+K type-to-find, Find and replace | Go To with fuzzy match, Find and replace | (text search) | Go to definition, references, spell checking | Go to definition, highlight usage, project-wide variable rename |
 | Helps while typing | Plain boxes; no code to complete | — | — | Autocomplete, hover help | Autocomplete, snippets in Choice of Games style |
@@ -52,7 +52,7 @@ The comparison covers five formats, each with the editor people most often write
 - One offline file for the editor and one small file per finished game.
 - It can read Twine stories and convert their code to rules where the rules can say it.
 - Pinned routes: keep a route you played, replay it after edits, and the first step that no longer works is named in a plain sentence; the Check tab counts how many pinned routes still work.
-- Page colors and private notes show on the map (a stripe and a note icon), as Twine's tags and sticky notes do, and never reach the exported game.
+- Page colors and private notes show on the Story Page Map (a stripe and a note icon), as Twine's tags and sticky notes do, and never reach the exported game.
 - Translations: the story's words go out as a CSV sheet and come back filled; the finished game then offers a language menu (the reader's choice is remembered), including the game's own button words.
 
 ## Sources (read 2026-10-14)

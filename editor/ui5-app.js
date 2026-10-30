@@ -624,7 +624,7 @@ function freshMassive() {
   return p;
 }
 function loadExample(massive) {
-  const name = massive ? 'The Drowned Archive' : 'The Keeper’s Light';
+  const name = massive ? 'The Massive Test Story' : 'The Keeper’s Light';
   ask('Load the example story?', `This replaces your current story with “${name}”${massive ? ' (over 300 pages, to see the checker and the Map at work on a big story)' : ''}. You can undo this.`, 'Load example').then(ok => {
     if (ok) {
       replaceProject(massive ? freshMassive() : freshExample(), 'Example loaded.');
@@ -1823,7 +1823,7 @@ function init() {
     null,
     ['New story', newStory, 'Start an empty story.'],
     ['Example story: The Keeper’s Light', () => loadExample(false), 'Load the small example story (34 pages) to look around.'],
-    ['Massive example: The Drowned Archive', () => loadExample(true), 'Load a big example story (over 300 pages) to see how the checker and the Map handle a story this size.'],
+    ['Massive example: a generated test story', () => loadExample(true), 'Load a big example story (over 300 pages) to see how the checker and the Map handle a story this size.'],
     null,
     ['Save manuscript (.md)…', exportManuscript, 'Save all the words of the story as one Markdown text file: every page with its choices and where they lead. For proofreading; it has no rules in it.'],
     ['Save test script (.md)…', exportTestScript, 'Save a checklist of routes through the story that together take every choice at least once, with a box to tick for each step. For testers and proofreaders.'],

@@ -24,10 +24,10 @@ Already in the program before this list (no work needed): locked choices with a 
 - X129 Nothing moves under the pointer while editing (counts, chips and menus update in place).
 - X10 Danger zone: Delete story and Replace-from-file keep distance from everyday buttons, with the undo window already built.
 
-## Phase 2: Map and Check area
+## Phase 2: Story Page Map and Check area
 
-- X107 Map marks: a stop symbol on a choice that leads nowhere, a dotted outline on an empty page, a start marker, selection linked between list, map and editor.
-- X105 Story soak test: N seeded random playthroughs with hit counts per page shown on the Map and a replay log (finds pages nobody ever reaches in practice, and dead stretches).
+- X107 Story Page Map marks: a stop symbol on a choice that leads nowhere, a dotted outline on an empty page, a start marker, selection linked between list, map and editor.
+- X105 Story soak test: N seeded random playthroughs with hit counts per page shown on the Story Page Map and a replay log (finds pages nobody ever reaches in practice, and dead stretches).
 - X112, X113 Check as one button with a fixed layout and plain verdict words (Great, Good, Needs attention, Problem, Could not check); the exact wording of "not fully checked" stays.
 - X120 (rest) Find in story from the status line.
 

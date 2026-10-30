@@ -1,15 +1,58 @@
+<div align="center">
+
 # Story Editor
 
-A single-file, offline editor for interactive "choose your own path" stories. You add pages and choices in your browser, the editor checks that every page and ending can really be reached, shows your story as a map, and turns each story into one small game file that anyone can play in a browser, online or offline. This is a beta.
+**Write a branching story, find out it really works, and share it as one small game file.**
 
-**How it does it:** the whole editor is one HTML file (stored compressed inside a tiny page that unpacks itself) that runs entirely in your browser. Your story is kept in your browser's own storage as you type and nothing is sent anywhere. The checker is plain JavaScript that tries every combination of items, numbers and dice a player could be in, and **Export** builds the game page from your story and zips it.
+[**Open the editor**](https://lfcfoundry.github.io/story-editor/) · [**Landing page**](https://lfcfoundry.github.io/story-editor/about.html) · [**Reusable packages**](#code-you-can-reuse)
 
-**Open the editor:** https://lfcfoundry.github.io/story-editor/
-(or download `index.html` from this page and double-click it; nothing needs installing).
+![beta](https://img.shields.io/badge/beta-informational) ![MIT](https://img.shields.io/badge/MIT-informational) ![works offline](https://img.shields.io/badge/works%20offline-informational) ![nothing uploaded](https://img.shields.io/badge/nothing%20uploaded-informational)
+
+</div>
+
+## What it is and how it works
+
+A single-file, offline editor for interactive "choose your own path" stories. You add pages and choices in your browser, the editor checks that every page and ending can be reached, shows the story as a map, and exports each story as one small game file anyone can play online or offline. The whole editor is one HTML file that runs in your browser; the story stays in your browser storage as you type. You can also download `index.html` from this page and double-click it; nothing needs installing.
 
 ## Why it exists
 
-Writing a branching story is easy; knowing that it works is hard. A choice can lead nowhere, an ending can need a key nobody can pick up, a dice check can make a page impossible to reach, and a plain text file warns you about none of it. The Story Editor exists so that someone who does not program can write such a story, be told in plain words what is wrong with it, and hand the result to a reader as one small file with no server, account or install. How it differs from Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md). Its pieces are also cut out as small packages (next section) so people and AI helpers can read, check and play the same stories from code.
+Writing a branching story is easy; knowing it works is hard. A choice can lead nowhere, an ending can need a key nobody can pick up, and a plain text file warns you about none of it. The Story Editor lets someone who does not program write such a story, be told in plain words what is wrong, and hand over one file with no server, account or install. How it differs from Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md).
+
+## Highlights
+
+| Works with Twine and your devices | No ads, no accounts, no network | One file that runs almost anywhere | Open source, with a quick tour | Exact checker | Story Page Map |
+|---|---|---|---|---|---|
+| Imports Twine 2 HTML, Twee 3 and Twine 1 stories, turns SugarCube and Harlowe code into rules and tells you in plain words what could not carry over. Runs in Firefox, Chrome, Edge and Safari on computers, Android and iPhone or iPad. Exported games run in somewhat older browsers still. | No ads, no sign-in, no tracking and no data sent anywhere. The editor is not allowed to make a network connection at all, so your story never leaves your device, and everything works offline. | The whole editor is one 298 KB HTML file. Nothing to install, no administrator rights and no special computing knowledge: open it in your browser. It fits phones, tablets and computers at almost any screen size, and a finished game is one small file too, about 25 to 50 KB. | MIT licensed and free to use, change and share. The first time you open the editor a short spotlight tour shows the main areas; replay it from Options, Take the tour, or read the Quick guide inside the editor. | Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story, with your pages, choices and routes drawn as a picture you can search and click. |
+
+## By the numbers
+
+Measured on 2026-10-29 in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine, from the single file the editor ships as (median of repeated runs; lower is better).
+
+| Measure (lower is better) | Chromium | Firefox | WebKitGTK |
+|---|---:|---:|---:|
+| Check after an edit, The Keeper's Light (34 pages, 649 situations) | 2 ms | 3 ms | 4 ms |
+| Check after an edit, a generated test story (316 pages, 24,313 situations) | 13 ms | 14 ms | 14 ms |
+| Same check, JavaScript only (no WebAssembly) | 88 ms | 66 ms | 87 ms |
+| Open the Story Page Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
+| Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
+
+The editor is one 298 KB file. A finished game is 42 KB for 34 pages and 45 KB for a generated 316-page story. Every build plays 400 random stories out move by move and requires the checker to agree. Firefox rounds its timers to whole milliseconds. More on the landing page: [about.html](https://lfcfoundry.github.io/story-editor/about.html).
+
+## Try an example story
+
+- [Play The Keeper's Light](https://lfcfoundry.github.io/story-editor/examples/the-keepers-light.html): you step off the supply boat onto Gull Rock to relieve the keeper for the winter, and the great lamp is dark. 34 pages, 8 endings, four objects, three states, a game file of 42 KB that works offline. A typical playthrough is 10 to 14 choices, about 7 minutes (shortest 3 choices, longest 22).
+- [Play The Drowned Archive](https://lfcfoundry.github.io/story-editor/examples/the-drowned-archive.html): you cross a tidal causeway to the Meridian Archive, a building that floods twice a day, whose keeper has stopped answering letters and whose clock has stopped at ten past three. 51 pages, 8 endings, two numbers (Tide and Nerve), a dice check, locked choices, and a question before page one (an heir, an inspector or a thief) that changes the story. The quick endings take 1 to 6 choices; the two good endings take 21 to 25 choices even by the shortest route, about 9 to 11 minutes.
+- Playthrough times are estimates from the checker's shortest routes at about 200 words a minute plus a few seconds per choice, not timings of real readers.
+
+![The Keeper's Light on a desktop screen](examples/img/the-keepers-light-desktop.png) ![The Keeper's Light on a phone](examples/img/the-keepers-light-phone.png)
+
+![The Drowned Archive on a desktop screen](examples/img/the-drowned-archive-desktop.png) ![The Drowned Archive on a phone](examples/img/the-drowned-archive-phone.png)
+
+The Story Page Map of The Keeper's Light with the good paths lit in green:
+
+![The Story Page Map of The Keeper's Light with the good paths lit](examples/img/story-page-map.png)
+
+- To open one in the editor: [download The Drowned Archive as a .story.json](examples/the-drowned-archive.story.json), or [download The Keeper's Light as a .story.json](examples/the-keepers-light.story.json) and use Open, or choose File, then Example story or Massive example.
 
 ## Code you can reuse
 
@@ -58,7 +101,7 @@ The first time you open the editor it offers a short spotlight tour of the main 
    Press **Ctrl+K** to jump to any page by typing part of its name; the same type-to-find box picks where a choice leads. ‹ › step back and forward,
    the panel buttons hide the side lists, click an item to give it, paste a scene with `-` lines as choices, and Ctrl+Shift+Enter splits a page at the cursor. Drag the ⋮⋮ grip to reorder choices and paragraphs. The first page can never be an ending.
 2. **Check:** the Check tab tells you about pages nobody can reach, choices that lead nowhere, endings players can't get to, and traps.
-3. **Map:** see the whole story as a picture. Several views, from a plain flow to a bird's-eye "story shape". Click a page to open it.
+3. **Map** (the Story Page Map): see the whole story as a picture. Several views, from a plain flow to a bird's-eye "story shape". Click a page to open it.
 4. **Items:** objects and states players can get or lose, numbers (with bars), dice skill checks, and locked choices. Turn on
    **Options → Advanced** to show more tools.
 5. **Play:** try the story right inside the editor, or start from any page with "Test from here".
@@ -68,7 +111,7 @@ The first time you open the editor it offers a short spotlight tour of the main 
 ## Handy while writing
 
 - **Actions from the keyboard:** in the Ctrl+K box, type `>` to list actions (go to a tab, play, new page, export, undo, show or hide the lists) and press Enter to run one.
-- **On a phone,** the page type and effects open as a sheet that slides up from the bottom, the Map's toolbar folds its less-used tools behind "More", and the Map remembers whether you left its key shown or hidden.
+- **On a phone,** the page type and effects open as a sheet that slides up from the bottom, the Story Page Map's toolbar folds its less-used tools behind "More", and the Story Page Map remembers whether you left its key shown or hidden.
 - **Find and replace** (Ctrl+Shift+F, or **Find...** above the page list) searches every page name, heading, paragraph and choice.
 - **Unfinished flag:** the bookmark button on a page marks it as unfinished; the Check tab lists them.
 - **Why can't players reach this page?** is in a page's ... menu, and the Check tab lists pages no simulated player reached.

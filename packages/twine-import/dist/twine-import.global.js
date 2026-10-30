@@ -928,9 +928,15 @@ var TwineImport = (() => {
     }
     return -1;
   }
+  var TWINE_MAX_NEST = 300;
+  var twineNest = 0;
+  function twineNestIn() {
+    if (++twineNest > TWINE_MAX_NEST) throw new RangeError("Twine code nested too deeply");
+  }
   function twineScParse(s) {
     const toks = twineScTokens(s);
     const build = (from, to) => {
+      twineNestIn();
       const nodes = [];
       for (let i = from; i < to; i++) {
         const t = toks[i];
@@ -945,6 +951,7 @@ var TwineImport = (() => {
           i = end;
         }
       }
+      twineNest--;
       return nodes;
     };
     return build(0, toks.length);
@@ -1062,6 +1069,14 @@ var TwineImport = (() => {
     "transitiondelay"
   ]);
   function twineHlParse(s) {
+    twineNestIn();
+    try {
+      return twineHlParseText(s);
+    } finally {
+      twineNest--;
+    }
+  }
+  function twineHlParseText(s) {
     let noClose = false;
     const nodes = [];
     let buf = "";
@@ -2493,6 +2508,7 @@ var TwineImport = (() => {
   }
   function importTwine(text, opts) {
     opts = opts || {};
+    twineNest = 0;
     const r = twineRead(text);
     const i = Math.max(0, Math.min(r.stories.length - 1, Math.floor(Number(opts.story)) || 0));
     let out;
