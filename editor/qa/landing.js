@@ -34,7 +34,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
       ok(reqs.length === 0, `${tag}: nothing is fetched from the network${reqs.length ? ': ' + reqs.join(' ') : ''}`);
       ok(m.h1 === 'Story Editor' && m.h1vis, `${tag}: the heading shows`);
       ok(m.logo && m.logo.icons === 4 && m.logo.h >= 80 && m.logo.w > 80 && m.logo.above && m.logo.band && /logo/.test(m.logo.label), `${tag}: the logo (heart with flag, two faces and a gift) shows in its own band right above the first section (not in the hero, which keeps the text title): ${JSON.stringify(m.logo)}`);
-      ok(m.arts === 2 && m.imgs.length === 5 && m.imgs.every(i => i.ok && i.alt), `${tag}: both examples have an illustration, and the 5 pictures (desktop and phone for each, the Story Page Map) load and have alt text`);
+      ok(m.arts === 1 && m.imgs.length === 3 && m.imgs.every(i => i.ok && i.alt), `${tag}: the example has an illustration, and its 3 pictures (desktop, phone, the Story Page Map) load and have alt text`);
       ok(m.sw <= m.iw, `${tag}: no sideways scroll (${m.sw} in ${m.iw})`);
       ok(m.cut === 0, `${tag}: no tile, link or button is cut off (${m.cut})`);
       if (name === 'laptop' && theme === 'light') {
@@ -58,7 +58,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     }
   }
   /* the example games open and play: one choice taken, nothing fetched, no errors */
-  for (const f of ['the-keepers-light', 'the-drowned-archive']) {
+  for (const f of ['the-keepers-light']) {
     const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
     const pg = await ctx.newPage();
     const errs = [], reqs = [];

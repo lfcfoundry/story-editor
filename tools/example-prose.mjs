@@ -1,8 +1,8 @@
 /* The example stories read well: no sentence is said twice on one page, and no page shares a sentence with a page you can step to from it.
    (Repetition is allowed in stories people write; the examples are the ones we show off.) Checks The Keeper's Light (examples/ .story.json)
-   and The Drowned Archive (built by editor/massive.js). `--write` also refreshes examples/the-drowned-archive.story.json from massive.js.
-   Usage: node tools/example-prose.mjs [--write]. Copyright (c) 2026 LFC Foundry. MIT License. */
-import { readFileSync, writeFileSync } from 'node:fs';
+   and the built-in Massive example (built by editor/massive.js).
+   Usage: node tools/example-prose.mjs. Copyright (c) 2026 LFC Foundry. MIT License. */
+import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const root = new URL('../', import.meta.url).pathname;
@@ -12,7 +12,6 @@ const stories = {
   'The Keeper’s Light': JSON.parse(readFileSync(root + 'examples/the-keepers-light.story.json', 'utf8')),
   'The Drowned Archive': sandbox.massiveExample()
 };
-if (process.argv.includes('--write')) writeFileSync(root + 'examples/the-drowned-archive.story.json', JSON.stringify(stories['The Drowned Archive']));
 
 /* a sentence with the block that says it; two blocks that can never show together (one needs what the other forbids, or one is the "otherwise" of the other) may repeat each other */
 const lines = p => { let chain = -1; return (p.blocks || []).flatMap(b => { if (!b.orPrev) chain++; b = Object.assign({ chain }, b); return (b.text || '').split(/(?<=[.!?”"])\s+/).map(t => t.trim()).filter(t => t.length >= 25).map(t => ({ t, b })); }); };
