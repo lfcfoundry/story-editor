@@ -14,7 +14,7 @@ A single-file, offline editor for interactive (choose-your-own-adventure) storie
 
 | Output | Size now (bytes) | Notes |
 |---|---|---|
-| `editor/story-editor.html` (delivered) | about 224,000 | The whole editor, LZMA-packed (see 4.9). Also copied to the repo-root `index.html`, which is what Pages serves. |
+| `editor/story-editor.html` (delivered) | about 224,000 | The whole editor, LZMA-packed (see 4.9). Also copied to `play/index.html`, which is what Pages serves at /play/ (the root `index.html` is the landing page). |
 | `editor/story-editor.plain.html` | about 537,000 | Same editor, readable. Size budgets and text-reading checks use this one. |
 | Exported game, "Standard 25-page" | about 48,700 | Embedded typeface is a large share (about 17 KB, or about 12.9 KB for plain-English stories). |
 | Same, Place code on | about 51,900 | |
