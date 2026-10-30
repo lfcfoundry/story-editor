@@ -26,7 +26,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
         const links = [...document.querySelectorAll('a[href]')].map(a => a.getAttribute('href'));
         const lg = document.querySelector('.logo'); const h2 = document.querySelector('h2'); const logo = lg ? { icons: lg.querySelectorAll('.ico').length, h: lg.getBoundingClientRect().height, w: lg.getBoundingClientRect().width, above: lg.getBoundingClientRect().bottom <= h2.getBoundingClientRect().top, band: !lg.closest('.hero') && lg.closest('section').nextElementSibling === h2.closest('section'), label: lg.getAttribute('aria-label') || '' } : null;
         const imgs = [...document.querySelectorAll('.ex img,.mapfig img')].map(i => ({ src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0, alt: i.alt.length > 10 })); const arts = document.querySelectorAll('.ex svg.art[role=img]').length;
-        const cut = [...document.querySelectorAll('.tile,.mod,.btn,.ex')].filter(e => e.scrollWidth > e.clientWidth + 1).length;
+        const cut = [...document.querySelectorAll('.tile,.mod,.btn,.ex,.logotile')].filter(e => e.scrollWidth > e.clientWidth + 1).length;
         return { imgs, arts, logo, h1: h1 && h1.textContent, h1vis: h1 && vis(h1), sw: document.documentElement.scrollWidth, iw: innerWidth, mods, links, cut, lang: document.documentElement.lang, title: document.title, h2s: [...document.querySelectorAll('h2')].map(e => e.textContent), rows: document.querySelectorAll('tbody tr').length, cells: [...document.querySelectorAll('td.win')].map(e => e.textContent), btns: [...document.querySelectorAll('.hero .btn')].map(a => [a.textContent, a.getAttribute('href'), vis(a)]) };
       });
       const tag = `${name}, ${theme}`;
