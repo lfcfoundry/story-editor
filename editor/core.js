@@ -1337,6 +1337,26 @@ function analyzeRun(project, limit, prune) {
     });
     const rep = /\b([a-z]{2,})\s+\1\b/i.exec(p.blocks.map(b => b.text).join('\n'));
     if (rep && !/^(had|that)$/i.test(rep[1])) N(p.id, `${label(p)} repeats a word: ${q(`${rep[1]} ${rep[1]}`)}. A typo?`);
+    /* a sentence said twice on one page, unless the two blocks can never show together (an "otherwise" chain, or one needs what the other forbids) */
+    {
+      let chain = -1;
+      const seen = new Map();
+      let dup = '';
+      p.blocks.forEach(b => {
+        if (!b.orPrev) chain++;
+        String(b.text)
+          .split(/(?<=[.!?”"])\s+/)
+          .forEach(t => {
+            t = t.trim();
+            if (t.length < 25 || dup) return;
+            const prev = seen.get(t) || [];
+            if (prev.some(o => o.b === b || (o.chain !== chain && !(o.b.needs || []).some(n => (b.forbid || []).includes(n)) && !(b.needs || []).some(n => (o.b.forbid || []).includes(n))))) dup = t;
+            prev.push({ chain, b });
+            seen.set(t, prev);
+          });
+      });
+      if (dup) N(p.id, `${label(p)} says ${q(dup.length > 60 ? dup.slice(0, 57) + '…' : dup)} more than once. That is fine if you meant it; if not, one of them could change.`);
+    }
     const words = p.blocks.reduce((n, b) => n + (String(b.text).match(/\S+/g) || []).length, 0);
     if (words > 350) N(p.id, `${label(p)} is long (${words} words). Players read it on one screen; splitting it (Ctrl+Shift+Enter at the cursor) gives them a choice sooner.`);
     if (!p.ending && p.choices.length > 7) N(p.id, `${label(p)} has ${p.choices.length} choices. Players may find that many hard to choose between.`);
