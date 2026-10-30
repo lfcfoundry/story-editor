@@ -65,6 +65,8 @@ const bad=withProj(p=>{
  a[5].blocks.push({...JSON.parse(JSON.stringify(a[5].blocks[0])),id:'emp1',text:''}); // empty paragraph
  a[6].blocks[0].orPrev=true;                                     // 'otherwise' with nothing above
  p.title='Untitled story';                                      // no real title
+ a[7].blocks=[{id:'r1',text:'The lantern swings in the cold wind.'},{id:'r2',text:'The lantern swings in the cold wind.'}];   // repeated sentence
+ a[8].blocks=[{id:'o1',text:'The lantern swings in the cold wind.'},{id:'o2',orPrev:true,text:'The lantern swings in the cold wind.'}];   // "otherwise": never both, so no note
 });
 pg=await fresh({proj:bad});await pg.waitForTimeout(500);
 const msgs=await pg.evaluate(()=>{const a=window.__editor.analysis;const all=[].concat(a.problems||[],a.warnings||[],a.notes||[]);return all.map(x=>x.msg)});
@@ -72,6 +74,7 @@ const has=re=>msgs.some(m=>re.test(m));
 ok(has(/are all called/),'checker: duplicate page names');
 ok(has(/placeholder word/),'checker: TODO placeholder');
 ok(has(/repeats a word/),'checker: repeated word');
+ok(msgs.filter(m=>/more than once/.test(m)).length===1,'checker: a repeated sentence gets one quiet note (an otherwise pair does not)');
 ok(has(/two choices that both say/),'checker: duplicate choice labels');
 ok(has(/empty paragraph/),'checker: empty paragraph');
 ok(has(/“otherwise” to text above/),'checker: otherwise on the first paragraph');

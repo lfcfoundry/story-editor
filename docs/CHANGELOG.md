@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 30
+- Checker: a quiet note (not a problem) when a page says the same sentence more than once. Pairs that can never show together, like a paragraph and its "otherwise", are left alone. You can ignore it.
+
 ## October 29
 - Landing page and README: a "Why it is this fast" section below the measures table says in one paragraph that the speed comes from deliberate work so the engine can scale as games get bigger and more sophisticated.
 - Landing page: the logo (heart, icons and the red Story Editor name) now sits in the header below the badges on the same left edge as the title, the way the Apple Press page places its logo, instead of in a band under the header.
