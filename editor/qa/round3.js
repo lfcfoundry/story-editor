@@ -75,6 +75,18 @@ ok(has(/are all called/),'checker: duplicate page names');
 ok(has(/placeholder word/),'checker: TODO placeholder');
 ok(has(/repeats a word/),'checker: repeated word');
 ok(msgs.filter(m=>/more than once/.test(m)).length===1,'checker: a repeated sentence gets one quiet note (an otherwise pair does not)');
+/* the checker remembers facts about each text between checks; after edits, answers must equal those made on a fresh copy (nothing remembered) */
+const memo=await pg.evaluate(()=>{const P=window.__editor.project;const out=[];
+ const same=t=>{const a=analyze(P),b=analyze(JSON.parse(JSON.stringify(P)));const k=r=>JSON.stringify([r.problems,r.warnings,r.notes,r.endings,r.states]);out.push(t+(k(a)===k(b)?' ok':' DIFFERENT'))};
+ same('start');const a=P.passages;
+ a[9].blocks[0].text='He said "go go" to the keeper. Then he said "go go" to the keeper again!';same('quotes+repeat');
+ a[9].blocks[0].text='Fixme. The lantern swings in the cold wind. The lantern swings in the cold wind.';same('placeholder+sentence');
+ a[9].blocks[0].text='Plain words only.';same('plain');
+ a[10].choices[0].label='TODO it\u2019s here';same('label');
+ a[10].heading='Lorem ipsum';same('heading');a[10].heading='';same('heading cleared');
+ a[11].blocks.push({id:'nb',text:'the\n',needs:[],forbid:[],orPrev:false},{id:'nb2',text:'the end.',needs:[],forbid:[],orPrev:false});same('repeat across blocks');
+ return out});
+ok(memo.length>=8&&memo.every(x=>/ ok$/.test(x)),'checker: answers after edits equal answers on a fresh copy ('+memo.join(', ')+')');
 ok(has(/two choices that both say/),'checker: duplicate choice labels');
 ok(has(/empty paragraph/),'checker: empty paragraph');
 ok(has(/“otherwise” to text above/),'checker: otherwise on the first paragraph');

@@ -6,7 +6,7 @@
    check-worker-equiv.mjs proves the text is complete and gives the same answer as analyze().
    Copyright (c) 2026 LFC Foundry. MIT License.
    ============================================================================ */
-const CHECK_WORKER_FUNCS = [analyze, analyzeRun, klGraphWasm, klGraphInit, condSummary, klGroupValues, joinAnd, parseStatTest, klWalkWasm, klWalkRun, klWalkInit, vidOf, parseSend, givenOf, virtualRefs];
+const CHECK_WORKER_FUNCS = [analyze, analyzeRun, klGraphWasm, klGraphInit, condSummary, klGroupValues, joinAnd, parseStatTest, klWalkWasm, klWalkRun, klWalkInit, vidOf, parseSend, givenOf, virtualRefs, klTextFacts, klRepeatWord];
 const CHECK_WORKER_DATA = { PRUNE_AFTER, KL_GRAPH_B64, EDGE_CAP, KL_WALK_B64, KL_WALK64_B64, STAT_SPAN_COMFY };
 const CHECK_WORKER_ARROWS = { kindOf };
 function checkWorkerSource() {
@@ -17,5 +17,5 @@ function checkWorkerSource() {
   const data = Object.keys(CHECK_WORKER_DATA)
     .map(k => `const ${k}=${JSON.stringify(CHECK_WORKER_DATA[k])};`)
     .join('\n');
-  return `'use strict';\nlet klGraphMod;const klWalkMods=[undefined,undefined];const klHashHints=Object.create(null);\n${data}\n${arrows}\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const A=analyze(JSON.parse(m.text));postMessage({seq:m.seq,r:{problems:A.problems,warnings:A.warnings,notes:A.notes,endings:A.endings,states:A.states,grouped:A.grouped,pruned:A.pruned,truncated:A.truncated},ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+  return `'use strict';\nlet klGraphMod;const klWalkMods=[undefined,undefined];const klHashHints=Object.create(null);const KL_TEXT_FACTS=new WeakMap(),KL_REPEAT=new WeakMap();\n${data}\n${arrows}\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const A=analyze(JSON.parse(m.text));postMessage({seq:m.seq,r:{problems:A.problems,warnings:A.warnings,notes:A.notes,endings:A.endings,states:A.states,grouped:A.grouped,pruned:A.pruned,truncated:A.truncated},ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
 }
