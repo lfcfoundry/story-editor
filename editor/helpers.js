@@ -323,6 +323,67 @@ function writingWarm(project, lim, from, ms) {
   return i;
 }
 
+/* The name check needs each capitalized word (count, first page) and every word ever written in lower case. Merging every page's lists after
+   each typing pause added ~80,000 words to a set at 2,000 pages, so the totals are kept with the cache with the parts they came from. Only
+   changed parts are looked at: their lower-case words are taken off and the new ones added (pages per word); the names are kept when each
+   changed part has the same page and capitalized words. If pages were added or removed, only the stretch between the unchanged start and
+   end is looked at and the names are added up again. Parts never change once made (writingPart makes a new one). */
+const WRITE_SUM = new WeakMap(); // cache -> { parts: [part per page], names: Map, lower: Map lower-case word -> pages using it }
+function sameCaps(a, b) {
+  if (a.was.id !== b.was.id || a.caps.length !== b.caps.length) return false;
+  for (let i = 0; i < a.caps.length; i++) if (a.caps[i][0] !== b.caps[i][0] || a.caps[i][1] !== b.caps[i][1]) return false;
+  return true;
+}
+function writingTotals(pages, parts, cache) {
+  let t = cache && WRITE_SUM.get(cache);
+  if (t) {
+    const { lower } = t,
+      old = t.parts;
+    const take = was =>
+        was.lower.forEach(w => {
+          const n = lower.get(w) - 1;
+          if (n) lower.set(w, n);
+          else lower.delete(w);
+        }),
+      put = part => part.lower.forEach(w => lower.set(w, (lower.get(w) || 0) + 1));
+    t.parts = parts;
+    if (old.length === parts.length) {
+      let keep = true;
+      for (let i = 0; i < parts.length; i++) {
+        if (old[i] === parts[i]) continue;
+        if (keep && !sameCaps(old[i], parts[i])) keep = false;
+        take(old[i]);
+        put(parts[i]);
+      }
+      if (keep) return t;
+    } else {
+      let a = 0,
+        e = 0;
+      const n = Math.min(old.length, parts.length);
+      while (a < n && old[a] === parts[a]) a++;
+      while (e < n - a && old[old.length - 1 - e] === parts[parts.length - 1 - e]) e++;
+      for (let i = a; i < old.length - e; i++) take(old[i]);
+      for (let i = a; i < parts.length - e; i++) put(parts[i]);
+    }
+  } else {
+    const lower = new Map();
+    parts.forEach(part => part.lower.forEach(w => lower.set(w, (lower.get(w) || 0) + 1)));
+    t = { parts, names: null, lower };
+    if (cache) WRITE_SUM.set(cache, t);
+  }
+  /* a name's first page is where it is first seen; the list stops growing at 1,500 names */
+  const names = new Map(); // a capitalized word -> { n, pid }
+  parts.forEach((part, i) =>
+    part.caps.forEach(([w, k]) => {
+      const e = names.get(w);
+      if (e) e.n += k;
+      else if (names.size < 1500) names.set(w, { n: k, pid: pages[i].id });
+    })
+  );
+  t.names = names;
+  return t;
+}
+
 /**
  * The writing checks. `lim` = { para, page, wpm, ignore } where para and page are word counts, wpm the reading speed, ignore a Set of keys the author turned off.
  * Returns [{ pid, kind, key, msg }]: kinds 'repeat', 'overuse', 'name', 'long', 'alike'. Notes for the author, never mistakes in the story.
@@ -336,19 +397,12 @@ function writingChecks(project, lim, cache = WRITE_CACHE) {
     if (!L.ignore.has(key)) out.push({ pid, kind, key, msg });
   };
   const pages = project.passages || [];
-  const names = new Map(); // a capitalized word -> { n, pid }
-  const lower = new Set();
-  pages.forEach(p => {
+  const parts = pages.map(p => {
     const part = writingPart(p, L, cache);
     part.adds.forEach(a => add(p.id, a[0], a[1], a[2]));
-    /* a name's first page is where it is first seen; the list stops growing at 1,500 names */
-    part.caps.forEach(([w, k]) => {
-      const e = names.get(w);
-      if (e) e.n += k;
-      else if (names.size < 1500) names.set(w, { n: k, pid: p.id });
-    });
-    part.lower.forEach(w => lower.add(w));
+    return part;
   });
+  const { names, lower } = writingTotals(pages, parts, cache);
   /* the same name spelled two ways: a rare spelling one letter away from a common one, neither ever written as an everyday word (in lower case) */
   const list = [...names.entries()].filter(([w]) => !lower.has(w.toLowerCase()));
   list.forEach(([rare, r]) => {

@@ -2,6 +2,30 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Writing notes keep their name and word totals between checks
+
+### Quick
+After each typing pause `writingChecks` merged every page's lower-case words into a new set (about 80,000 adds at 2,040 pages) and added up every page's capitalized words again, although only one page had changed. `writingTotals` now keeps both with the cache, together with the list of page parts they were added up from. Parts that changed have their lower-case words taken off and the new ones added (a count of pages per word). The name totals are kept when every changed part has the same page and the same capitalized words; otherwise they are added up again. When pages are added or removed, only the stretch between the unchanged start and end of the list is looked at. The notes are identical.
+
+### Details
+Writing notes after an edit, 2,040-page story, warm cache (median of 31 edits per load). Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Typing in a page | 0.25x (0.18-0.31), about 2.0 to 0.5 ms | 0.29x (0.00-0.33), 3 to 0-1 ms | 0.20x (0.20-0.22), 5 to 1 ms |
+| A page added | 0.33x (0.22-0.38), about 2.0 to 0.6 ms | 0.33x (0.33-0.33), 3 to 1 ms | 0.25x (0.22-0.35), 4 to 1-2 ms |
+
+All took 4 rounds. Firefox and WebKitGTK time in whole milliseconds.
+
+### Deep
+- Where the time went before (Chromium, 2,040 pages, per check): page parts 0.2-0.3 ms, merging the lower-case words 1.1 ms, adding up the names 0.2 ms; the pairwise name comparison was 0 (57 names).
+- Tried alone first: only the lower-case words kept (a set of the parts counted last time, diffed with a new set): 0.39x/0.41x/0.50x. Stacked with the kept names and the index-by-index diff: 0.25x/0.29x/0.20x, about twice the gain of either alone.
+- The first version rebuilt the counts when the number of pages changed, which made adding a page 1.28x (Chromium) and 1.5x (WebKitGTK) slower than before; the unchanged-start-and-end stretch fixed it.
+- A part is never changed after `writingPart` makes it, so the same part object always has the same words. The kept names also check that the page id is the same, so two pages with the same names that change places still move a name's first page.
+- `writing-cache-equiv.mjs`: the rare spellings (Marta, Tobyn) now come only from edits, so name notes appear (410 in the run), edits also write them in lower case, and a new case swaps two pages with the same names. Breaking the subtraction, the add check or the page-id check each makes it fail.
+- The plain editor's size ceiling went from 720,000 to 740,000 bytes (the stack was at 720,105), under the owner's Oct 18 rule to raise ceilings while chasing speed.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `write1`, `write2`, `helpers` pass; `npm test` passes.
+
 ## 2026-10-31 · Paragraph box auto-height skips the measure when the text still fits
 
 ### Quick
