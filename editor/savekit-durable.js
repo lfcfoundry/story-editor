@@ -1,5 +1,5 @@
 /* ============================================================================
-   SAVEKIT-DURABLE: the crash-safe copy from save-kit 1.4.0 (JS-modules, modules/save-kit/save-kit.js, the "durable" part), copied
+   SAVEKIT-DURABLE: the crash-safe copy from save-kit 1.4.0 (JS-modules, modules/save-kit/save-kit.js as merged, the "durable" part), copied
    unchanged so the editor and the games share one tested code path. SaveKit.durableCopy(name) -> { write(text, seq), newer(seq), flushed() }:
    each text is also put in IndexedDB with durability 'strict' (on disk before the browser says done), newest only; newer(seq) answers with
    the copy that was there when the page opened, if its seq is higher and its text is whole. Used by ui1-state.js (safeCopy).
