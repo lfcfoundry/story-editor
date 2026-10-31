@@ -773,6 +773,21 @@ function problemSet() {
 let sideRows = new WeakMap();
 /** How far the page list and the item list are scrolled, kept across redraws. */
 let pagesScroll = 0;
+let sideScrollSoon = 0;
+/** Done just before the next frame is drawn, where the browser lays the page out anyway: done right in renderSide, it forced an
+    extra layout of the whole page (about 20 ms at start with 2,000 pages). */
+function sideScrollFix() {
+  sideScrollSoon = 0;
+  const ul = $('#pages');
+  if (!ul) return;
+  if (pagesScroll) ul.scrollTop = pagesScroll;
+  const curBtn = ul.querySelector('button[aria-current="true"]');
+  if (curBtn) {
+    const r = curBtn.getBoundingClientRect();
+    const u = ul.getBoundingClientRect();
+    if (r.top < u.top || r.bottom > u.bottom) curBtn.scrollIntoView({ block: 'nearest' });
+  }
+}
 
 let itemsScroll = 0;
 
@@ -984,15 +999,7 @@ function renderSide() {
 
   /* Redrawing the list must not jump it back to the top: restore where it was, then make
      sure the open page is in view (it may have been opened from the map or a menu). */
-  const ul = $('#pages');
-
-  const curBtn = ul.querySelector('button[aria-current="true"]');
-  ul.scrollTop = pagesScroll;
-  if (curBtn) {
-    const r = curBtn.getBoundingClientRect();
-    const u = ul.getBoundingClientRect();
-    if (r.top < u.top || r.bottom > u.bottom) curBtn.scrollIntoView({ block: 'nearest' });
-  }
+  if (!sideScrollSoon) sideScrollSoon = requestAnimationFrame(sideScrollFix);
   function renderList() {
     const ul = $('#pages');
     const dragOrder = prefs.sort === 'written';
@@ -1253,7 +1260,7 @@ function renderItemSide() {
     });
   }
   side.appendChild(il);
-  il.scrollTop = itemsScroll; // keep the list where it was after a redraw
+  if (itemsScroll) il.scrollTop = itemsScroll; // keep the list where it was after a redraw (a new list starts at the top: setting 0 only forced a layout)
 }
 
 /* ----- page actions and menus ----- */

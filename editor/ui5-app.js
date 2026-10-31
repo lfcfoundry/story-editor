@@ -342,12 +342,18 @@ function showSafety() {
       );
     });
   } else keep.lastChild.textContent = 'this browser cannot say.';
-  if (st?.estimate)
-    st.estimate().then(
-      e => (space.lastChild.textContent = `about ${Math.max(1, Math.round((e.usage || 0) / 1024))} KB used here, of about ${Math.round((e.quota || 0) / 1048576)} MB the browser allows.`),
-      () => (space.lastChild.textContent = 'this browser cannot say.')
-    );
-  else space.lastChild.textContent = 'this browser cannot say.';
+  /* The autosave lives in localStorage: 5 MB counted in UTF-8 bytes, shared by every page from the same place (all our apps on the site; all
+     local files when opened from disk). storage.estimate() reports other storage and a quota of gigabytes, not this room (research round 12). */
+  try {
+    let n = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      n += utf8Len(k) + utf8Len(localStorage.getItem(k) || '');
+    }
+    space.lastChild.textContent = `about ${Math.max(1, Math.round(n / 1024)).toLocaleString('en-US')} KB used here, of about 5 MB the browser allows (shared with other pages from the same place).`;
+  } catch {
+    space.lastChild.textContent = 'this browser cannot say.';
+  }
   dialog((d, close) => {
     d.appendChild(h('h3', { text: 'Safety' }));
     d.appendChild(h('div', { class: 'hint', text: 'Your story is autosaved in this browser, but a file is the copy you can trust. File → Save puts one wherever you choose.' }));
@@ -1186,6 +1192,19 @@ function renderAll() {
   renderSide();
   renderItemSide();
   renderMain();
+}
+
+/** The length of a text in UTF-8 bytes, without making a copy of it. */
+function utf8Len(t) {
+  let n = t.length;
+  for (let i = 0; i < t.length; i++) {
+    const c = t.charCodeAt(i);
+    if (c < 0x80) continue;
+    if (c < 0x800) n += 1;
+    else if (c >= 0xd800 && c <= 0xdbff) i++, (n += 2); // a pair of surrogates is one 4-byte letter
+    else n += 2;
+  }
+  return n;
 }
 
 /* ----- splash ----- */
