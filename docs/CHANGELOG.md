@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Checker: stories of about 100 pages are checked about 30% faster (45 ms to 30 ms) because the "can a player come back for it" pass now goes through the move graph once instead of repeating. Answers are identical.
 - Checker: the real 34-page example is checked about twice as fast after an edit, because the checker remembers each paragraph's word count, quote marks and sentences until that paragraph changes. Answers are identical.
 
 ## October 30
