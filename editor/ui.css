@@ -103,6 +103,8 @@ button.schip{cursor:pointer}button.schip:hover{border-color:var(--lamp)}
 #side input{width:100%;padding:6px 8px;border:1px solid var(--fieldline);background:var(--field)}
 #side .hint{padding:0 12px 6px}
 #pages{list-style:none;margin:0;padding:0 6px 12px;overflow:auto;flex:1}
+/* rows out of view are not laid out or painted until they scroll near (a 2,000-page list was laid out whole at start); the size is a row's real height */
+#pages>li{content-visibility:auto;contain-intrinsic-size:auto 36.5px}
 #pages button{width:100%;text-align:left;border:0;background:none;padding:7px 8px;cursor:pointer;display:flex;gap:6px;align-items:baseline;border-left:3px solid transparent}
 #pages button:hover{background:var(--paper)}
 #pages button[aria-current="true"]{background:var(--paper);border-left-color:var(--lamp);font-weight:600}
@@ -316,6 +318,7 @@ textarea.in.mono{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
   .chips>select{padding:6px 8px}
   .ctx button{padding:12px 14px}
   #pages button{padding:12px 8px}
+  #pages>li{contain-intrinsic-size:auto 46.5px}
   #itemlist button{padding:8px 12px}
   #tabs button{padding:12px 14px}
   .seg label{padding:9px 12px}

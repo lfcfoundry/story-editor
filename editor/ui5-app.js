@@ -2038,5 +2038,6 @@ requestAnimationFrame(() =>
   setTimeout(() => {
     READY_AT = performance.now(); // the first screen has been drawn
     if (!(analysis && analysisFor === cur)) runCheck(); // now the first check
+    writingWarmSoon();
   }, 0)
 );

@@ -274,36 +274,61 @@ function writingPage(p, texts, L, nameOf, mins, q) {
    about 170 ms here in Chromium). writing-cache-equiv.mjs checks the answers equal the uncached ones. */
 const WRITE_CACHE = new WeakMap(); // page -> { sig, adds: [[kind, key, msg]], caps: [[word, count]], lower: [words] }
 
+/** The limits with their defaults, and the wording helpers the notes use. */
+function writingLimits(lim) {
+  const L = Object.assign({ para: 150, page: 600, wpm: 230, ignore: new Set() }, lim || {});
+  L.q = s => `“${s}”`;
+  L.nameOf = p => L.q((p.name || 'Untitled page').trim() || 'Untitled page');
+  L.mins = w => {
+    const s = (w / L.wpm) * 60;
+    return s < 50 ? 'under a minute' : `about ${Math.round(s / 60)} minute${Math.round(s / 60) === 1 ? '' : 's'}`;
+  };
+  L.sig = `${L.para}|${L.page}|${L.wpm}`;
+  return L;
+}
+/** Page p's part of the writing checks, from `cache` while the page and the limits are unchanged. */
+function writingPart(p, L, cache) {
+  const texts = (p.blocks || []).map(b => String(b.text || ''));
+  const sig = cache && `${L.sig}\u0000${p.id}\u0000${p.name}\u0000${p.ending ? 1 : 0}\u0000${texts.join('\u0001')}\u0000${(p.choices || []).map(c => String(c.label || '')).join('\u0001')}`;
+  let part = cache && cache.get(p);
+  if (!part || part.sig !== sig) {
+    part = writingPage(p, texts, L, L.nameOf, L.mins, L.q);
+    part.sig = sig;
+    if (cache) cache.set(p, part);
+  }
+  return part;
+}
+/** Fills WRITE_CACHE for the pages from `from` on, for at most `ms` milliseconds; returns where it stopped (pages.length when done). The
+    editor runs this in small slices after a story opens, so the first writing checks of a big story do not freeze the page in one go. */
+function writingWarm(project, lim, from, ms) {
+  const L = writingLimits(lim);
+  const pages = project.passages || [];
+  const t0 = performance.now();
+  let i = from;
+  while (i < pages.length) {
+    writingPart(pages[i++], L, WRITE_CACHE);
+    if ((i & 15) === 0 && performance.now() - t0 > ms) break;
+  }
+  return i;
+}
+
 /**
  * The writing checks. `lim` = { para, page, wpm, ignore } where para and page are word counts, wpm the reading speed, ignore a Set of keys the author turned off.
  * Returns [{ pid, kind, key, msg }]: kinds 'repeat', 'overuse', 'name', 'long', 'alike'. Notes for the author, never mistakes in the story.
  * `cache` (WRITE_CACHE unless null) keeps each page's part between calls.
  */
 function writingChecks(project, lim, cache = WRITE_CACHE) {
-  const L = Object.assign({ para: 150, page: 600, wpm: 230, ignore: new Set() }, lim || {});
+  const L = writingLimits(lim);
+  const { q } = L;
   const out = [];
   const add = (pid, kind, key, msg) => {
     if (!L.ignore.has(key)) out.push({ pid, kind, key, msg });
   };
-  const q = s => `“${s}”`;
   const pages = project.passages || [];
-  const nameOf = p => q((p.name || 'Untitled page').trim() || 'Untitled page');
-  const mins = w => {
-    const s = (w / L.wpm) * 60;
-    return s < 50 ? 'under a minute' : `about ${Math.round(s / 60)} minute${Math.round(s / 60) === 1 ? '' : 's'}`;
-  };
   const names = new Map(); // a capitalized word -> { n, pid }
   const lower = new Set();
-  const limSig = `${L.para}|${L.page}|${L.wpm}`;
   pages.forEach(p => {
-    const texts = (p.blocks || []).map(b => String(b.text || ''));
-    const sig = cache && `${limSig}\u0000${p.id}\u0000${p.name}\u0000${p.ending ? 1 : 0}\u0000${texts.join('\u0001')}\u0000${(p.choices || []).map(c => String(c.label || '')).join('\u0001')}`;
-    let part = cache && cache.get(p);
-    if (!part || part.sig !== sig) {
-      part = writingPage(p, texts, L, nameOf, mins, q);
-      part.sig = sig;
-      if (cache) cache.set(p, part);
-    }
+    const part = writingPart(p, L, cache);
     part.adds.forEach(a => add(p.id, a[0], a[1], a[2]));
     /* a name's first page is where it is first seen; the list stops growing at 1,500 names */
     part.caps.forEach(([w, k]) => {

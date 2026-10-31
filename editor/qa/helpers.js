@@ -56,9 +56,11 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
 (async () => {
   const b = await B.launch(); const errs = [];
   const ctx = await b.newContext({ viewport: { width: 1200, height: 850 }, locale: 'en-US' });
-  await ctx.addInitScript(([s, st]) => { if (!localStorage.getItem('qa-seeded')) { localStorage.setItem('qa-seeded', '1'); localStorage.setItem('story-editor-v1-settings', st); localStorage.setItem('story-editor-v1', s); } }, [sample, SETTINGS]);
   const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message));
-  await pg.goto(EDITOR); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(500);
+  /* seeded from the test, then reloaded, with no start-up script: in Chromium a script injected at the start of a file page can see an old
+     copy of the storage after a reload and the newest saves look lost (research round 18) */
+  await pg.goto(EDITOR); await pg.evaluate(([s, st]) => { localStorage.clear(); localStorage.setItem('story-editor-v1-settings', st); localStorage.setItem('story-editor-v1', s); }, [sample, SETTINGS]);
+  await pg.reload(); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(500);
   const n0 = await pg.evaluate(() => window.__editor.project.passages.length);
   await pg.locator('#menubtn').click(); await pg.locator('#menupop button:has-text("Paste an outline")').click(); await pg.waitForTimeout(300);
   const add = pg.locator('dialog.dlg button:has-text("Add the pages")');

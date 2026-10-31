@@ -769,6 +769,8 @@ function problemSet() {
   return s;
 }
 
+/** The page list's rows, per page, with what they show (see renderList): unchanged rows are reused. */
+let sideRows = new WeakMap();
 /** How far the page list and the item list are scrolled, kept across redraws. */
 let pagesScroll = 0;
 
@@ -993,10 +995,17 @@ function renderSide() {
   }
   function renderList() {
     const ul = $('#pages');
-    ul.textContent = '';
     const dragOrder = prefs.sort === 'written';
+    const lis = [];
     listedPages().forEach(({ p, depth }) => {
       if (filter && !pname(p).toLowerCase().includes(filter.toLowerCase())) return;
+      /* a row is made again only when something it shows changed: a 2,000-page list was rebuilt after every check and every key in a name */
+      const key = `${p.id === selId}\u0001${depth}\u0001${pname(p)}\u0001${p.id === project.start}\u0001${p.ending}\u0001${p.valence}\u0001${p.color}\u0001${p.note}\u0001${p.todo}\u0001${pageEmpty(p)}\u0001${!!bad[p.id]}\u0001${dragOrder}`;
+      const kept = sideRows.get(p);
+      if (kept && kept.key === key) {
+        lis.push(kept.li);
+        return;
+      }
       const pbtn = h(
         'button',
         {
@@ -1035,8 +1044,21 @@ function renderSide() {
         ctxMenu(x, y, pageMenu(p));
       });
       if (dragOrder) reorderTarget(pbtn, DRAG, () => project.passages, p.id);
-      ul.appendChild(h('li', {}, [pbtn]));
+      const li = h('li', {}, [pbtn]);
+      sideRows.set(p, { key, li });
+      lis.push(li);
     });
+    const kids = ul.children;
+    if (kids.length !== lis.length) ul.replaceChildren(...lis);
+    else
+      for (let i = 0; i < lis.length; i++) {
+        if (kids[i] === lis[i]) continue;
+        if (lis[i].parentNode === ul || lis.indexOf(kids[i], i) >= 0) {
+          ul.replaceChildren(...lis); // rows moved (a new order): put them all in place
+          break;
+        }
+        kids[i].replaceWith(lis[i]); // one row changed in place: only that row is swapped
+      }
   }
   renderSide.list = renderList; // lets the name box refresh the list while typing
 }
