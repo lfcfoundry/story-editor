@@ -2041,6 +2041,7 @@ function init() {
     checkFresh: () => analyze(project), // a check made on the page, to compare with the worker's (for the test suites)
     curExact: () => cur === JSON.stringify(project), // the story text kept for Undo and saving is exactly the story (for the test suites)
     checkPre, // the background checker: how many checks were sent, answered and thrown away (for the test suites)
+    safeFlushed: () => safeCopy.flushed(), // the crash-safe copy has reached IndexedDB (for the test suites)
     mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
     mapKept: v => mapCache.get(mapLayoutKey(v || mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
     mapFresh: v => mapBuildFresh(v), // a layout built the usual way, to compare with the background one
