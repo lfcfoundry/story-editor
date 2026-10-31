@@ -35,7 +35,7 @@ for (let story = 0; story < 30; story++) {
       case 0: p.blocks[rnd(p.blocks.length)].text += rnd(2) ? ' storm storm' : ' Marla'; break;
       case 1: p.blocks[0].text = para(); break;
       case 2: p.name = `Page ${WORDS[rnd(WORDS.length)]}`; break;
-      case 3: if (p.choices.length) p.choices[rnd(p.choices.length)].label = LABELS[rnd(LABELS.length)]; break;
+      case 3: if (p.choices.length > 1 && rnd(2)) { p.choices[0].label = 'Climb up the old stone stair'; p.choices[1].label = rnd(97) % 2 ? 'Climb up the old stone stair now' : 'Open the door'; } /* two that read alike, or no longer (rnd(97): the generator's lowest bit only alternates) */ else if (p.choices.length) p.choices[rnd(p.choices.length)].label = LABELS[rnd(LABELS.length)]; break;
       case 4: p.ending = !p.ending; break;
       case 5: P.splice(rnd(P.length + 1), 0, page()); break;
       case 6: if (P.length > 2) P.splice(rnd(P.length), 1); break;
