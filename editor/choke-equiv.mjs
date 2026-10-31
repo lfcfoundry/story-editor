@@ -2,7 +2,8 @@
    CHOKE-EQUIV: the Map's choke points (mapImportance in maplayout.js, worked out on flat number lists with a search that stops at the
    first goal page) must be exactly the pages found the plain way: take a page out, and see whether any other goal page can still be
    reached from the start. Random stories (loops, dead ends, pages with no way in, a start that is not on the list, goals that include
-   the start) are compared page by page.
+   the start) are compared page by page. The traffic shares (also worked out on flat number lists) are compared with the plain way too:
+   lists of arrows with the loops dropped, added up in the same order, so they must match to the last digit.
    Usage: node choke-equiv.mjs [stories=2000] [seed=1]     Exit code 1 and the first difference on any failure.
    Copyright (c) 2026 LFC Foundry. MIT License.
    ============================================================================ */
@@ -39,6 +40,56 @@ function reference(start, ids, links, goal) {
         if (goal.filter(t => t !== v).every(t => !r.has(t))) choke.add(v);
       });
   return choke;
+}
+
+/* the plain way, for the traffic shares */
+function trafficReference(start, ids, links, passages) {
+  const byId = {},
+    outs = {},
+    isIn = {};
+  passages.forEach(p => (byId[p.id] = p));
+  ids.forEach(id => ((isIn[id] = true), (outs[id] = [])));
+  links.forEach(l => isIn[l.from] && isIn[l.to] && outs[l.from].push(l.to));
+  const state = { [start]: 1 },
+    post = [],
+    dag = { [start]: [] },
+    stack = [[start, 0]];
+  while (stack.length) {
+    const top = stack[stack.length - 1],
+      v0 = top[0],
+      list = outs[v0];
+    if (top[1] < list.length) {
+      const w = list[top[1]++];
+      if (state[w] === 1) continue;
+      dag[v0].push(w);
+      if (!state[w]) {
+        state[w] = 1;
+        dag[w] = [];
+        stack.push([w, 0]);
+      }
+    } else {
+      state[v0] = 2;
+      post.push(v0);
+      stack.pop();
+    }
+  }
+  const topo = post.slice().reverse(),
+    pin = {},
+    pout = {},
+    traffic = {};
+  let max = 0;
+  topo.forEach(v => {
+    pin[v] = v === start ? 1 : pin[v] || 0;
+    dag[v].forEach(w => (pin[w] = (pin[w] || 0) + pin[v]));
+  });
+  post.forEach(v => {
+    let sum = byId[v].ending || !dag[v].length ? 1 : 0;
+    dag[v].forEach(w => (sum += pout[w] || 0));
+    pout[v] = sum;
+  });
+  topo.forEach(v => (max = Math.max(max, pin[v] * pout[v])));
+  topo.forEach(v => (traffic[v] = max ? (pin[v] * pout[v]) / max : 0));
+  return traffic;
 }
 
 let checked = 0,
@@ -78,5 +129,10 @@ for (let t = 0; t < stories; t++) {
     console.log(`FAIL story ${t}: expected ${[...want].sort()} got ${[...have].sort()}`);
     process.exit(1);
   }
+  const wantT = trafficReference(start, ids, links, passages);
+  if (JSON.stringify(Object.entries(wantT)) !== JSON.stringify(Object.entries(got.traffic))) {
+    console.log(`FAIL story ${t}: traffic differs`);
+    process.exit(1);
+  }
 }
-console.log(`choke-equiv: ${checked} stories, ${pages} pages, ${chokes} choke points, 0 differences`);
+console.log(`choke-equiv: ${checked} stories, ${pages} pages, ${chokes} choke points, 0 differences, traffic shares equal`);
