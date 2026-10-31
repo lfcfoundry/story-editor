@@ -714,6 +714,7 @@ function klGroupValues(span, cuts, deltas) {
 }
 var EDGE_CAP = 15e4;
 var PRUNE_AFTER = 2e4;
+var klPruneHint = false;
 var KL_TEXT_FACTS = /* @__PURE__ */ new WeakMap();
 function klTextFacts(owner, raw) {
   let m = KL_TEXT_FACTS.get(owner);
@@ -749,7 +750,12 @@ function analyze(project, limit = 2e5, opt) {
   const o = opt || {};
   if (o.prune === true || o.prune === false) return analyzeRun(project, limit, o.prune);
   if (limit <= PRUNE_AFTER || !project.items.some((it) => it.kind === "stat")) return analyzeRun(project, limit, false);
+  if (klPruneHint) {
+    const r = analyzeRun(project, limit, true);
+    if (r.truncated || r.states > PRUNE_AFTER) return r;
+  }
   const first = analyzeRun(project, PRUNE_AFTER, false);
+  klPruneHint = first.truncated;
   return first.truncated ? analyzeRun(project, limit, true) : first;
 }
 function analyzeRun(project, limit, prune) {

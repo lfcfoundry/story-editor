@@ -2016,8 +2016,13 @@ function init() {
     checkFresh: () => analyze(project), // a check made on the page, to compare with the worker's (for the test suites)
     checkPre, // the background checker: how many checks were sent, answered and thrown away (for the test suites)
     mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
-    mapKept: () => mapCache.get(mapLayoutKey(mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
+    mapKept: v => mapCache.get(mapLayoutKey(v || mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
     mapFresh: v => mapBuildFresh(v), // a layout built the usual way, to compare with the background one
+    mapView: v => {
+      mapOpts.view = v; // the Map's View menu, for the test suites
+      saveMapOpts();
+      mapRedraw();
+    },
     mapChip: L => mapScore(L, undefined, true), // the toolbar chip's numbers for a layout
     startTour
   };

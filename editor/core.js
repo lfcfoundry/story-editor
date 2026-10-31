@@ -1206,6 +1206,7 @@ const EDGE_CAP = 150000; // above this many situations the move graph is not kep
 
 /** A story whose check passes this many situations, and that has numbers, is checked again with dead numbers forgotten (see analyzeRun). */
 const PRUNE_AFTER = 20000;
+let klPruneHint = false; // the last check of a story with numbers needed the pruned check (see analyze)
 /**
  * Facts about one piece of text (a block, a choice label, a heading), kept between checks: the check runs after every edit and nearly all the
  * text is what it was last time. A WeakMap keyed by the block, choice or page, so nothing is saved with the story or kept alive, and a changed
@@ -1254,7 +1255,15 @@ function analyze(project, limit = 200000, opt) {
   const o = opt || {};
   if (o.prune === true || o.prune === false) return analyzeRun(project, limit, o.prune);
   if (limit <= PRUNE_AFTER || !project.items.some(it => it.kind === 'stat')) return analyzeRun(project, limit, false);
+  /* The check runs after every edit, and a story that needed the pruned check last time nearly always needs it again, so try that first. Forgetting
+     numbers only merges situations, so a pruned check that passes PRUNE_AFTER means the plain one would have too: the answer is exactly the one
+     the plain-first order gives. Otherwise (the story got smaller) fall back to that order. */
+  if (klPruneHint) {
+    const r = analyzeRun(project, limit, true);
+    if (r.truncated || r.states > PRUNE_AFTER) return r;
+  }
   const first = analyzeRun(project, PRUNE_AFTER, false);
+  klPruneHint = first.truncated;
   return first.truncated ? analyzeRun(project, limit, true) : first;
 }
 

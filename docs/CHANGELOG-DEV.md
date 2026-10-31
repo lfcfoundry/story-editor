@@ -2,6 +2,24 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Checker pruned-first hint and Map views built ahead
+
+### Quick
+`analyze` remembers whether the last check of a story with numbers needed the pruned check, and if so runs it first instead of a plain check to `PRUNE_AFTER` that is thrown away. The Map's background worker now builds the other plain views (flow, top-down, spine) after the one you last used, also while the Map is open, so switching views finds them ready.
+
+### Details
+Check after an edit, median of 3 alternating rounds (Firefox 6), before to after (lower is better):
+
+| Story | Chromium 155 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Generated 300 pages, 8 objects, 3 numbers (stops at 200,000 situations) | 28.2 to 23.5 ms | 26.6 to 21.4 ms | 29.2 to 25.8 ms |
+| Generated 100 pages (78,726 situations) | 26.3 to 25.4 ms | 31.4 to 28.4 ms | 31.0 to 29.4 ms |
+
+Stories under 20,000 situations or without numbers take the old path and are unchanged. Longest frame gap after picking another Map view, 300-page story, advanced Map on, median of 3 pages: top-down 53 to 24 ms (Chromium), 58 to 50 ms (Firefox), 404 to 322 ms (WebKitGTK); spine 51 to 22, 55 to 34, 299 to 269 ms.
+
+### Deep
+Pruning only merges situations, so a pruned check that passes `PRUNE_AFTER` (or stops at the limit) proves the plain check would have passed it too, and the plain-first order would have returned this very pruned answer; otherwise (the story shrank) the old order runs. New test `editor/prune-hint-equiv.mjs` (in `npm test`): 48 random stories, 28 over `PRUNE_AFTER`, checked with the hint on and off against the plain-first order, 0 differences; it fails if the hint answer is always returned. The worker source declares the hint too. The 300-page test story was also run to 5,000,000 situations (pruned and plain) and still did not finish, so no exact reduction can finish it at typing speed; its "did not finish" note stays. The Map chain builds one view at a time and starts the next on each answer, kept or dropped; a view drawn meanwhile or a changed story drops a result as before. `qa/mapprebuild.js` now checks all three views equal the usual build and that an edit rebuilds all three; `__editor.mapView(v)` was added for the suites. **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapprebuild`, `mapkey`, `mapcull`, `checkworker` and `walk` pass in all three; `npm test` passes.
+
 ## 2026-10-31 · Story Page Map graph build
 
 ### Quick
