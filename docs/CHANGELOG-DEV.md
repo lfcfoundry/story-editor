@@ -5,7 +5,7 @@ What changed in each release, newest first, for developers, in three depths: **Q
 ## 2026-10-31 · Landing page and README: what it is and why it exists
 
 ### Quick
-"What it is and how it works" is now a short summary plus four steps (write, check, see, share); "Why it exists" is three paragraphs (why branching stories break, why rules are data instead of code, why one offline file) plus six use cases.
+"What it is and how it works" is a one-line summary plus four one-line bullets (write, check, see, share); "Why it exists" is one short paragraph (why branching stories break, why rules are data instead of code, why one offline file) plus six one-line use cases. A first, longer version (PR 65) was cut to this the same night as too dense.
 
 ### Details
 - Landing page: new `.steps` and `.uses` list styles; section order and headings unchanged.
