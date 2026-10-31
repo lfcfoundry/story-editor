@@ -6,6 +6,8 @@
         way the page does (mapPackPlain, mapUnpackPlain), is exactly what the Map tab's own build gives, with the same shared boxes and arrows, for each
         plain view (flow, down, spine), merged arrows on and off, traffic sizing on and off, with and without last time's order, when the story text is
         sent with the first job only (and again after the worker was told to forget it).
+   The stories have paragraph texts, headings and notes, which the worker leaves out (mapStructKey): equal layouts prove the layout never uses
+   them. After each answer the same story with only those words changed must get "same", and a renamed page a new layout.
    It also reads the page text of ui4-map.js, to confirm the Map tab builds these views through the same functions.
    Usage: node map-worker-equiv.mjs [stories=60] [seed=7]     Exit code 1 and the first difference on any failure.
    Copyright (c) 2026 LFC Foundry. MIT License.
@@ -32,6 +34,18 @@ let seed = +process.argv[3] || 7;
 const R = () => ((seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff), seed / 0x7fffffff);
 const int = (a, b) => a + Math.floor(R() * (b - a + 1));
 
+const WORDS = 'the keeper lantern storm a an extraordinarily tide'.split(' ');
+const words = () => Array.from({ length: int(0, 60) }, () => WORDS[int(0, WORDS.length - 1)]).join(' ');
+/* the words a player reads on a page changed (paragraphs, headings, notes), nothing else */
+function rewordPages(text) {
+  const p = JSON.parse(text);
+  for (const q of p.passages) {
+    q.heading = R() < 0.5 ? words().slice(0, 30) : '';
+    q.note = R() < 0.3 ? 'other note' : '';
+    for (const b of q.blocks) b.text = words();
+  }
+  return JSON.stringify(p);
+}
 function makeStory(n, withGivens) {
   const items = [];
   const givens = [];
@@ -41,7 +55,7 @@ function makeStory(n, withGivens) {
   }
   const passages = [];
   for (let i = 0; i < n; i++) {
-    passages.push({ id: 'p' + i, name: 'Page ' + i, blocks: [{ text: 'x', needs: [], forbid: [], orPrev: false }], gives: [], takes: [], choices: [], ending: i > n - 4 && R() < 0.8, valence: R() < 0.3 ? 'good' : R() < 0.3 ? 'bad' : undefined });
+    passages.push({ id: 'p' + i, name: 'Page ' + i, heading: R() < 0.3 ? 'Heading ' + i : '', note: R() < 0.2 ? 'a note' : '', blocks: [{ text: words(), needs: [], forbid: [], orPrev: false }], gives: [], takes: [], choices: [], ending: i > n - 4 && R() < 0.8, valence: R() < 0.3 ? 'good' : R() < 0.3 ? 'bad' : undefined });
   }
   passages.forEach((p, i) => {
     if (p.ending) return;
@@ -75,6 +89,7 @@ function diff(a, b, path, seen) {
 }
 
 let compared = 0;
+let sames = 0;
 let boxes = 0;
 for (let t = 0; t < stories; t++) {
   const n = int(2, t % 7 === 0 ? 160 : 40);
@@ -111,6 +126,26 @@ for (let t = 0; t < stories; t++) {
             }
             compared++;
             boxes += want.L.nodes.length;
+            /* "same": the page holds this layout and only words on pages changed, so the worker answers without building; a renamed page
+               (or another view or option) is built again */
+            if (!withPrev && !as.g1) {
+              answers.length = 0;
+              worker.onmessage({ data: { seq: 2, view, text: rewordPages(text), have: got.h, o: JSON.parse(JSON.stringify(o)) } });
+              if (!answers[0] || answers[0].same !== true || answers[0].h !== got.h) {
+                console.log(`FAIL story ${t} ${view}: with only the words on pages changed the worker did not answer "same"`);
+                process.exit(1);
+              }
+              const renamed = JSON.parse(text);
+              renamed.passages[int(0, renamed.passages.length - 1)].name += ' (2)';
+              answers.length = 0;
+              worker.onmessage({ data: { seq: 3, view, text: JSON.stringify(renamed), have: got.h, o: JSON.parse(JSON.stringify(o)) } });
+              if (!answers[0] || answers[0].same || typeof answers[0].json !== 'string' || answers[0].h === got.h) {
+                console.log(`FAIL story ${t} ${view}: after a page was renamed the worker did not build again`);
+                process.exit(1);
+              }
+              worker.onmessage({ data: { seq: 4, view, text, o: JSON.parse(JSON.stringify(o)) } }); // back to this story for the next job
+              sames++;
+            }
           }
         }
       }
@@ -126,4 +161,4 @@ for (const s of need)
     console.log(`FAIL ui4-map.js no longer builds through ${s}`);
     process.exit(1);
   }
-console.log(`PASS ${compared} layouts (${boxes} boxes) from the worker's own text equal the Map tab's build, in an empty context`);
+console.log(`PASS ${compared} layouts (${boxes} boxes) from the worker's own text equal the Map tab's build, in an empty context; ${sames} times the worker answered "same" when only words on pages changed and built again after a rename`);

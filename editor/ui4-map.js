@@ -505,7 +505,7 @@ function mapBuild(viewName) {
    refuses workers) the result is simply thrown away and the Map builds itself as always. */
 const MAP_PRE_MIN = 60; // pages; smaller stories build in a few ms, so the worker is not started
 const MAP_PRE_WAIT = 300; // ms of quiet after a check before the worker is asked
-const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, sent: null, built: 0, dropped: 0, ms: 0, take: 0 };
+const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, sent: null, built: 0, dropped: 0, ms: 0, take: 0, same: 0, last: {} };
 /* Layouts built ahead for an older version of the story were never shown, and the Map will never ask for them unless Undo brings that exact
    story back. While you type in a big story the worker builds two of them after every pause, and the cache keeps up to 16: at 2,000 pages that
    held about 15 MB of layouts nobody saw. They are dropped as soon as the story changes (a layout that was shown stays, so Undo still finds it). */
@@ -562,9 +562,13 @@ function mapPrebuild() {
   }
   const prevRef = mapPrev[vname];
   mapPre.job = { seq: ++mapPre.seq, ck, vname, prevRef, text: cur };
+  /* the last layout the worker built for this view, if it was never shown (so nothing has been added to it): the worker answers "same" when
+     only the words on pages changed (see mapStructKey) */
+  const last = mapPre.last[vname];
+  const have = last && mapAhead.has(last.L) ? last.h : undefined;
   /* the worker keeps the story text it was last sent, so it is sent again only when it changed (2-5 ms of copying each time for 2,000 pages) */
   const text = mapPre.sent === cur ? undefined : (mapPre.sent = cur);
-  mapPre.worker.postMessage({ seq: mapPre.seq, view: vname, text, o: { as, open: mapOpen, merge: mapOpts.merge, traffic: mapOpts.traffic, prev: prevRef?.order } });
+  mapPre.worker.postMessage({ seq: mapPre.seq, view: vname, text, have, o: { as, open: mapOpen, merge: mapOpts.merge, traffic: mapOpts.traffic, prev: prevRef?.order } });
 }
 /** The worker's answer: keep it only if it is still the Map you would get (same story, no Map drawn since). */
 function mapPrebuilt(e) {
@@ -578,6 +582,7 @@ function mapPrebuilt(e) {
     mapPre.worker?.terminate();
     mapPre.worker = null;
     mapPre.sent = null;
+    mapPre.last = {};
     logError('map worker', new Error(m.error));
     return;
   }
@@ -586,7 +591,23 @@ function mapPrebuilt(e) {
     mapPrebuild();
     return;
   }
+  if (m.same) {
+    /* only words on pages changed since the layout the page holds: it is this version's layout too, still not shown */
+    const L = mapPre.last[job.vname]?.L;
+    if (!L || !mapAhead.has(L)) {
+      delete mapPre.last[job.vname]; // shown meanwhile: built again from scratch
+      mapPre.dropped++;
+      mapPrebuild();
+      return;
+    }
+    mapAhead.set(L, sigOf(cur));
+    mapKeep(job.ck, L);
+    mapPre.same++;
+    mapPrebuild();
+    return;
+  }
   const { G, L } = mapUnpackPlain(m.json);
+  mapPre.last[job.vname] = { h: m.h, L };
   mapAhead.set(L, sigOf(cur)); // built ahead for this version of the story, not shown yet (see mapDropAhead)
   L.view = job.vname;
   L.G = G;

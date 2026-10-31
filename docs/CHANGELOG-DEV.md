@@ -2,6 +2,26 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Map views built ahead are reused when only words on pages changed
+
+### Quick
+After every typing pause the background worker built two Map views again for the new story text, and the page unpacked each answer, although typing in a paragraph never changes a layout. The worker now strips paragraph texts, headings and notes before it builds and hashes what is left with the view and options (`mapStructKey`: the length and two 32-bit FNV-1a hashes). The page sends the hash of the last never-shown layout it holds for that view (`mapPre.last`), and when they match the worker answers `same` without building. The page then keeps that layout for the new version of the story.
+
+### Details
+Page time in all worker answer handlers (the check and the Map views built ahead) over 4 typing pauses, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.48x (0.43-0.49), median about 147 to 67 ms | 0.75x (0.66-0.94), noisy, 5 rounds | 0.63x (0.57-0.92) |
+
+In each run the worker built 10 layouts before and 2 after; the other 8 were answered `same`.
+
+### Deep
+- Because the worker builds from the stripped story, a layout cannot depend on the stripped words. `map-worker-equiv.mjs` now gives its random stories paragraph texts, headings and notes and still finds the worker's 1,920 layouts equal to the Map tab's own build from the full story. After each answer it sends the same story with only those words changed (it must answer `same`, 720 times) and with a renamed page (it must build again).
+- Only a layout that was never shown is reused (`mapAhead` still marks it), so nothing drawn on screen is shared between two versions. Like any layout built ahead, it is dropped when the story changes again; at most one per view is held for the comparison, the same layouts the cache keeps for the current story.
+- `mapprebuild`: after a paragraph edit the three layouts are kept without building and equal a fresh build for the edited story; a renamed page gets three new builds. In this run the Chromium leg of the suite took 35 s instead of 96 s.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapprebuild`, `mapkey`, `checkworker`, `csp` pass; `npm test` passes.
+
 ## 2026-10-31 · Top bar redraw: kept word counts, tabs reused, one time formatter
 
 ### Quick

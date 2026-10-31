@@ -62,7 +62,16 @@ const SAME = v => `(() => {
   /* an edit: the old layout must not be offered, a new one follows */
   await pg.evaluate(() => { const E = __editor; E.project.passages[3].blocks[0].text += ' more'; E.refresh(); });
   ok(await pg.evaluate(() => __editor.mapKept()) === null, 'right after an edit the old layout is not offered');
-  ok(await waitBuilt(pg, before + 3), 'new layouts are built for the edited story, all three views');
+  /* only a paragraph's words changed: the worker answers "same" and the layouts it built are kept for the edited story, without building again */
+  const sames = () => pg.evaluate(() => __editor.mapPre.same || 0);
+  const ready = await pg.waitForFunction(n => (__editor.mapPre.same || 0) >= n, 3, { timeout: 15000 }).then(() => true, () => false);
+  ok(ready && (await built(pg)) === before, `after a paragraph edit the three layouts are kept for the edited story without building (${await sames()} kept, ${(await built(pg)) - before} built)`);
+  for (const v of ['flow', 'down', 'spine']) ok(await pg.evaluate(SAME(v)) === 'same', `and the kept ${v} layout equals the usual layout for the edited story: ` + await pg.evaluate(SAME(v)));
+  /* a renamed page changes the layout: new ones are built */
+  const before2 = await built(pg);
+  await pg.evaluate(() => { const E = __editor; E.project.passages[3].name += ' (renamed)'; E.refresh(); });
+  ok(await pg.evaluate(() => __editor.mapKept()) === null, 'right after a rename the old layout is not offered');
+  ok(await waitBuilt(pg, before2 + 3), 'new layouts are built for the renamed story, all three views');
   ok(await pg.evaluate(SAME('flow')) === 'same', 'and they too equal the usual layout: ' + await pg.evaluate(SAME('flow')));
   ok(await pg.evaluate(() => __editor.mapCacheSize()) <= 3, 'the layouts built ahead for the story before the edit were let go (' + await pg.evaluate(() => __editor.mapCacheSize()) + ' kept)');
   /* opening the Map uses it and draws */

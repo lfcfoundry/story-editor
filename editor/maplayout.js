@@ -1017,14 +1017,35 @@ function mapUnpackPlain(json) {
   return { G, L };
 }
 
+/* What a plain layout is made from, as one fingerprint: the story without the words a player reads on a page (paragraph texts, headings, notes;
+   the layout never uses them), and the view and options. The worker strips those words before it builds, so the layout cannot depend on them,
+   and answers "same" when the fingerprint equals the one of the layout the page already holds: typing in a paragraph then costs the page no
+   new layout (it was about 20 ms of page time after every typing pause at 2,000 pages). Two 32-bit FNV-1a hashes and the length. */
+function mapStructKey(story, view, o) {
+  for (const p of story.passages || []) {
+    delete p.heading;
+    delete p.note;
+    for (const b of p.blocks || []) delete b.text;
+  }
+  const s = `${JSON.stringify(story)}|${JSON.stringify([view, o])}`;
+  let a = 0x811c9dc5,
+    b = 0x01000193;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x050c5d1f) ^ (b >>> 15);
+  }
+  return `${s.length}:${a >>> 0}:${b >>> 0}`;
+}
+
 /* The plain views can be built in a background worker (the Map tab, ui4-map.js, starts it): the worker's code is these functions as text,
    so there is one copy of the logic. It also counts the crossings for the toolbar chip (mapMetrics keeps that on the layout, so the page finds it done). The list must hold everything mapBuildPlain uses (the check map-worker-equiv.mjs proves it). */
 const MAP_WORKER_FUNCS = [
-  mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain, mapSegCross, mapMetrics, mapPackPlain
+  mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain, mapSegCross, mapMetrics, mapPackPlain, mapStructKey
 ];
 function mapWorkerSource() {
   const fns = MAP_WORKER_FUNCS.map(f => f.toString()).join('\n');
-  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nlet story=null;\nonmessage=e=>{const m=e.data;if(m.forget){story=null;return}try{const t=performance.now();if(m.text!==undefined)story=m.text;const r=mapBuildPlain(JSON.parse(story),m.view,m.o);mapMetrics(r.L,0,null,null,true);postMessage({seq:m.seq,json:mapPackPlain(r.G,r.L),ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nlet story=null;\nonmessage=e=>{const m=e.data;if(m.forget){story=null;return}try{const t=performance.now();if(m.text!==undefined)story=m.text;const st=JSON.parse(story),h=mapStructKey(st,m.view,m.o);if(m.have===h){postMessage({seq:m.seq,same:true,h});return}const r=mapBuildPlain(st,m.view,m.o);mapMetrics(r.L,0,null,null,true);postMessage({seq:m.seq,json:mapPackPlain(r.G,r.L),ms:performance.now()-t,h})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
 }
 
 /* ---------------------------------------------------------------------------
