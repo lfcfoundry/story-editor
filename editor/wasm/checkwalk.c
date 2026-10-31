@@ -22,7 +22,7 @@ typedef u32 fl_t;
 
 /* ---- control block: i32 values, written by JavaScript (indices are the C_* names) ---- */
 enum {
-  C_LIMIT, C_EDGECAP, C_NPAGES, C_PAGEOFF, C_FIELDS, C_POOL, C_SPAN_UNUSED,
+  C_LIMIT, C_EDGECAP, C_NPAGES, C_PAGEOFF, C_FIELDS, C_POOL, C_HASHMAX,
   C_SPAGE, C_SFLAGS, C_SFROM, C_SSTEP, C_HASH, C_HASHMASK, C_SITCAP,
   C_EDGES, C_EDGEMAX,
   C_NSTART, C_STARTPRE, C_STARTPOST, C_STARTOUT,
@@ -118,6 +118,13 @@ static fl_t arrive(i32 pi, fl_t fl) {
   return addTo(n, p, &after);
 }
 
+static void putHash(i32 s) {
+  i32 *hash = PTR(C_HASH);
+  u32 mask = (u32)K[C_HASHMASK], h = hashOf(PTR(C_SPAGE)[s], FPTR(C_SFLAGS)[s]) & mask;
+  while (hash[h] >= 0) h = (h + 1) & mask;
+  hash[h] = s;
+}
+
 static i32 visit(i32 pi, fl_t fl, i32 from, i32 step) {
   fl_t dm = FPTR(C_DEADMASK)[pi];
   fl &= ~dm;
@@ -125,11 +132,16 @@ static i32 visit(i32 pi, fl_t fl, i32 from, i32 step) {
   if (s >= 0) return s;
   if (nSit >= K[C_SITCAP]) { status = -1; return 0; }
   s = nSit++;
-  i32 *hash = PTR(C_HASH);
-  u32 mask = (u32)K[C_HASHMASK], h = hashOf(pi, fl) & mask;
-  while (hash[h] >= 0) h = (h + 1) & mask;
-  hash[h] = s;
   PTR(C_SPAGE)[s] = pi; FPTR(C_SFLAGS)[s] = fl; PTR(C_SFROM)[s] = from; PTR(C_SSTEP)[s] = step;
+  BPTR(C_EXITS)[s] = 0;
+  if (nSit * 2 > K[C_HASHMASK] + 1 && K[C_HASHMASK] < K[C_HASHMAX]) {
+    /* the table starts as big as the last walk needed (JavaScript sets the mask) and doubles when half full; situation numbers do not depend on its size */
+    i32 *hash = PTR(C_HASH), t;
+    u32 m = (u32)K[C_HASHMASK] * 2 + 1, j;
+    K[C_HASHMASK] = (i32)m;
+    for (j = 0; j <= m; j++) hash[j] = -1;
+    for (t = 0; t < nSit; t++) putHash(t);
+  } else putHash(s);
   return s;
 }
 
