@@ -2,6 +2,25 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Writing notes without a signature string
+
+### Quick
+Each page's cached part of the writing notes (`writingPart`) was checked with a signature string. That string joined the page's name, every paragraph and every choice wording, so every check rebuilt a copy of the whole story's text and the cache kept that copy alive. The part now keeps references to the strings it was worked out from and compares them field by field. The notes are identical.
+
+### Details
+Writing notes after an edit, 2,040-page story with a warm cache. Each load takes the median of 31 edits. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.64x (0.55-0.70), 2.7 to 1.9 ms | 0.75x (0.50-0.75), 4 to 3 ms (whole-ms timer) | 0.57x (0.54-0.57), 7 to 4 ms |
+
+All three took 4 rounds. Chromium page heap with the warm cache, after garbage collection: 6.0 to 5.0 MB (lower is better).
+
+### Deep
+- Found by profiling typing pauses at 2,040 pages. `writingPart` self time was 18 ms over 6 pauses, nearly all of it spent building the signature.
+- `part.was` holds the limits key, id, name, ending, the paragraph texts and the choice wordings. Each is the page's own string, so a page that did not change compares by reference.
+- `writing-cache-equiv.mjs` was blind to choice wording and to endings: its random generator's lowest bit only alternates, so two choices that read alike were never made. It now makes them (271 "alike" notes over the run). Breaking each comparison on purpose (wording, ending, limits, paragraph text, name) makes it fail.
+
 ## 2026-10-31 · Map views built ahead arrive as text
 
 ### Quick

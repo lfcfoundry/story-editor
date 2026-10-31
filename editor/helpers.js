@@ -272,7 +272,7 @@ function writingPage(p, texts, L, nameOf, mins, q) {
 /* Each page's own part of the writing checks (its notes, and the capitalized and lower-case words the spelling check needs) is kept with the
    page until its words, choices, name or the limits change, so a pause in typing re-reads one page, not all of them (a 2,000-page story spent
    about 170 ms here in Chromium). writing-cache-equiv.mjs checks the answers equal the uncached ones. */
-const WRITE_CACHE = new WeakMap(); // page -> { sig, adds: [[kind, key, msg]], caps: [[word, count]], lower: [words] }
+const WRITE_CACHE = new WeakMap(); // page -> { was, adds: [[kind, key, msg]], caps: [[word, count]], lower: [words] }
 
 /** The limits with their defaults, and the wording helpers the notes use. */
 function writingLimits(lim) {
@@ -286,15 +286,26 @@ function writingLimits(lim) {
   L.sig = `${L.para}|${L.page}|${L.wpm}`;
   return L;
 }
-/** Page p's part of the writing checks, from `cache` while the page and the limits are unchanged. */
+/** Page p's part of the writing checks, from `cache` while the page and the limits are unchanged. The part keeps what it was worked out
+    from (`was`: the limits, id, name, ending, the paragraph texts and choice wordings, all references to the page's own strings), and is
+    checked against the page field by field. A signature string joining all of that cost one copy of the whole story's text per check (about
+    3 ms at 2,000 pages in Chromium, after every typing pause) and kept that copy alive in the cache. */
 function writingPart(p, L, cache) {
-  const texts = (p.blocks || []).map(b => String(b.text || ''));
-  const sig = cache && `${L.sig}\u0000${p.id}\u0000${p.name}\u0000${p.ending ? 1 : 0}\u0000${texts.join('\u0001')}\u0000${(p.choices || []).map(c => String(c.label || '')).join('\u0001')}`;
+  const blocks = p.blocks || [],
+    choices = p.choices || [];
   let part = cache && cache.get(p);
-  if (!part || part.sig !== sig) {
-    part = writingPage(p, texts, L, L.nameOf, L.mins, L.q);
-    part.sig = sig;
-    if (cache) cache.set(p, part);
+  const w = part && part.was;
+  if (w && w.lim === L.sig && w.id === p.id && w.name === p.name && w.ending === !!p.ending && w.texts.length === blocks.length && w.labels.length === choices.length) {
+    let same = true;
+    for (let i = 0; same && i < blocks.length; i++) same = w.texts[i] === String(blocks[i].text || '');
+    for (let i = 0; same && i < choices.length; i++) same = w.labels[i] === String(choices[i].label || '');
+    if (same) return part;
+  }
+  const texts = blocks.map(b => String(b.text || ''));
+  part = writingPage(p, texts, L, L.nameOf, L.mins, L.q);
+  if (cache) {
+    part.was = { lim: L.sig, id: p.id, name: p.name, ending: !!p.ending, texts, labels: choices.map(c => String(c.label || '')) };
+    cache.set(p, part);
   }
   return part;
 }
