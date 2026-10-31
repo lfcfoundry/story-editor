@@ -337,6 +337,7 @@ function persistNow(forceSpare) {
       localStorage.setItem(STORE, cur);
     }
     storeSeen = cur;
+    safeSave(cur);
     keepSpare(before);
     lastLocalSave = Date.now();
     if (typeof renderStatus === 'function') renderStatus();
@@ -353,6 +354,24 @@ function persistNow(forceSpare) {
     if (w) w.hidden = false;
   }
 }
+/* ----- the crash-safe copy: each save is also written to IndexedDB -----
+   Chromium writes localStorage to disk only about once a minute, so a crash, or a phone closing the browser in the background, can lose
+   the last minute of saves (Firefox about 10 seconds). An IndexedDB write that has reported complete is on disk (research round 18). The
+   copy is save-kit's (savekit-durable.js). Each save carries a number that only goes up, kept in both places, so at the next start the
+   newer copy wins (safeNewer, in init). */
+const SEQ_KEY = `${STORE}-seq`;
+let saveSeq = 0;
+const safeCopy = SaveKitDurable.durableCopy(`${STORE}-safe`); // made at page open: it reads the copy that is there before any save
+function safeSave(text) {
+  saveSeq = Math.max(Date.now(), saveSeq + 1);
+  try {
+    localStorage.setItem(SEQ_KEY, String(saveSeq));
+  } catch {
+    /* the number is a hint; without it the copy is only used when it is newer than nothing */
+  }
+  safeCopy.write(text, saveSeq);
+}
+
 /** Saves shortly after the last edit, so typing never waits on the disk. */
 function persistSoon() {
   clearTimeout(saveTimer);

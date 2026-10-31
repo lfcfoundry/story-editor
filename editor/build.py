@@ -81,7 +81,7 @@ GAME = json.loads(subprocess.run(["node", HERE + "build-game.mjs"], capture_outp
 # "<" is escaped so no text can end the tag early. buildGameHtml (core.js) writes into each game only the pieces its story uses.
 GAME_PARTS = json.dumps(GAME, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
 
-UI_PARTS = ["ui1-state.js", "ui2-widgets.js", "ui3-write.js", "ui4-map.js", "ui4-views.js", "ui4-speed.js", "ui4-status.js", "ui4-helpers.js", "ui4-phone.js", "translate.js", "ui5-app.js"]
+UI_PARTS = ["savekit-durable.js", "ui1-state.js", "ui2-widgets.js", "ui3-write.js", "ui4-map.js", "ui4-views.js", "ui4-speed.js", "ui4-status.js", "ui4-helpers.js", "ui4-phone.js", "translate.js", "ui5-app.js"]
 
 # ---- the example story, as compact JSON (it is data; the readable copy is keepers-light.project.json).
 #      "<" is escaped so no text can end the tag early.

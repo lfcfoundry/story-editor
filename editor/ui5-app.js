@@ -1793,6 +1793,7 @@ function init() {
   try {
     saved = localStorage.getItem(STORE);
     storeSeen = saved;
+    saveSeq = +localStorage.getItem(SEQ_KEY) || 0;
     localStorage.setItem(`${STORE}-t`, '1');
     localStorage.removeItem(`${STORE}-t`);
   } catch (e) {
@@ -2058,5 +2059,13 @@ requestAnimationFrame(() =>
     READY_AT = performance.now(); // the first screen has been drawn
     if (!(analysis && analysisFor === cur)) runCheck(); // now the first check
     writingWarmSoon();
+    /* the browser closed before its last saves reached the disk: the crash-safe copy holds them */
+    const seq0 = saveSeq,
+      text0 = cur;
+    safeCopy.newer(seq0).then(rec => {
+      if (!rec || rec.text === cur || cur !== text0 || !savable(rec.text)) return; // the same, unusable, or already edited here
+      saveSeq = Math.max(saveSeq, rec.seq);
+      replaceProject(normalizeProject(JSON.parse(rec.text)), 'Your newest changes were brought back: the browser closed before it finished storing them. Undo shows the older copy');
+    });
   }, 0)
 );
