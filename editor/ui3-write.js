@@ -769,8 +769,25 @@ function problemSet() {
   return s;
 }
 
+/** The page list's rows, per page, with what they show (see renderList): unchanged rows are reused. */
+let sideRows = new WeakMap();
 /** How far the page list and the item list are scrolled, kept across redraws. */
 let pagesScroll = 0;
+let sideScrollSoon = 0;
+/** Done just before the next frame is drawn, where the browser lays the page out anyway: done right in renderSide, it forced an
+    extra layout of the whole page (about 20 ms at start with 2,000 pages). */
+function sideScrollFix() {
+  sideScrollSoon = 0;
+  const ul = $('#pages');
+  if (!ul) return;
+  if (pagesScroll) ul.scrollTop = pagesScroll;
+  const curBtn = ul.querySelector('button[aria-current="true"]');
+  if (curBtn) {
+    const r = curBtn.getBoundingClientRect();
+    const u = ul.getBoundingClientRect();
+    if (r.top < u.top || r.bottom > u.bottom) curBtn.scrollIntoView({ block: 'nearest' });
+  }
+}
 
 let itemsScroll = 0;
 
@@ -982,21 +999,20 @@ function renderSide() {
 
   /* Redrawing the list must not jump it back to the top: restore where it was, then make
      sure the open page is in view (it may have been opened from the map or a menu). */
-  const ul = $('#pages');
-
-  const curBtn = ul.querySelector('button[aria-current="true"]');
-  ul.scrollTop = pagesScroll;
-  if (curBtn) {
-    const r = curBtn.getBoundingClientRect();
-    const u = ul.getBoundingClientRect();
-    if (r.top < u.top || r.bottom > u.bottom) curBtn.scrollIntoView({ block: 'nearest' });
-  }
+  if (!sideScrollSoon) sideScrollSoon = requestAnimationFrame(sideScrollFix);
   function renderList() {
     const ul = $('#pages');
-    ul.textContent = '';
     const dragOrder = prefs.sort === 'written';
+    const lis = [];
     listedPages().forEach(({ p, depth }) => {
       if (filter && !pname(p).toLowerCase().includes(filter.toLowerCase())) return;
+      /* a row is made again only when something it shows changed: a 2,000-page list was rebuilt after every check and every key in a name */
+      const key = `${p.id === selId}\u0001${depth}\u0001${pname(p)}\u0001${p.id === project.start}\u0001${p.ending}\u0001${p.valence}\u0001${p.color}\u0001${p.note}\u0001${p.todo}\u0001${pageEmpty(p)}\u0001${!!bad[p.id]}\u0001${dragOrder}`;
+      const kept = sideRows.get(p);
+      if (kept && kept.key === key) {
+        lis.push(kept.li);
+        return;
+      }
       const pbtn = h(
         'button',
         {
@@ -1035,8 +1051,21 @@ function renderSide() {
         ctxMenu(x, y, pageMenu(p));
       });
       if (dragOrder) reorderTarget(pbtn, DRAG, () => project.passages, p.id);
-      ul.appendChild(h('li', {}, [pbtn]));
+      const li = h('li', {}, [pbtn]);
+      sideRows.set(p, { key, li });
+      lis.push(li);
     });
+    const kids = ul.children;
+    if (kids.length !== lis.length) ul.replaceChildren(...lis);
+    else
+      for (let i = 0; i < lis.length; i++) {
+        if (kids[i] === lis[i]) continue;
+        if (lis[i].parentNode === ul || lis.indexOf(kids[i], i) >= 0) {
+          ul.replaceChildren(...lis); // rows moved (a new order): put them all in place
+          break;
+        }
+        kids[i].replaceWith(lis[i]); // one row changed in place: only that row is swapped
+      }
   }
   renderSide.list = renderList; // lets the name box refresh the list while typing
 }
@@ -1231,7 +1260,7 @@ function renderItemSide() {
     });
   }
   side.appendChild(il);
-  il.scrollTop = itemsScroll; // keep the list where it was after a redraw
+  if (itemsScroll) il.scrollTop = itemsScroll; // keep the list where it was after a redraw (a new list starts at the top: setting 0 only forced a layout)
 }
 
 /* ----- page actions and menus ----- */

@@ -2,6 +2,37 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Start-up of big stories, page list rows, Safety space line
+
+### Quick
+Opening a big story does less work before the first screen. For a big saved story the typeface is made from its bytes before the first layout (as an @font-face it arrived just after it, and every text was laid out again). The first check of a story with 500 or more pages goes to the background checker; the writing checks fill in 6 ms slices after the first screen; three whole-page layouts at start are now one (the window width for menus, the page list's scroll and the phone keyboard lift were read too early); the keyboard lift sets its style only when it changes (setting it restyled every element). Page list rows are made again only when something they show changes. The Safety dialog's space line counts the autosave's real room. Everything on screen is the same.
+
+### Details
+Start of a big story, the freeze time (time to the first frame plus every later gap between frames over 50 ms in the first 3.5 s), new build over PR 69, early-stop A/B (`qa-guide/ab-sequential`, 90% interval, lower is better):
+
+| Story | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| 2,040 pages | 0.29x (0.26-0.49), 4 rounds | 0.59x (0.48-0.67), 4 rounds | 0.82x (0.77-0.87), 4 rounds |
+| 510 pages | 0.64x (0.51-0.87), 4 rounds | | |
+| 51 pages | 1.04x (0.81-1.15), 16 rounds, noisy | 0.55x (0.32-0.93), noisy | 0.96x (0.91-1.08), 16 rounds, noisy |
+
+The 51-page story takes the same path as before (no early typeface), so its results are noise; an A-against-A control in Firefox gave 0.84x (0.80-0.98).
+
+- Typing in a page's name box at 2,040 pages, the input handler's median of 40 keys (lower is better): Chromium 38.1 to 3.3 ms, Firefox 36 to 2 ms, WebKitGTK 48 to 4 ms.
+- 51-page and 510-page stories: no change beyond noise in the three browsers.
+- Safety space line: the sum of UTF-8 bytes of every localStorage key and value against 5 MB (5,242,880 bytes), the same count all three browsers use (research round 12). `storage.estimate()` reports other storage and a quota of gigabytes.
+
+### Deep
+- The first check of a story with 500 or more pages counts as slow (`CHECK_BIG_PAGES`), so it goes to the worker like any check that took longer than the hybrid limit. `writingWarmSoon()` (200 or more pages) fills the per-page writing cache in 6 ms slices from a timer, so the first Check tab or status line read finds it warm; `writingChecks` uses the same `writingLimits` and `writingPart` as before, checked equal to the old helpers on 19 slices.
+- Forced layouts were found by tracing with `disabled-by-default-devtools.timeline.stack`: `window.innerWidth` read at load for the menus (now read when a menu opens), `ul.scrollTop = 0` and the open page's in-view check in `renderSide` (now in `sideScrollFix` before the next frame, and a zero scroll is not set on a new list), the item list's zero scroll, and the visualViewport lift (now before the first frame and only on change; setting `--kb` on the root restyled the whole page, 85 ms at 2,040 pages).
+- Page list rows are kept in a WeakMap by page with a key of everything a row shows; unchanged rows are reused, and the list is rebuilt in order only when rows move.
+- Typeface: `#font-ui` is now `<script type="text/plain">` (exported games still copy its @font-face text). When the saved story is 200,000 characters or more (`UI_FONT_BYTES_FROM`), `loadUiFont` decodes the base64 and adds `new FontFace(name, bytes)`, which is ready at once in all three browsers (2 to 6 ms); otherwise it adds the @font-face style as before. Found with invalidation tracking: "Fonts changed" on every text node, 55 to 137 ms of layout at 2,040 pages in Chromium. The first check's answer leaves the writing notes to the warm-up's last slice (handling it went from 20-34 to 10-15 ms in Chromium).
+- QA: `packages/qa-kit` 0.3.0 runs the suites of one browser as a longest-first pool by saved times (the QA thread's patch; a zero time no longer counts as unknown), with two new kit tests; both runners read the committed `editor/qa/times-seed.json` when there is no `times.json` yet (a cold quick run 98 s to 75 s in the QA audit).
+- Tried and dropped: `content-visibility: auto` on page list rows. It helped while the start had three layouts, but after the merge into one it made no difference in Chromium or Firefox, and WebKitGTK showed its first screen 200 to 300 ms later with it.
+- Test harness: `qa/helpers.js` now seeds the story from the test and reloads, with no start-up script. In Chromium a script injected at the start of a file page can see an old copy of the storage after a reload (research round 18); "the ignored note is remembered" failed about 1 in 6 runs before and passed 10 of 10 after.
+- Not changed (on a card): the first layout costs about 60 ms even with a 51-page story, so no block under 50 ms needs the start to be split behind the opening screen, which would show the page filling in.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `helpers`, `phone`, `screens`, `round3`, `mapcull`, `mapprebuild`, `textstress`, `top5-new`, `fix2`, `inter`, `marks`, `opts`, `real`, `tools8`, `top10-editor`, `top10-export`, `write1`, `write2`, `checkworker`, `curtext` and `safety` pass in all three; `npm test` passes.
+
 ## 2026-10-31 · Hidden per-keystroke and memory costs
 
 ### Quick

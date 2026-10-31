@@ -828,6 +828,7 @@ function ctxMenu(x, y, entries, focusFirst) {
   closeCtx();
   const root = ctxPanel(entries, 0);
   document.body.appendChild(root);
+  ctxW = window.innerWidth;
   placeCtx(root, x, y);
   ctxOpenedAt = Date.now();
   const f = root.querySelector('button:not([disabled])');
@@ -846,7 +847,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeCtx();
 });
 window.addEventListener('blur', closeCtx);
-let ctxW = window.innerWidth;
+let ctxW = 0; // the width when a menu opened (reading it at start-up forced the first layout early)
 window.addEventListener('resize', () => {
   if (window.innerWidth !== ctxW) closeCtx(); // only a change of width: a phone's on-screen keyboard changes the height and must not close a menu
   ctxW = window.innerWidth;

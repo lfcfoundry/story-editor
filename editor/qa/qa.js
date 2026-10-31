@@ -316,7 +316,8 @@ const T0 = Date.now();
    the end. Suites spend most of their time waiting for the page (about 40% of the two cores were busy with two lanes), so three run at once;
    QA_JOBS=n changes that. Each worker prints a line when its suite ends. */
 const timesFile = HERE + 'times.json';
-const TIMES = fs.existsSync(timesFile) ? JSON.parse(fs.readFileSync(timesFile, 'utf8')) : {};
+const seedFile = HERE + 'times-seed.json'; /* committed, so a fresh checkout orders longest-first too (98 s cold to 75 s, QA audit Oct 31) until its first green run writes times.json */
+const TIMES = fs.existsSync(timesFile) ? JSON.parse(fs.readFileSync(timesFile, 'utf8')) : fs.existsSync(seedFile) ? JSON.parse(fs.readFileSync(seedFile, 'utf8')) : {};
 /* One browser at a time (the owner's rule, Oct 17): all Firefox jobs finish before the first Chromium job starts. The Node-only jobs ride in the first group. */
 const byTime = (x, y) => (TIMES[y.label] ?? 40) - (TIMES[x.label] ?? 40);
 let queue = [];

@@ -121,13 +121,16 @@ function wirePhone() {
   /* on a phone whose browser covers the page with the keyboard (instead of shrinking it), lift the key row by the keyboard's height */
   const vv = window.visualViewport;
   if (vv) {
+    let kbNow = 0; // the style sheet's own default is 0px
     const lift = () => {
       const kb = vv.scale > 1.01 ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+      if (kb === kbNow) return; // setting it restyles every element on the page (85 ms with 2,000 pages), so only when it changes
+      kbNow = kb;
       document.documentElement.style.setProperty('--kb', `${kb}px`);
     };
     vv.addEventListener('resize', lift);
     vv.addEventListener('scroll', lift);
-    lift();
+    requestAnimationFrame(lift); // just before the first frame: run right away it forced an early layout of the whole page (about 25 ms at start with 2,000 pages)
   }
   /* swipe the page-name bar: left for the next page in the list, right for the previous one */
   const bar = $('#drawerbar');

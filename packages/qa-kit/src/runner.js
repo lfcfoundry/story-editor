@@ -134,15 +134,17 @@ const rows = [];
 let bad = 0;
 const T0 = Date.now();
 
-/* One lane per engine, side by side; inside a lane the suites run one after another so the printed lines stay in order.
-   Without a second engine (every tier but "full") the single lane is split in two when the machine has two cores or more. */
+/* One lane per engine, side by side. Inside a lane a pool of workers takes the longest suites first (by how long each took last time, in times.json),
+   so no worker is left with one long suite at the end. Suites mostly wait for the page, so more workers than cores pay off: the default is cores + 3, at
+   least 3, at most 7 (measured in Story Editor on 4 cores: 7 at a time 75 s, 5 at a time 83 s, 4 at a time 96 s). QA_JOBS=n sets it; QA_JOBS=1 is the old one-after-another order. */
 const lanes = {};
 for (const job of jobs) (lanes[job.lane] = lanes[job.lane] || []).push(job);
-const first = lanes[ENGINES[0]];
-if (first && Object.keys(lanes).length === 1 && first.length > 3 && os.cpus().length > 1) {
-  lanes[ENGINES[0]] = first.filter((_, i) => i % 2 === 0);
-  lanes[ENGINES[0] + '#2'] = first.filter((_, i) => i % 2 === 1);
-}
+const timesFile = path.join(DIR, 'times.json');
+const seedFile = path.join(DIR, 'times-seed.json'); /* committed: a fresh checkout orders by it until its own first green run writes times.json */
+const timesFrom = [timesFile, seedFile].find(f => fs.existsSync(f));
+const TIMES = timesFrom ? JSON.parse(fs.readFileSync(timesFrom, 'utf8')) : {};
+const WORKERS = Math.max(1, +process.env.QA_JOBS || Math.min(7, Math.max(3, os.cpus().length + 3)));
+const byTime = (a, b) => (TIMES[b.label] ?? 40) - (TIMES[a.label] ?? 40); /* a suite with no recorded time is guessed at 40 s, so it starts early (?? not ||: a suite that took under half a second is saved as 0) */
 
 const report = (job, mark, r) => {
   fs.writeFileSync(path.join(LOGS, logName(job) + '.log'), r.out);
@@ -152,20 +154,23 @@ const report = (job, mark, r) => {
   if (mark === 'FAIL') console.log(r.fails.slice(0, 8).map(l => '        ' + l.slice(0, 200)).join('\n') + `\n        (full output: ${path.relative(process.cwd(), path.join(LOGS, logName(job) + '.log'))})`);
 };
 
-const runLane = async list => {
-  for (const job of list) {
-    let r = await run(job);
-    let mark = 'pass';
-    if (!r.ok) {
-      fs.writeFileSync(path.join(LOGS, logName(job) + '.first-try.log'), r.out); /* kept, so a flaky pass* can be looked into */
-      const r2 = await run(job);
-      r2.sec += r.sec;
-      if (r2.ok) mark = 'pass*';
-      else { mark = 'FAIL'; bad++; }
-      r = r2;
-    }
-    report(job, mark, r);
+const runOne = async job => {
+  let r = await run(job);
+  let mark = 'pass';
+  if (!r.ok) {
+    fs.writeFileSync(path.join(LOGS, logName(job) + '.first-try.log'), r.out); /* kept, so a flaky pass* can be looked into */
+    const r2 = await run(job);
+    r2.sec += r.sec;
+    if (r2.ok) mark = 'pass*';
+    else { mark = 'FAIL'; bad++; }
+    r = r2;
   }
+  report(job, mark, r);
+};
+const runLane = async list => {
+  const queue = list.slice().sort(byTime);
+  const worker = async () => { for (let job; (job = queue.shift()); ) await runOne(job); };
+  await Promise.all(Array.from({ length: Math.min(WORKERS, queue.length) }, worker));
 };
 
 (async () => {
@@ -179,6 +184,7 @@ const runLane = async list => {
     rows.forEach(r => { if (r.passes) counts[r.label] = r.passes; });
     fs.writeFileSync(countsFile, JSON.stringify(counts, null, 1));
   }
+  if (!bad && !only) { rows.forEach(r => { TIMES[r.label] = Math.round(r.sec); }); fs.writeFileSync(timesFile, JSON.stringify(TIMES, null, 1)); } /* what the next run orders by */
   if (!bad && tier !== 'quick' && !only) fs.writeFileSync(stampFile, new Date().toISOString());
   process.exit(bad ? 1 : 0);
 })();

@@ -10,7 +10,7 @@ const read = f => readFileSync(new URL(f, here), 'utf8');
 const built = readFileSync(process.argv[2], 'utf8');
 const between = (open, close) => built.slice(built.indexOf(open) + open.length, built.indexOf(close, built.indexOf(open)));
 const parts = JSON.parse(between('<script type="application/json" id="game-parts">', '</script>'));
-const fonts = between('<style id="font-ui">', '</style>');
+const fonts = between('<script type="text/plain" id="font-ui">', '</script>');
 const fontsLite = between('<script type="text/plain" id="font-lite">', '</script>');
 
 const ctx = createContext({ console });

@@ -799,7 +799,7 @@ function runCheck() {
 }
 /** Whatever shows the checker's result takes it in. */
 function afterCheck(already) {
-  freshWriting();
+  if (!writingWarming || view === 'check') freshWriting(); // while a long story's cache is still filling, its last slice does this
   renderTop();
   if (view === 'write') {
     renderSide.list && renderSide.list();
@@ -820,11 +820,13 @@ function afterCheck(already) {
  * counts); samples, why, canArrive and explain are made on the page when something asks (see lazyExplainers).
  */
 const CHECK_HYBRID_MS = 8;
+const CHECK_BIG_PAGES = 500; // the first check of a story this long goes to the worker too (a 2,040-page story froze the page about 100 ms at start)
 const checkPre = { worker: null, bad: false, seq: 0, text: '', ms: 0, posted: 0, done: 0, dropped: 0 };
 let checkLastMs = 0; // how long the last check took (on the page or in the worker)
 function checkInWorker() {
   if (checkPre.bad || window.__checkWorker === false || !window.Worker || view === 'check' || view === 'map') return false;
-  if (checkLastMs <= (window.__checkHybridMs ?? CHECK_HYBRID_MS) || (analysis && analysisFor === cur)) return false;
+  const last = checkLastMs || (project.passages.length >= CHECK_BIG_PAGES ? Infinity : 0); // before any check, a long story is guessed big
+  if (last <= (window.__checkHybridMs ?? CHECK_HYBRID_MS) || (analysis && analysisFor === cur)) return false;
   if (!checkPre.worker) {
     try {
       const url = URL.createObjectURL(new Blob([checkWorkerSource()], { type: 'text/javascript' }));

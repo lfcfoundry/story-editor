@@ -92,6 +92,25 @@ let writing = []; // the notes for the story as it was when the checker last ran
 let writingFor = '';
 
 /** The writing notes for the story as it is now (worked out once per version of the story). */
+/** After a long story opens, fills the writing checks' page cache in slices of a few milliseconds, so the first full writing check is quick
+    instead of one long freeze (85 ms for 2,040 pages in Chromium). Same notes: the slices only fill the cache writingChecks reads. */
+let writingWarming = false; // the slices are still filling the cache: a check answer meanwhile leaves the notes to the last slice
+function writingWarmSoon() {
+  if (project.passages.length < 200) return;
+  let at = 0;
+  writingWarming = true;
+  const step = () => {
+    const P = project;
+    at = writingWarm(P, { para: prefs.paraMax, page: prefs.pageMax, wpm: prefs.wpm }, at, 6);
+    if (at < P.passages.length) return setTimeout(step, 0);
+    writingWarming = false;
+    if (writingFor !== cur && analysis && analysisFor === cur) {
+      freshWriting(); // the notes for the status line, now that every page's part is ready (it was 30 ms inside the first check's answer)
+      renderTopSoon();
+    }
+  };
+  setTimeout(step, 0);
+}
 function freshWriting() {
   if (writingFor === cur) return writing;
   try {
