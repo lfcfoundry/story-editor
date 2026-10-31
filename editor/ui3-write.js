@@ -912,7 +912,6 @@ function renderSide() {
   side.hidden = view !== 'write';
   if (view !== 'write') return;
   side.textContent = '';
-  const bad = problemSet();
   const sortBtn = h('button', {
     type: 'button',
     class: 'btn small ghost sortbtn',
@@ -1016,6 +1015,7 @@ function renderSide() {
   if (!sideScrollSoon) sideScrollSoon = requestAnimationFrame(sideScrollFix);
   function renderList() {
     const ul = $('#pages');
+    const bad = problemSet(); // the newest check's: the list is redrawn after every check (it was the check from when the side was last built, so the dots were stale)
     const dragOrder = prefs.sort === 'written';
     const lis = [];
     listedPages().forEach(({ p, depth }) => {
