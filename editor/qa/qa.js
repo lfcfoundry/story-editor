@@ -100,6 +100,8 @@ const CONTRACT = { name: 'contract', cmd: ['node', ED + 'contract.mjs', '400', '
 
 const WASMEQ = { name: 'wasm-equiv', cmd: ['node', ED + 'wasm-equiv.mjs', '60', '1'], watch: ['core.js', 'checkwalk.js', 'wasm-equiv.mjs'], quick: true, engine: '' };
 
+const WORKEREQ = { name: 'check-worker-equiv', cmd: ['node', ED + 'check-worker-equiv.mjs'], watch: ['core.js', 'checkwalk.js', 'checkworker.js', 'check-worker-equiv.mjs'], quick: true, engine: '' };
+
 const args = process.argv.slice(2);
 const tier = args.find(a => ['quick', 'smart', 'full', 'sample'].includes(a)) || 'quick';
 const verbose = args.includes('--verbose');
@@ -255,6 +257,7 @@ const watched = s => {
 const want = s => against ? true : tier === 'full' ? true : tier === 'sample' ? (s.quick ? quickNames.indexOf(s.name) % 4 === sampleTurn || watched(s) : watched(s)) : s.quick || (tier === 'smart' && watched(s));
 if (!against && !WEBKIT_ONLY && (!only || 'contract'.includes(only))) if (want(CONTRACT) || tier === 'sample') jobs.push({ label: 'contract', cmd: CONTRACT.cmd, lane: 'firefox' });
 if (!against && !WEBKIT_ONLY && (!only || 'wasm-equiv'.includes(only))) if (want(WASMEQ) || tier === 'sample') jobs.push({ label: 'wasm-equiv', cmd: WASMEQ.cmd, lane: 'firefox' });
+if (!against && !WEBKIT_ONLY && (!only || 'check-worker-equiv'.includes(only))) if (want(WORKEREQ) || tier === 'sample') jobs.push({ label: 'check-worker-equiv', cmd: WORKEREQ.cmd, lane: 'firefox' });
 if (!against && !WEBKIT_ONLY && (!only || 'twine-diff'.includes(only))) if (want(TWINE_DIFF) || tier === 'sample') jobs.push({ label: 'twine-diff', cmd: TWINE_DIFF.cmd, lane: 'firefox' });
 if (!against && !WEBKIT_ONLY && tier === 'full' && (!only || 'fuzz3'.includes(only))) jobs.push({ label: 'fuzz3', cmd: FUZZ3.cmd, lane: 'firefox' });
 if (!only && !against && !WEBKIT_ONLY) jobs.push({ label: 'lines-selftest', cmd: ['node', 'lines.js'], lane: 'firefox' });

@@ -19,6 +19,15 @@ const atob = s => Buffer.from(s, 'base64').toString('latin1');
 const main = createContext({ console, TextDecoder, TextEncoder, atob, performance });
 runInContext(`${src('core.js')}\n${src('checkwalk.js')}\n${src('checkworker.js')}\nthis.__o = { normalizeProject, analyze, checkWorkerSource };`, main);
 const { normalizeProject, analyze, checkWorkerSource } = main.__o;
+let pageWasm = 0; // WebAssembly answers the page's own check gave, to compare with the worker's (a name missing in the worker quietly drops to JavaScript)
+for (const name of ['klWalkWasm', 'klGraphWasm']) {
+  const f = main[name];
+  main[name] = (...a) => {
+    const r = f(...a);
+    if (r) pageWasm++;
+    return r;
+  };
+}
 const N = +process.argv[2] || 120, SEED = +process.argv[3] || 3;
 
 let wasmMade = 0,
@@ -60,10 +69,14 @@ function allSame(source, quiet) {
   let fails = 0;
   for (let i = 0; i < stories.length; i++) {
     const s = stories[i];
+    const p0 = pageWasm;
     const want = JSON.stringify(pick(analyze(normalizeProject(JSON.parse(JSON.stringify(s))))));
+    const pageUsed = pageWasm - p0;
     let got;
     try {
+      const w0 = wasmUsed;
       const a = runWorker(JSON.stringify(s), source);
+      if (wasmUsed - w0 !== pageUsed) throw new Error(`the worker used WebAssembly ${wasmUsed - w0} times, the page ${pageUsed}`);
       if (a.error) throw new Error(a.error);
       structuredClone(a.r);
       got = JSON.stringify(a.r);
