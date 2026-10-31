@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 30
+- Checker: small stories are checked up to 6 times faster (a 5-page story 0.4 ms to 0.07 ms, the 34-page example about 20% faster) because the checker no longer clears a table sized for 200,000 situations on every check. Answers are identical.
 - The landing page is now the front door at https://lfcfoundry.github.io/story-editor/ and the editor moved to https://lfcfoundry.github.io/story-editor/play/. Bookmarks to the old editor address now show the landing page, which has an Open the editor button.
 - Map: on medium windows (about 1000 px wide) the toolbar now stays on one row, using short names (Good, Bad, Playtest, Compare). Hover for the full name.
 - Checker: a quiet note (not a problem) when a page says the same sentence more than once. Pairs that can never show together, like a paragraph and its "otherwise", are left alone. You can ignore it.
