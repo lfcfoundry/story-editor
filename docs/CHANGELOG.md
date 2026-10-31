@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## October 31
+- Checker: the real 34-page example is checked about twice as fast after an edit, because the checker remembers each paragraph's word count, quote marks and sentences until that paragraph changes. Answers are identical.
+
 ## October 30
 - Checker: small stories are checked up to 6 times faster (a 5-page story 0.4 ms to 0.07 ms, the 34-page example about 20% faster) because the checker no longer clears a table sized for 200,000 situations on every check. Answers are identical.
 - The landing page is now the front door at https://lfcfoundry.github.io/story-editor/ and the editor moved to https://lfcfoundry.github.io/story-editor/play/. Bookmarks to the old editor address now show the landing page, which has an Open the editor button.
