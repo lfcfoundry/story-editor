@@ -24,6 +24,7 @@ Generated stories with many objects, time from the first answer to the deep one 
 - The status line shows "Checking further" while a deep check of the current text runs, and the Check tab's banner says one is running. `window.__deepCheck = false` turns it off.
 - New suite `qa/deepcheck.js`: the deep answer equals a deep check made on the page, the status line and Check tab show the full answer, the worker is closed, an edit stops the old deep check and the edited story gets its own, the switch turns it off, and a story that fits starts none.
 - **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `deepcheck`, `checkworker` pass; `npm test` passes.
+
 ## 2026-10-31 · Writing notes without a signature string
 
 ### Quick
