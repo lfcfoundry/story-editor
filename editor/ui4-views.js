@@ -799,7 +799,7 @@ function runCheck() {
 }
 /** Whatever shows the checker's result takes it in. */
 function afterCheck(already) {
-  freshWriting();
+  if (!writingWarming || view === 'check') freshWriting(); // while a long story's cache is still filling, its last slice does this
   renderTop();
   if (view === 'write') {
     renderSide.list && renderSide.list();

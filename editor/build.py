@@ -10,7 +10,7 @@ Needs Python 3.9+ and Node.js 18+ with esbuild (run "npm install" once in this f
 library (see lzma/); nothing else to install.
 
 Sources, in the order they appear in the finished file:
-  fonts/                        Inter Tight, embedded as data in <style id="font-ui"> (also copied into exported games)
+  fonts/                        Inter Tight, embedded as data in <script type="text/plain" id="font-ui"> (also copied into exported games); ui1-state.js loads it
   game.css, player.js, the game rules in core.js
                                 minified by build-game.mjs into the code every exported game carries:
                                 -> <script type="application/json" id="game-parts"> (code and styles in one piece per optional feature)
@@ -116,7 +116,7 @@ BANNER = FOUNDRY + """
   HOW THE FILE IS ORGANIZED
     1. <style>  editor styles (colors, layout, small-screen rules)
     2. <body>   the empty page frame: top bar, tabs, side lists, main area
-    0. fonts    Inter Tight in <style id="font-ui">, embedded and subset to keep the file small
+    0. fonts    Inter Tight in <script type="text/plain" id="font-ui">, embedded and subset to keep the file small
     3. data     the example story, and the stylesheet and code every exported game carries (minified)
     4. <script> PART 1 CORE (model, rules, checker, import, export) and MAP LAYOUT
                 PART 2 PLAYER (plays a story)
@@ -181,7 +181,7 @@ def shrink(kind, text):
         return text
     return subprocess.run(["node", HERE + "minify.mjs", kind], input=text, capture_output=True, text=True, check=True).stdout
 
-STYLE = '<style id="font-ui">%s</style>\n<style>\n%s\n</style>\n' % (FONT, shrink("css", read("ui.css")))
+STYLE = '<script type="text/plain" id="font-ui">%s</script>\n<style>\n%s\n</style>\n' % (FONT, shrink("css", read("ui.css")))
 SCRIPT = "<script>\n%s\n</script>\n" % shrink("js", script)
 # HTML has one more trap inside a script: after "<!--" a later "<script" switches the parser into a mode where the real </script> no longer
 # ends the script (until a "-->" turns it off). The code writes "<!--" and "<script" in the games it exports, so each "<!--" must be closed by a
