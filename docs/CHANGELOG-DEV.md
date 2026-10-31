@@ -2,6 +2,27 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Story Page Map graph build
+
+### Quick
+`mapGraph` and `mapSizeNodes` do less work: no reach search unless a Given is picked, one-next/one-previous run detection instead of Sets, arrow merging in a nested Map instead of string keys, a plain loop for box sizes, and boxes created with every field the layout fills in. Drawings are identical.
+
+### Details
+Warm layout build, median of 3 alternating rounds, before to after (lower is better):
+
+| Story, view | Chromium 155 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| 316 pages, flow | 2.58 to 2.44 ms | 3.10 to 3.00 ms | 3.33 to 2.88 ms |
+| 316 pages, top-down | 2.70 to 2.51 ms | 2.95 to 2.82 ms | 3.12 to 2.63 ms |
+| 34-page example, flow | 0.31 to 0.25 ms | 0.34 to 0.27 ms | 0.24 to 0.18 ms |
+| 51-page example, flow | 0.41 to 0.35 ms | 0.43 to 0.40 ms (4-round recheck) | 0.34 to 0.29 ms |
+
+- `map-golden.mjs` now also covers the filtered path (a third of the stories pick a Given), regenerated from the previous code; 0 differences.
+- `story-map` 1.0.6 to 1.0.7 (no change in what it gives).
+
+### Deep
+Five ideas, each alone and all together (three browsers, one at a time, 3 alternating rounds). Alone, every one is inside the noise in at least two browsers (316 pages flow, Chromium / Firefox / WebKitGTK: reach skip 2.69 / 3.13 / 2.88 ms; run detection 2.54 / 3.47 / 3.03; nested Map merge 2.62 / 3.10 / 3.04; sizing loop 2.44 / 3.05 / 3.15; pre-shaped boxes 2.48 / 3.33 / 3.27); together they give the 5 to 28% above in Chromium and WebKitGTK. Firefox's 51-page number was 0.43 to 0.83 ms in the first 3 rounds (one slow round), so it was rerun for 4 rounds: 0.43 to 0.40 ms; its 316-page flow row is within plus or minus 5% across runs. The browser bench now passes no Given pick (`as: {}`), the case the Map tab uses unless the reader picks one, so the reach skip is measured where it applies. Node profile that pointed here (316 pages): `mapGraph` was about 0.68 ms of 4.1 ms outside `mapImportance`, with the run Sets (0.21 ms) and the arrow merge (0.19 ms) the largest parts. **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapcull`, `mapprebuild` and `mapkey` pass in all three; `npm test` passes (including `map-golden`, `map-worker-equiv`, `choke-equiv`).
+
 ## 2026-10-31 · Landing page and README: what it is and why it exists
 
 ### Quick

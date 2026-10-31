@@ -835,9 +835,9 @@ function mapGraph(project, opts = {}) {
   let links = [];
   project.passages.forEach(
     (p) => p.choices.forEach((c, ci) => {
-      if (byId[c.to] && !p.ending && mapChoiceVisible(project, c, as))
+      if (byId[c.to] && !p.ending && (!filtering || mapChoiceVisible(project, c, as)))
         links.push({ from: p.id, to: c.to, ci, label: c.label, gated: !!(c.needs.length || c.forbid.length) });
-      if (c.check && byId[c.check.fail] && !p.ending && mapChoiceVisible(project, c, as))
+      if (c.check && byId[c.check.fail] && !p.ending && (!filtering || mapChoiceVisible(project, c, as)))
         links.push({ from: p.id, to: c.check.fail, ci, label: `${c.label} (if the roll fails)`, gated: true, fail: true });
     })
   );
@@ -846,7 +846,7 @@ function mapGraph(project, opts = {}) {
     var _a;
     (outs[_a = l.from] || (outs[_a] = [])).push(l.to);
   });
-  const reach = byId[project.start] ? mapReach(project.start, outs, null) : {};
+  const reach = filtering && byId[project.start] ? mapReach(project.start, outs, null) : {};
   const keep = {};
   let hidden = 0;
   project.passages.forEach((p) => {
@@ -856,17 +856,19 @@ function mapGraph(project, opts = {}) {
   links = links.filter((l) => keep[l.from] && keep[l.to]);
   const ids = project.passages.filter((p) => keep[p.id]).map((p) => p.id);
   const imp = mapImportance(project, ids, links);
-  const succ = {}, pred = {};
+  const succ = /* @__PURE__ */ new Map(), pred = /* @__PURE__ */ new Map();
   links.forEach((l) => {
-    var _a, _b;
-    (succ[_a = l.from] || (succ[_a] = /* @__PURE__ */ new Set())).add(l.to);
-    (pred[_b = l.to] || (pred[_b] = /* @__PURE__ */ new Set())).add(l.from);
+    const s = succ.get(l.from), q = pred.get(l.to);
+    if (s === void 0) succ.set(l.from, l.to);
+    else if (s !== l.to) succ.set(l.from, null);
+    if (q === void 0) pred.set(l.to, l.from);
+    else if (q !== l.from) pred.set(l.to, null);
   });
-  const only = (set) => set && set.size === 1 ? [...set][0] : null;
+  const only = (v) => v || null;
   const chainNext = (u) => {
-    const v = only(succ[u]);
+    const v = only(succ.get(u));
     if (!v || v === u || v === project.start || byId[v].ending || byId[u].ending) return null;
-    return only(pred[v]) === u ? v : null;
+    return only(pred.get(v)) === u ? v : null;
   };
   const hasPrev = /* @__PURE__ */ new Set();
   ids.forEach((u) => {
@@ -897,24 +899,36 @@ function mapGraph(project, opts = {}) {
     const run = runOf[id];
     if (run && run[0] !== id) return;
     const node = run ? { id: `run:${id}`, pages: run.slice(), run: true } : { id, pages: [id], run: false };
+    node.traffic = 0;
+    node.choke = false;
+    node.k = 1;
+    node.w = 0;
+    node.h = 0;
+    node.v = null;
+    node.layer = 0;
+    node.x = 0;
+    node.y = 0;
+    node.loose = false;
     node.pages.forEach((pid) => {
       groupOf[pid] = node.id;
     });
     nodes.push(node);
   });
-  const edges = [], seen = {};
+  const edges = [], seen = /* @__PURE__ */ new Map();
   links.forEach((l) => {
-    var _a;
     const a = groupOf[l.from], b = groupOf[l.to];
     if (a === b && l.from !== l.to) return;
-    const src = { pid: l.from, ci: l.ci, label: l.label, gated: l.gated }, key = `${a}>${b}`;
-    if (opts.merge && seen[key]) {
-      seen[key].srcs.push(src);
-      (_a = seen[key]).gated && (_a.gated = l.gated);
+    const src = { pid: l.from, ci: l.ci, label: l.label, gated: l.gated };
+    let row = seen.get(a);
+    if (!row) seen.set(a, row = /* @__PURE__ */ new Map());
+    const was = row.get(b);
+    if (opts.merge && was) {
+      was.srcs.push(src);
+      was.gated && (was.gated = l.gated);
       return;
     }
     const e = { from: a, to: b, srcs: [src], gated: l.gated };
-    seen[key] = e;
+    row.set(b, e);
     edges.push(e);
   });
   return { nodes, edges, groupOf, runs, hidden, imp, links };

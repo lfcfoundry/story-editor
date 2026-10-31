@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.7 · 2026-10-31
+- Nothing changes in what this package gives: the drawings are exactly the same. Inside, building the graph does less work (no reach search when no Given is picked, lighter run detection and arrow merging, boxes created in their final shape), about 5 to 15% faster in Chromium and WebKitGTK.
+
 ## 1.0.6 · 2026-10-31
 - Nothing changes in what this package gives: the drawings are exactly the same. Inside, the page order is tried on flat number lists, crossings are counted with a faster tally, and the line-up step stops as soon as nothing moves, so a 316-page story is laid out about 15 to 25% faster again.
 
