@@ -26,13 +26,14 @@ Writing a branching story is easy; knowing it works is hard. A choice can lead n
 
 ## By the numbers
 
-Measured on 2026-10-29 in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine, from the single file the editor ships as (median of repeated runs; lower is better).
+Measured in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine, from the single file the editor ships as (median of repeated runs; lower is better). The checker rows were measured again on 2026-10-31 as the average of many repeated checks; the other rows are from 2026-10-29.
 
 | Measure (lower is better) | Chromium | Firefox | WebKitGTK |
 |---|---:|---:|---:|
-| Check after an edit, The Keeper's Light (34 pages, 649 situations) | 2 ms | 3 ms | 4 ms |
-| Check after an edit, a generated test story (316 pages, 24,313 situations) | 13 ms | 14 ms | 14 ms |
-| Same check, JavaScript only (no WebAssembly) | 88 ms | 66 ms | 87 ms |
+| Check after an edit, The Keeper's Light (34 pages, 649 situations) | 0.7 ms | 0.7 ms | 0.7 ms |
+| Check after an edit, a generated test story (316 pages, 24,313 situations) | 6.8 ms | 7.3 ms | 7.2 ms |
+| Check after an edit, a generated 100-page story (78,726 situations) | 30 ms | 28 ms | 30 ms |
+| Same 316-page check, JavaScript only (no WebAssembly) | 33 ms | 47 ms | 43 ms |
 | Open the Story Page Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
 | Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
 
