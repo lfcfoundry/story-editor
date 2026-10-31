@@ -504,7 +504,7 @@ function mapBuild(viewName) {
    refuses workers) the result is simply thrown away and the Map builds itself as always. */
 const MAP_PRE_MIN = 60; // pages; smaller stories build in a few ms, so the worker is not started
 const MAP_PRE_WAIT = 300; // ms of quiet after a check before the worker is asked
-const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, built: 0, dropped: 0, ms: 0, take: 0 };
+const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, sent: null, built: 0, dropped: 0, ms: 0, take: 0 };
 function mapPrebuildSoon() {
   if (mapPre.bad || window.__mapPrebuild === false || !window.Worker || project.passages.length < (window.__mapPreMin ?? MAP_PRE_MIN)) return;
   clearTimeout(mapPre.timer);
@@ -522,7 +522,13 @@ function mapPrebuild() {
   const vname = [shown, ...avail.filter(v => v !== shown)].find(
     v => MAP_PLAIN.includes(v) && !(view === 'map' && v === shown) && !mapCache.has(mapLayoutKey(v, color, as))
   );
-  if (!vname) return;
+  if (!vname) {
+    if (mapPre.sent !== null && !mapPre.job) {
+      mapPre.worker?.postMessage({ forget: true }); // every view is ready: the worker lets go of its copy of the story
+      mapPre.sent = null;
+    }
+    return;
+  }
   const ck = mapLayoutKey(vname, color, as);
   if (mapPre.job && mapPre.job.text === cur) return; // one at a time: the answer starts the next
   if (!mapPre.worker) {
@@ -535,6 +541,7 @@ function mapPrebuild() {
         mapPre.job = null;
         w.terminate();
         mapPre.worker = null;
+        mapPre.sent = null;
       };
       mapPre.worker = w;
       setTimeout(() => URL.revokeObjectURL(url), 5000);
@@ -545,12 +552,14 @@ function mapPrebuild() {
   }
   const prevRef = mapPrev[vname];
   mapPre.job = { seq: ++mapPre.seq, ck, vname, prevRef, text: cur };
-  mapPre.worker.postMessage({ seq: mapPre.seq, view: vname, text: cur, o: { as, open: mapOpen, merge: mapOpts.merge, traffic: mapOpts.traffic, prev: prevRef?.order } });
+  /* the worker keeps the story text it was last sent, so it is sent again only when it changed (2-5 ms of copying each time for 2,000 pages) */
+  const text = mapPre.sent === cur ? undefined : (mapPre.sent = cur);
+  mapPre.worker.postMessage({ seq: mapPre.seq, view: vname, text, o: { as, open: mapOpen, merge: mapOpts.merge, traffic: mapOpts.traffic, prev: prevRef?.order } });
 }
 /** The worker's answer: keep it only if it is still the Map you would get (same story, no Map drawn since). */
 function mapPrebuilt(e) {
   const t0 = performance.now();
-  const m = e.data, // the layout arrives as a copy; this is where the page unpacks it
+  const m = e.data, // the layout arrives as text (see mapPackPlain); this is where the page unpacks it
     job = mapPre.job;
   if (!job || m.seq !== job.seq) return;
   mapPre.job = null;
@@ -558,6 +567,7 @@ function mapPrebuilt(e) {
     mapPre.bad = true;
     mapPre.worker?.terminate();
     mapPre.worker = null;
+    mapPre.sent = null;
     logError('map worker', new Error(m.error));
     return;
   }
@@ -566,9 +576,9 @@ function mapPrebuilt(e) {
     mapPrebuild();
     return;
   }
-  const L = m.L;
+  const { G, L } = mapUnpackPlain(m.json);
   L.view = job.vname;
-  L.G = m.G;
+  L.G = G;
   mapLazyGroups(L, null);
   L.pt = null;
   L.ms = m.ms;

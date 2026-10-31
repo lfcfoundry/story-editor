@@ -2,6 +2,36 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Map views built ahead arrive as text
+
+### Quick
+The Map worker's answer for a view built ahead (PR 68) now comes back as JSON text instead of objects, and the story text is sent to the worker only when it changed. The page's thread spends much less time taking each answer in. The layouts are identical.
+
+### Details
+Main-thread cost of the first two views built ahead at start of a 2,040-page story. This is the time from the worker sending an answer to the page's handler starting (the browser's copy), plus the handler itself, summed over 2 answers. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.39x (0.34-0.49), 4 rounds | 0.55x (0.41-0.63), 4 rounds | 0.47x (0.44-0.57), 4 rounds |
+
+The same layout, sent four ways from a worker, median of 9 (page thread, ms, lower is better):
+
+| Way | Chromium | Firefox | WebKitGTK |
+|---|---|---|---|
+| Objects (before) | 32.0 | 26.0 | 34.0 |
+| Objects without the box lookup and centers | 26.1 | 23.0 | 25.0 |
+| JSON text (chosen) | 10.9 | 10.0 | 14.0 |
+| JSON as UTF-8 bytes, transferred | 12.9 | 14.0 | 15.0 |
+
+Sending the story text once saves 2-5 ms of copying on the page per later view (Chromium 2.1-2.9 ms, WebKitGTK 2-5 ms).
+
+### Deep
+- A 2,040-page layout holds about 13,000 objects, 15,000 arrays and 36,000 strings. Copying objects rebuilds every one on the page's thread before the message event runs, in all three browsers. JSON.parse builds the same graph about 3 times faster.
+- `mapPackPlain` (in the worker's function list) leaves out what the page rebuilds in a moment: `L.nodes`/`L.edges` (the same lists as the graph's), `L.pos`, `L._centers` (a lazy cache) and each waypoint's `edge` link back to its arrow. These are the only cycles. `mapUnpackPlain` puts them back with the same sharing.
+- The worker keeps the last story text and parses it per job, so nothing it builds can leak from one job to the next. The page sends `{ forget: true }` once every view is ready, so the worker drops its copy. After a worker error the text is sent again.
+- `map-worker-equiv.mjs` now compares the unpacked text answer with the Map tab's own build: 1,920 layouts (seed 7) and 3,840 (seed 11), with the story sent with the first job only and again after "forget".
+- Tried: objects with the box lookup and centers left out (only 10-25% less), and UTF-8 bytes transferred (slower to decode than a string).
+
 ## 2026-10-31 · Crash-safe autosave copy (save-kit durableCopy)
 
 ### Quick

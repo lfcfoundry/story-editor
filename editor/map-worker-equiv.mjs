@@ -2,8 +2,10 @@
    MAP-WORKER-EQUIV: a big story's Map layout is built ahead in a background worker. The worker's code is not a second copy: it is the text of the
    same functions (mapWorkerSource in maplayout.js). This check proves two things for random stories (loops, dead ends, Givens, long jumps):
      1. the text really is complete: it runs in an empty context with nothing else of the editor in it, and
-     2. the layout it gives (graph, box sizes, positions, order, crossings, and the crossing count the toolbar chip shows) is exactly what the Map tab's own build gives, for each plain
-        view (flow, down, spine), merged arrows on and off, traffic sizing on and off, with and without last time's order.
+     2. the layout it gives (graph, box sizes, positions, order, crossings, and the crossing count the toolbar chip shows), sent as text and unpacked the
+        way the page does (mapPackPlain, mapUnpackPlain), is exactly what the Map tab's own build gives, with the same shared boxes and arrows, for each
+        plain view (flow, down, spine), merged arrows on and off, traffic sizing on and off, with and without last time's order, when the story text is
+        sent with the first job only (and again after the worker was told to forget it).
    It also reads the page text of ui4-map.js, to confirm the Map tab builds these views through the same functions.
    Usage: node map-worker-equiv.mjs [stories=60] [seed=7]     Exit code 1 and the first difference on any failure.
    Copyright (c) 2026 LFC Foundry. MIT License.
@@ -13,8 +15,8 @@ import { createContext, runInContext } from 'node:vm';
 
 const here = f => new URL(f, import.meta.url);
 const main = createContext({ console, performance });
-runInContext(`${readFileSync(here('core.js'), 'utf8')}\n${readFileSync(here('maplayout.js'), 'utf8')}\nthis.__api = { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, mapMetrics };`, main);
-const { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, mapMetrics } = main.__api;
+runInContext(`${readFileSync(here('core.js'), 'utf8')}\n${readFileSync(here('maplayout.js'), 'utf8')}\nthis.__api = { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, mapMetrics, mapUnpackPlain };`, main);
+const { normalizeProject, mapBuildPlain, mapWorkerSource, MAP_PLAIN, mapMetrics, mapUnpackPlain } = main.__api;
 
 /* the worker: only the text, in a context that has a clock and a way to answer, nothing else */
 const answers = [];
@@ -78,6 +80,8 @@ for (let t = 0; t < stories; t++) {
   const n = int(2, t % 7 === 0 ? 160 : 40);
   const project = makeStory(n, t % 3 === 0);
   const text = JSON.stringify(project);
+  let sent = false; // like the page: the story text goes with the first job only, the worker keeps it
+  if (t % 5 === 4) worker.onmessage({ data: { forget: true } }); // and after "forget" the next job brings it again
   for (const view of MAP_PLAIN) {
     for (const merge of [true, false]) {
       for (const traffic of [false, true]) {
@@ -91,13 +95,16 @@ for (let t = 0; t < stories; t++) {
             const want = mapBuildPlain(JSON.parse(text), view, o);
             mapMetrics(want.L, 0, null, null, true); // the worker also does this, so the page finds the toolbar chip's numbers done
             answers.length = 0;
-            worker.onmessage({ data: { seq: 1, view, text, o: JSON.parse(JSON.stringify(o)) } });
+            worker.onmessage({ data: { seq: 1, view, text: sent ? undefined : text, o: JSON.parse(JSON.stringify(o)) } });
+            sent = true;
             const got = answers[0];
-            if (!got || got.error) {
-              console.log(`FAIL story ${t} (${n} pages) ${view}: the worker said ${got ? got.error : 'nothing'}`);
+            if (!got || got.error || typeof got.json !== 'string') {
+              console.log(`FAIL story ${t} (${n} pages) ${view}: the worker said ${got ? got.error || 'no text' : 'nothing'}`);
               process.exit(1);
             }
-            const d = diff({ G: want.G, L: want.L }, { G: got.G, L: got.L }, '', new Map());
+            const back = mapUnpackPlain(got.json); // the answer as the page unpacks it
+            delete want.L._centers; // a cache the crossing count fills; the page works it out again when it needs it
+            const d = diff({ G: want.G, L: want.L }, back, '', new Map());
             if (d) {
               console.log(`FAIL story ${t} (${n} pages) ${view} merge=${merge} traffic=${traffic} as=${JSON.stringify(as)} prev=${withPrev}: ${d}`);
               process.exit(1);
