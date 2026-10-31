@@ -5,7 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
-- Opening a big story: the start freezes much less. With a 2,040-page story the freezes at start add up to about half as long (Chrome about 1,000 to 500 ms, Firefox 800 to 480 ms, Safari-style browsers 1,100 to 750 ms), and typing a page's name costs 2 to 4 ms per key instead of 27 to 48. Nothing you see changes.
+- Opening a big story: the start freezes much less. With a 2,040-page story the freezes at start take about 0.3 times as long as before in Chrome, 0.6 times in Firefox and 0.8 times in Safari-style browsers, and typing a page's name costs 2 to 4 ms per key instead of 27 to 48. The editor's letters no longer flicker from a stand-in font as it opens. Nothing else you see changes.
 - The Safety window's "Space" line now shows how much of the browser's 5 MB autosave room is used, and that this room is shared with other pages from the same place. It used to show a much larger number that was not the autosave's room.
 - Typing in big stories: the editor does 17 to 30% less work per keystroke in a 316-page story, typing in a 2,040-page story reaches the screen about 30% sooner in Chrome (median 26 to 18 ms), and the pause after typing no longer freezes it for 170 to 235 ms (now about 60 ms). Undo keeps only what changed between steps, so 80 edits hold about 6 MB instead of 22 MB. Everything you see and save is exactly the same.
 - Checker memory: after a big story, the checker gives back memory it no longer needs, in the page and in its background helper (in Chrome about 7 MB less with the 34-page example open). Answers are the same.

@@ -94,3 +94,33 @@ test('--help prints usage and exits 0; a missing config exits 2', () => {
   const m = spawnSync(process.execPath, [RUNNER, join(tmpdir(), 'no-such-config.cjs'), 'quick'], { encoding: 'utf8' });
   assert.equal(m.status, 2);
 });
+
+test('the pool takes the longest suite first on the next run, by the times saved after a green run', () => {
+  const f = fake();
+  writeFileSync(join(f.dir, 'slow.js'), "setTimeout(() => console.log('PASS slow one done'), 1300);\n");
+  f.write([S('quickone', 'good.js'), S('slowone', 'slow.js')]);
+  const env = { ...process.env, QA_JOBS: '1' }; // one worker, so the printed order is the order the suites ran in
+  const run = () => spawnSync(process.execPath, [RUNNER, join(f.dir, 'qa.config.cjs'), 'quick'], { cwd: f.dir, encoding: 'utf8', env });
+  const order = out => out.split('\n').filter(l => /^pass\s/.test(l) && /one one$/.test(l)).map(l => l.trim().split(/\s+/).slice(-2)[0]);
+  const first = run();
+  assert.equal(first.status, 0, first.stdout + first.stderr);
+  assert.deepEqual(order(first.stdout), ['quickone', 'slowone'], 'with no saved times the listed order is kept');
+  const times = JSON.parse(readFileSync(join(f.dir, 'times.json'), 'utf8'));
+  assert.ok(times['slowone one'] > times['quickone one'], 'a green run saves how long each suite took: ' + JSON.stringify(times));
+  const second = run();
+  assert.equal(second.status, 0, second.stdout + second.stderr);
+  assert.deepEqual(order(second.stdout), ['slowone', 'quickone'], 'the slow suite listed last starts first');
+  f.done();
+});
+
+test('a committed times-seed.json orders a fresh checkout that has no times.json yet', () => {
+  const f = fake();
+  writeFileSync(join(f.dir, 'slow.js'), "setTimeout(() => console.log('PASS slow one done'), 300);\n");
+  f.write([S('quickone', 'good.js'), S('slowone', 'slow.js')]);
+  writeFileSync(join(f.dir, 'times-seed.json'), JSON.stringify({ 'slowone one': 9, 'quickone one': 1 }));
+  const r = spawnSync(process.execPath, [RUNNER, join(f.dir, 'qa.config.cjs'), 'quick'], { cwd: f.dir, encoding: 'utf8', env: { ...process.env, QA_JOBS: '1' } });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const order = r.stdout.split('\n').filter(l => /^pass\s/.test(l) && /one one$/.test(l)).map(l => l.trim().split(/\s+/).slice(-2)[0]);
+  assert.deepEqual(order, ['slowone', 'quickone']);
+  f.done();
+});

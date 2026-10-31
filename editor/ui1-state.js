@@ -25,22 +25,6 @@
 /* Start-up timing for the Speed report: the moment the editor's own code began (milliseconds since the page was asked for; with the packed page
    this includes unpacking it) and the moment the first screen was drawn, set at the end of init(). */
 const BOOT_AT = performance.now();
-/* The typeface is made from its bytes here, before anything is laid out. As a plain @font-face it arrived after the first layout, so every
-   text on the page was laid out a second time when it did (55 to 90 ms with a 2,000-page story) and the letters changed from the fallback.
-   A FontFace made from bytes is ready at once in Chromium, Firefox and WebKitGTK. The @font-face text stays in #font-ui for exported games. */
-(function loadUiFont() {
-  const el = document.getElementById('font-ui');
-  const css = el ? el.textContent : '';
-  try {
-    const m = /font-family:'([^']+)'.*?font-weight:([^;]+);.*?base64,([A-Za-z0-9+/=]+)/.exec(css);
-    const bin = atob(m[1] && m[3]);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    document.fonts.add(new FontFace(m[1], bytes.buffer, { weight: m[2], style: 'normal' }));
-  } catch {
-    if (css) document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css })); // no FontFace here: the old way
-  }
-})();
 /* The shared field-report module (field-report.js, first in the page): hidden real-device speed report and error log, opened by five quick taps in the top-left corner or from
    Options -> Speed report. It watches start-up, heavy tasks and every error from here on, and frames once Options -> Speed report -> Record frames is pressed. What it saves is the module's report plus the editor's own lines (speedExtras). */
 /* Frames are off until asked for: a page that never stops asking for frames made the Map take about 4x longer to show its first two frames in Firefox. */
@@ -48,6 +32,26 @@ const startFieldReport = frames => FieldReport.start({ name: 'story-editor', ver
 let fieldReport = startFieldReport(false);
 let READY_AT = 0;
 const STORE = 'story-editor-v1'; // localStorage key for the autosaved story
+/* For a big saved story the typeface is made from its bytes here, before anything is laid out. As a plain @font-face it arrives after the
+   first layout, so every text on the page is laid out a second time when it does (55 to 137 ms with a 2,000-page story, in Chromium) and the
+   letters change from the fallback. A FontFace made from bytes is ready at once in Chromium, Firefox and WebKitGTK, but costs 2 to 6 ms,
+   more than the second layout of a small story, so a small one keeps the plain @font-face. The @font-face text stays in #font-ui for
+   exported games. */
+const UI_FONT_BYTES_FROM = 200000; // saved story length (characters) from which the typeface is made from its bytes
+(function loadUiFont() {
+  const el = document.getElementById('font-ui');
+  const css = el ? el.textContent : '';
+  try {
+    if (!((localStorage.getItem(STORE) || '').length >= UI_FONT_BYTES_FROM)) throw 0;
+    const m = /font-family:'([^']+)'.*?font-weight:([^;]+);.*?base64,([A-Za-z0-9+/=]+)/.exec(css);
+    const bin = atob(m[1] && m[3]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    document.fonts.add(new FontFace(m[1], bytes.buffer, { weight: m[2], style: 'normal' }));
+  } catch {
+    if (css) document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css })); // a small story, or no FontFace here
+  }
+})();
 const UNDO_STEPS = 150; // most undo steps kept
 const UNDO_BYTES = 24e6; // ...and at most this many characters of undo history
 const SAVE_DELAY = 300; // ms to wait after the last edit before saving (typing stays smooth)
