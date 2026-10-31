@@ -42,9 +42,11 @@ const print = r => createHash('md5').update(JSON.stringify({ n: r.G.nodes.map(n 
 const got = [];
 for (let sd = 1; sd <= 120; sd++) {
   const j = JSON.stringify(story([10, 30, 60, 120, 250][sd % 5], sd % 6, sd));
+  /* no Given picked (the usual case), or a pick the story has no Given for (the filtered path, which then hides nothing) */
+  const as = sd % 3 === 0 ? { g: 'x' } : {};
   for (const v of ['flow', 'down', 'spine']) {
-    const a = mapBuildPlain(normalizeProject(JSON.parse(j)), v, { as: 'player', open: {}, merge: sd % 2 === 0, traffic: null, prev: null });
-    const b = mapBuildPlain(normalizeProject(JSON.parse(j)), v, { as: 'player', open: {}, merge: true, traffic: null, prev: a.L.order });
+    const a = mapBuildPlain(normalizeProject(JSON.parse(j)), v, { as, open: {}, merge: sd % 2 === 0, traffic: null, prev: null });
+    const b = mapBuildPlain(normalizeProject(JSON.parse(j)), v, { as, open: {}, merge: true, traffic: null, prev: a.L.order });
     got.push(`${sd} ${v} ${print(a)} ${print(b)}`);
   }
 }
@@ -59,5 +61,5 @@ if (process.argv.includes('--write')) {
       console.log(`FAIL: story ${want[i].split(' ').slice(0, 2).join(' ')} lays out differently`);
       process.exit(1);
     }
-  console.log(`map-golden: ${got.length} layouts (240 drawings with and without last time's order), 0 differences`);
+  console.log(`map-golden: ${got.length} layouts, each drawn with and without last time's order (${got.length * 2} drawings), 0 differences`);
 }

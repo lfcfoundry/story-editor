@@ -1161,10 +1161,10 @@ function mapGraph(project, opts = {}) {
   let links = [];
   project.passages.forEach(p =>
     p.choices.forEach((c, ci) => {
-      if (byId[c.to] && !p.ending && mapChoiceVisible(project, c, as))
+      if (byId[c.to] && !p.ending && (!filtering || mapChoiceVisible(project, c, as)))
         links.push({ from: p.id, to: c.to, ci, label: c.label, gated: !!(c.needs.length || c.forbid.length) });
       /* a skill check has a second way out: the page for a failed roll */
-      if (c.check && byId[c.check.fail] && !p.ending && mapChoiceVisible(project, c, as))
+      if (c.check && byId[c.check.fail] && !p.ending && (!filtering || mapChoiceVisible(project, c, as)))
         links.push({ from: p.id, to: c.check.fail, ci, label: `${c.label} (if the roll fails)`, gated: true, fail: true });
     })
   );
@@ -1172,7 +1172,7 @@ function mapGraph(project, opts = {}) {
   links.forEach(l => {
     (outs[l.from] ||= []).push(l.to);
   });
-  const reach = byId[project.start] ? mapReach(project.start, outs, null) : {};
+  const reach = filtering && byId[project.start] ? mapReach(project.start, outs, null) : {}; // only a Given filter can hide pages
   const keep = {};
   let hidden = 0;
   project.passages.forEach(p => {
@@ -1183,17 +1183,22 @@ function mapGraph(project, opts = {}) {
   const ids = project.passages.filter(p => keep[p.id]).map(p => p.id);
   const imp = mapImportance(project, ids, links);
   /* runs: u and v join when u's only next page is v and v's only previous page is u (no start, no endings) */
-  const succ = {},
-    pred = {};
+  /* each page's one next (and one previous) page, or null when it has several: all a run needs */
+  const succ = new Map(),
+    pred = new Map();
   links.forEach(l => {
-    (succ[l.from] ||= new Set()).add(l.to);
-    (pred[l.to] ||= new Set()).add(l.from);
+    const s = succ.get(l.from),
+      q = pred.get(l.to);
+    if (s === undefined) succ.set(l.from, l.to);
+    else if (s !== l.to) succ.set(l.from, null);
+    if (q === undefined) pred.set(l.to, l.from);
+    else if (q !== l.from) pred.set(l.to, null);
   });
-  const only = set => (set && set.size === 1 ? [...set][0] : null);
+  const only = v => v || null;
   const chainNext = u => {
-    const v = only(succ[u]);
+    const v = only(succ.get(u));
     if (!v || v === u || v === project.start || byId[v].ending || byId[u].ending) return null;
-    return only(pred[v]) === u ? v : null;
+    return only(pred.get(v)) === u ? v : null;
   };
   const hasPrev = new Set();
   ids.forEach(u => {
@@ -1224,27 +1229,40 @@ function mapGraph(project, opts = {}) {
   ids.forEach(id => {
     const run = runOf[id];
     if (run && run[0] !== id) return;
+    /* every field the layout fills in later is there from the start, so all boxes share one shape and stay fast to read */
     const node = run ? { id: `run:${id}`, pages: run.slice(), run: true } : { id, pages: [id], run: false };
+    node.traffic = 0;
+    node.choke = false;
+    node.k = 1;
+    node.w = 0;
+    node.h = 0;
+    node.v = null;
+    node.layer = 0;
+    node.x = 0;
+    node.y = 0;
+    node.loose = false;
     node.pages.forEach(pid => {
       groupOf[pid] = node.id;
     });
     nodes.push(node);
   });
   const edges = [],
-    seen = {};
+    seen = new Map(); // from group -> (to group -> merged arrow)
   links.forEach(l => {
     const a = groupOf[l.from],
       b = groupOf[l.to];
     if (a === b && l.from !== l.to) return; // a step inside a folded run
-    const src = { pid: l.from, ci: l.ci, label: l.label, gated: l.gated },
-      key = `${a}>${b}`;
-    if (opts.merge && seen[key]) {
-      seen[key].srcs.push(src);
-      seen[key].gated &&= l.gated;
+    const src = { pid: l.from, ci: l.ci, label: l.label, gated: l.gated };
+    let row = seen.get(a);
+    if (!row) seen.set(a, (row = new Map()));
+    const was = row.get(b);
+    if (opts.merge && was) {
+      was.srcs.push(src);
+      was.gated &&= l.gated;
       return;
     }
     const e = { from: a, to: b, srcs: [src], gated: l.gated };
-    seen[key] = e;
+    row.set(b, e);
     edges.push(e);
   });
   return { nodes, edges, groupOf, runs, hidden, imp, links };
