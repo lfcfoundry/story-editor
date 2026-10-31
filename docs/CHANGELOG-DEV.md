@@ -2,7 +2,18 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
-## 2026-10-31 · Story Page Map layout, round 2
+## 2026-10-31 · Landing page and README: what it is and why it exists
+
+### Quick
+"What it is and how it works" is now a short summary plus four steps (write, check, see, share); "Why it exists" is three paragraphs (why branching stories break, why rules are data instead of code, why one offline file) plus six use cases.
+
+### Details
+- Landing page: new `.steps` and `.uses` list styles; section order and headings unchanged.
+- README: the same text, keeping the download note and the link to `docs/FORMAT-COMPARISON.md`.
+
+### Deep
+Every claim is one the page or the code already backs: the 200,000-situation limit, the 25 to 50 KB games, the Twine 1/2 and Twee 3 import, the choke-point and simulated-player Map views, and the MIT packages. The comparison with other tools is kept to "most story tools leave this to playtesting or random test runs", matching the sourced table in `docs/FORMAT-COMPARISON.md` (ChoiceScript's Quicktest and Randomtest are not guarantees by their authors' own account). **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `landing` passes in all three; docs drift check passes.
+
 
 ### Quick
 Ordering and crossing counts run on flat number lists with a faster crossing tally, and the line-up step works on reused number buffers and stops as soon as a round moves nothing. Drawings are identical; a 316-page story is laid out 17 to 29% faster than after the previous release, small stories 18 to 59%.

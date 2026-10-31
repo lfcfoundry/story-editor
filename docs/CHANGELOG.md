@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- The landing page and README now explain more carefully what the editor is, how it works step by step, and why it exists, with a list of what people use it for.
 - Story Page Map: the Map's layout is faster again, about 15 to 30% for a 316-page story and up to half the time for small ones. The drawings are exactly the same, and a new test checks 360 drawings against the old ones on every change.
 - Story Page Map: the Map's layout does less work (page importance is found in one pass instead of a search for every page, and repeated passes are skipped), so a 316-page story is laid out about 15 to 20% faster and small ones up to 30%. The drawings are exactly the same.
 - A developer changelog (`docs/CHANGELOG-DEV.md`) now lists every change since October 4 in three depths, Quick, Details and Deep. This page stays the short plain list.
