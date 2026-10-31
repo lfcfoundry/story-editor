@@ -2,6 +2,21 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Map layouts built ahead are let go when the story changes
+
+### Quick
+`mapCache` keeps up to 16 layouts, keyed by the story's fingerprint, so that Undo brings back the same picture. Since PR 68, the background worker adds two layouts built ahead after every typing pause, so a big story filled the cache with layouts of older versions that were never shown. Layouts built ahead and not yet shown are now dropped as soon as the story changes (`mapDropAhead`). Layouts that were shown are kept as before.
+
+### Details
+- Chromium 155.0.8059.39, 2,040-page story: page heap after start, opening a page and 4 typing pauses, after garbage collection (heap snapshot, lower is better): 60.8 to 45.0 MB. Strings went from 465,000 to 126,000, and Map link labels from 30,080 to 7,520 (one layout's worth).
+- The mechanism (how many layouts are kept) does not depend on the browser. The `mapprebuild` suite checks it in all three.
+
+### Deep
+- Found with heap snapshots grouped by what holds each string (`bench/map/bigstr.js`). After typing, `label<links<G` held 4 layouts' worth of strings, and with the cache full it reached 16.
+- The built-ahead mark lives in a WeakMap (`mapAhead`, layout to story fingerprint), so layouts keep exactly the same keys (`mapprebuild` compares them key by key). `mapBuild` removes the mark when a layout is shown.
+- New `mapprebuild` check: after an edit, at most 3 layouts are kept (one per plain view). Without the fix it reads 6 and fails.
+- Found in the same snapshots, not yet fixed: opening a page doubles the page's event listeners (22,800 to 44,900) and adds about 9 MB at 2,040 pages.
+
 ## 2026-10-31 · Deep check past 200,000 situations
 
 ### Quick
