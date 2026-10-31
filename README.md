@@ -115,6 +115,7 @@ The browser suites (Firefox, Chromium and WebKitGTK) are in `editor/qa`; see its
 - **Save** (Ctrl+S) also writes a `.story.json` file you can keep, back up or move to another device, and **Open** brings it back.
   In Chrome and Edge, Save writes straight back to the same file; Firefox and Safari download a copy each time.
 - If the latest autosave can't be read, the editor opens the spare copy it keeps and tells you.
+- Each autosave is also kept in a sturdier store in your browser (IndexedDB), so if the browser crashes before it finished storing your newest changes, the editor brings them back the next time it opens and tells you.
 
 ## The quick tour
 

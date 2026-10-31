@@ -1793,6 +1793,7 @@ function init() {
   try {
     saved = localStorage.getItem(STORE);
     storeSeen = saved;
+    saveSeq = +localStorage.getItem(SEQ_KEY) || 0;
     localStorage.setItem(`${STORE}-t`, '1');
     localStorage.removeItem(`${STORE}-t`);
   } catch (e) {
@@ -2040,6 +2041,7 @@ function init() {
     checkFresh: () => analyze(project), // a check made on the page, to compare with the worker's (for the test suites)
     curExact: () => cur === JSON.stringify(project), // the story text kept for Undo and saving is exactly the story (for the test suites)
     checkPre, // the background checker: how many checks were sent, answered and thrown away (for the test suites)
+    safeFlushed: () => safeCopy.flushed(), // the crash-safe copy has reached IndexedDB (for the test suites)
     mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
     mapKept: v => mapCache.get(mapLayoutKey(v || mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
     mapFresh: v => mapBuildFresh(v), // a layout built the usual way, to compare with the background one
@@ -2058,5 +2060,13 @@ requestAnimationFrame(() =>
     READY_AT = performance.now(); // the first screen has been drawn
     if (!(analysis && analysisFor === cur)) runCheck(); // now the first check
     writingWarmSoon();
+    /* the browser closed before its last saves reached the disk: the crash-safe copy holds them */
+    const seq0 = saveSeq,
+      text0 = cur;
+    safeCopy.newer(seq0).then(rec => {
+      if (!rec || rec.text === cur || cur !== text0 || !savable(rec.text)) return; // the same, unusable, or already edited here
+      saveSeq = Math.max(saveSeq, rec.seq);
+      replaceProject(normalizeProject(JSON.parse(rec.text)), 'Your newest changes were brought back: the browser closed before it finished storing them. Undo shows the older copy');
+    });
   }, 0)
 );

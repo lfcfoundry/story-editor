@@ -2,6 +2,23 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Crash-safe autosave copy (save-kit durableCopy)
+
+### Quick
+Every autosave is also written to IndexedDB with `durability: 'strict'` through save-kit 1.4.0's `durableCopy`. If the browser closed before its newest localStorage saves reached the disk, the next start brings the newer copy back through Open's swap-in path, with a notice; Undo shows the older copy. Approved by the owner with the notice.
+
+### Details
+- Crash test, Chromium 155.0.8059.39 (puppeteer, edit, wait 2 s, kill the browser, reopen; `bench/kill/kill.js`, 3 runs): today's editor lost the edit 3 of 3, with the copy it came back 3 of 3.
+- Main-thread time of one autosave, 2,040 pages (1.8 MB), median of 12 (lower is better): 18.6-19.0 ms before, 17.3-17.5 ms with the copy (same within noise; the IndexedDB write runs off the page's thread).
+- Packed editor 311,572 to about 312,400 bytes.
+
+### Deep
+- `editor/savekit-durable.js` is save-kit 1.4.0's durable part copied unchanged (checked against JS-modules main); it is first in `UI_PARTS`. One write at a time, only the newest waiting text is kept.
+- Each save carries a number that only goes up (`max(Date.now(), last + 1)`), kept in localStorage (`story-editor-v1-seq`) and in the IndexedDB record. At start, after the first check, `safeCopy.newer(seq)` answers with a copy whose number is higher; it is used only if it differs from the open story, the story was not edited meanwhile, and it passes `savable`.
+- The copy is opened at page load, before any save, so a save made before the check runs cannot cover up the newer copy.
+- New suite `qa/crashsafe.js` (Firefox 158, Chromium 155, WebKitGTK 2.52.6): puts back an older localStorage save the way a crash leaves it (no save on the way out), and checks the edit comes back with the notice, the save then holds it, Undo shows the older copy, a normal reload changes nothing, and a copy older than the localStorage save is never used. The notice is checked from a log of every notice shown, since in Chromium it comes about 130 ms after load, before the page is ready to test.
+- Firefox could not be kill-tested here (the hard-kill test needs a display for Firefox); research round 18 found IndexedDB kept every save in Firefox as well.
+
 ## 2026-10-31 · Start-up of big stories, page list rows, Safety space line
 
 ### Quick
