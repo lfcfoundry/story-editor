@@ -785,6 +785,7 @@ function pacingCard() {
 
 /** Re-runs the checker soon after the last edit. */
 function scheduleCheck() {
+  deepCancel();
   clearTimeout(checkTimer);
   checkTimer = setTimeout(() => {
     runCheck();
@@ -792,6 +793,7 @@ function scheduleCheck() {
 }
 /** Runs the checker now and refreshes whatever shows its results. */
 function runCheck() {
+  deepCancel();
   if (checkInWorker()) return; // a big story is checked in the background; checkDone finishes the job
   const already = analysis && analysisFor === cur; // the map may have analyzed this exact version already
   freshAnalysis();
@@ -812,7 +814,59 @@ function afterCheck(already) {
     m.scrollTop = st;
   }
   mapPrebuildSoon(); // a big story's Map layout is built in the background, ready for when the Map tab opens
+  deepCheckSoon();
 }
+/**
+ * The deep check: when a check stops at its 200,000-situation limit, a second background worker checks the same story again up to
+ * KL_DEEP_LIMIT situations. Any edit stops it (deepCancel), and its answer replaces the partial one only if the story is still the same.
+ * The worker is closed after each answer, so the memory a deep check takes (up to about 240 MB at 5 million situations) is given back.
+ * Its explainers (samples, why, canArrive, explain) come from an ordinary check made on the page when something asks, as for the other worker.
+ */
+const deepPre = { worker: null, text: '', posted: 0, done: 0, cancelled: 0, ms: 0 };
+function deepCheckSoon() {
+  const a = analysis && analysisFor === cur ? analysis : null;
+  if (!a || a.deep || !a.truncated || !(a.states > 200000) || deepPre.worker || checkPre.bad || window.__deepCheck === false || !window.Worker) return;
+  let w, url;
+  try {
+    url = URL.createObjectURL(new Blob([checkWorkerSource()], { type: 'text/javascript' }));
+    w = new Worker(url);
+  } catch {
+    return;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  deepPre.worker = w;
+  deepPre.text = cur;
+  deepPre.posted++;
+  w.onmessage = e => {
+    const m = e.data;
+    deepStop();
+    if (m.error || deepPre.text !== cur) return;
+    deepPre.done++;
+    deepPre.ms = m.ms;
+    analysis = lazyExplainers(m.r);
+    analysis.deep = true;
+    speedNote('checker (deep, in a worker)', m.ms, `${analysis.states} situations`);
+    analysis.notes = (analysis.notes || []).concat(editorNotes());
+    analysisFor = cur;
+    afterCheck(false);
+  };
+  w.onerror = () => deepStop();
+  w.postMessage({ seq: 1, text: cur, limit: KL_DEEP_LIMIT });
+  renderTopSoon(); // the status line says a deeper check is running
+}
+function deepStop() {
+  deepPre.worker?.terminate();
+  deepPre.worker = null;
+}
+/** An edit (or a fresh check of another version) stops a deep check of the old one. */
+function deepCancel() {
+  if (deepPre.worker && deepPre.text !== cur) {
+    deepStop();
+    deepPre.cancelled++;
+  }
+}
+/** Is a deep check of the story as it is now running? */
+const deepRunning = () => !!deepPre.worker && deepPre.text === cur;
 /**
  * A story whose last check took more than CHECK_HYBRID_MS is checked after an edit in a background worker, so the page stays free to
  * draw while you type (the status line says "Checking" until the answer comes). Smaller stories, the Check and Map tabs, and any
@@ -959,7 +1013,9 @@ function renderCheck(main) {
     wrap.appendChild(
       h('div', { class: 'banner' }, [
         h('strong', { text: 'No problems found so far. ' }),
-        `The story is too large to check completely (${a.states.toLocaleString('en')} situations checked), so some problems may not show.`
+        deepRunning()
+          ? `The story is too large to check completely (${a.states.toLocaleString('en')} situations checked so far). A deeper check is running in the background; its answer will show here.`
+          : `The story is too large to check completely (${a.states.toLocaleString('en')} situations checked), so some problems may not show.`
       ])
     );
   else

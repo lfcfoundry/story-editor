@@ -2,6 +2,29 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Deep check past 200,000 situations
+
+### Quick
+When a check stops at its 200,000-situation limit, a second background worker checks the same story again up to 5,000,000 (`KL_DEEP_LIMIT`). Any edit stops it; its answer replaces the partial one only if the story is unchanged, and the worker is closed after each answer so its memory is given back. The WebAssembly walk now runs up to that limit (it stopped at 1.5 million and fell back to the JavaScript walk).
+
+### Details
+Generated stories with many objects, time from the first answer to the deep one (in the worker, lower is better) and problems found:
+
+| Story | Problems at 200,000 | Problems in full | Chromium 155 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|---|---|
+| 269,109 situations | 13 | 21 | 96 ms | 116 ms | 154 ms |
+| 1,214,606 situations | 20 | 28 | 324 ms | 371 ms | 622 ms |
+| 2,371,595 situations | 28 | 44 | 799 ms | 824 ms | 1,014 ms |
+
+- Peak memory of the page's process (Chromium, 400 x 700 window): +10, +69 and +115 MB for those three stories while the deep check runs, given back when it ends.
+- The same deep checks with the JavaScript walk took 315 to 883 MB; the WebAssembly walk 69 to 238 MB, with the same answers (6 stories compared, up to 5,000,002 situations).
+
+### Deep
+- `deepCheckSoon()` runs from `afterCheck` when the answer for the current text is truncated with more than 200,000 situations and is not already deep. It uses the same worker source as the ordinary check, with the limit in the message. `deepCancel()` runs from `scheduleCheck` and `runCheck`. Explainers for a deep answer come from an ordinary check made on the page when asked, as for the other worker.
+- The status line shows "Checking further" while a deep check of the current text runs, and the Check tab's banner says one is running. `window.__deepCheck = false` turns it off.
+- New suite `qa/deepcheck.js`: the deep answer equals a deep check made on the page, the status line and Check tab show the full answer, the worker is closed, an edit stops the old deep check and the edited story gets its own, the switch turns it off, and a story that fits starts none.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `deepcheck`, `checkworker` pass; `npm test` passes.
+
 ## 2026-10-31 · Writing notes without a signature string
 
 ### Quick

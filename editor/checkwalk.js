@@ -234,6 +234,8 @@ function klWalkWasm(a) {
     followed, in the page and in the worker alike. A check can walk twice with different limits (PRUNE_AFTER, then the full limit), so one
     small walk is not enough to let go of what the next walk needs. */
 const KL_TRIM_AFTER = 3;
+/** The deep check's limit (ui4-views.js deepCheckSoon): a story that stops the ordinary check at 200,000 situations is checked again up to this. */
+const KL_DEEP_LIMIT = 5000000;
 function klWalkTrim(wide, need) {
   const M = klWalkMods[wide];
   const have = M.mem.buffer.byteLength;
@@ -268,7 +270,7 @@ function klCheckRelease() {
 function klWalkRun(wide, a, W) {
   const { order, pre, fields, bitOf, limit, edgeCap, starts } = a;
   const np = order.length;
-  if (!(limit <= 1500000) || np === 0) return null;
+  if (!(limit <= KL_DEEP_LIMIT) || np === 0) return null; // up to the deep check's limit: the plain JavaScript walk took 4 times the memory there
   const fidx = new Map();
   fields.forEach((f, i) => fidx.set(f, i));
   const pool = [];
