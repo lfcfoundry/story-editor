@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Story Page Map: for big stories, the Map views prepared in the background no longer make the screen stutter as they arrive. Each one now holds up the page about half as long (in a 2,040-page story about 0.4 times as long in Chrome, 0.55 in Firefox, 0.47 in Safari-style browsers). The drawings are exactly the same.
 - Safer autosave: each autosave is now also kept in a second, sturdier store in your browser. Chrome writes its usual autosave to disk only about once a minute, so a crash could lose the last minute of typing; now, if the browser closes before it finished storing your newest changes, the editor brings them back the next time it opens and tells you, and Undo shows the older copy.
 - Opening a big story: the start freezes much less. With a 2,040-page story the freezes at start take about 0.3 times as long as before in Chrome, 0.6 times in Firefox and 0.8 times in Safari-style browsers, and typing a page's name costs 2 to 4 ms per key instead of 27 to 48. The editor's letters no longer flicker from a stand-in font as it opens. Nothing else you see changes.
 - The Safety window's "Space" line now shows how much of the browser's 5 MB autosave room is used, and that this room is shared with other pages from the same place. It used to show a much larger number that was not the autosave's room.

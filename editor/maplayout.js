@@ -991,14 +991,40 @@ function mapBuildPlain(project, viewName, o) {
   return { G, L };
 }
 
+/* The worker's answer travels as JSON text. Handing the layout over as objects costs the page 25-35 ms of copying for a 2,000-page story (the
+   browser rebuilds some 30,000 small objects and strings on the page's thread before the answer arrives); the same layout as text costs it
+   10-14 ms (JSON.parse is far quicker at that than the copy), and the worker does the writing. Left out of the text, because the page
+   rebuilds them in a moment: the layout's own lists of boxes and arrows (the same lists as the graph's), its box lookup (pos), its centers
+   (worked out again when needed) and each waypoint's link back to its arrow. */
+function mapPackPlain(G, L) {
+  const rest = Object.assign({}, L);
+  delete rest.nodes;
+  delete rest.edges;
+  delete rest.pos;
+  delete rest._centers;
+  for (const e of G.edges) for (const c of e.chain || []) delete c.edge;
+  return JSON.stringify({ G, L: rest });
+}
+/** The page's side of mapPackPlain: { G, L } as mapBuildPlain gave them, with the same shared boxes and arrows. */
+function mapUnpackPlain(json) {
+  const { G, L } = JSON.parse(json);
+  L.nodes = G.nodes;
+  L.edges = G.edges;
+  const pos = {};
+  for (const n of G.nodes) pos[n.id] = n;
+  L.pos = pos;
+  for (const e of G.edges) for (const c of e.chain || []) c.edge = e;
+  return { G, L };
+}
+
 /* The plain views can be built in a background worker (the Map tab, ui4-map.js, starts it): the worker's code is these functions as text,
    so there is one copy of the logic. It also counts the crossings for the toolbar chip (mapMetrics keeps that on the layout, so the page finds it done). The list must hold everything mapBuildPlain uses (the check map-worker-equiv.mjs proves it). */
 const MAP_WORKER_FUNCS = [
-  mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain, mapSegCross, mapMetrics
+  mapChoiceVisible, mapReach, mapImportance, mapGraph, mapPlaceLine, mapCrossPairs, layered, mapSizeNodes, mapLayerPlain, mapBuildPlain, mapSegCross, mapMetrics, mapPackPlain
 ];
 function mapWorkerSource() {
   const fns = MAP_WORKER_FUNCS.map(f => f.toString()).join('\n');
-  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const r=mapBuildPlain(JSON.parse(m.text),m.view,m.o);mapMetrics(r.L,0,null,null,true);postMessage({seq:m.seq,G:r.G,L:r.L,ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+  return `'use strict';\nconst MAP_W=${MAP_W},MAP_H=${MAP_H};\n${fns}\nlet story=null;\nonmessage=e=>{const m=e.data;if(m.forget){story=null;return}try{const t=performance.now();if(m.text!==undefined)story=m.text;const r=mapBuildPlain(JSON.parse(story),m.view,m.o);mapMetrics(r.L,0,null,null,true);postMessage({seq:m.seq,json:mapPackPlain(r.G,r.L),ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
 }
 
 /* ---------------------------------------------------------------------------
