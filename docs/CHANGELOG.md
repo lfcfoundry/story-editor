@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Checker: a story too big for the quick check (over 200,000 situations) is now checked fully in the background, up to 5 million. The status line says "Checking further" until the full answer arrives, usually within a second, and any edit starts it again. In test stories the full check found 8 to 16 more problems.
 - Writing notes: after each pause in typing, the notes for a big story are worked out in about 0.6 to 0.75 times the time (2,040 pages: Chrome 2.7 to 1.9 ms, Firefox 4 to 3, Safari-style browsers 7 to 4), and the editor keeps about 1 MB less in memory. The notes are exactly the same.
 - Story Page Map: for big stories, the Map views prepared in the background no longer make the screen stutter as they arrive. Each one now holds up the page about half as long (in a 2,040-page story about 0.4 times as long in Chrome, 0.55 in Firefox, 0.47 in Safari-style browsers). The drawings are exactly the same.
 - Safer autosave: each autosave is now also kept in a second, sturdier store in your browser. Chrome writes its usual autosave to disk only about once a minute, so a crash could lose the last minute of typing; now, if the browser closes before it finished storing your newest changes, the editor brings them back the next time it opens and tells you, and Undo shows the older copy.
