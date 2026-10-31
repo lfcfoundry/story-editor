@@ -1116,6 +1116,14 @@ var StoryFormat = (() => {
     });
     return out.join("\n\n") + "\n";
   }
+  var KL_WORDS = /* @__PURE__ */ new WeakMap();
+  function klWordCount(owner, raw) {
+    const m = KL_WORDS.get(owner);
+    if (m && m.raw === raw) return m.n;
+    const n = (String(raw || "").match(/\S+/g) || []).length;
+    KL_WORDS.set(owner, { raw, n });
+    return n;
+  }
   function storyStats(project) {
     let words = 0;
     let choices = 0;
@@ -1136,12 +1144,12 @@ var StoryFormat = (() => {
       });
     });
     project.passages.forEach((p) => {
-      count(p.heading);
+      words += klWordCount(p, p.heading);
       p.blocks.forEach((b) => {
-        count(b.text);
+        words += klWordCount(b, b.text);
       });
       p.choices.forEach((ch) => {
-        count(ch.label);
+        words += klWordCount(ch, ch.label);
         choices++;
       });
       if (p.ending && p.valence === "good") good++;

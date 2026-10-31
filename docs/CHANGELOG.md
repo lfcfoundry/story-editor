@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- A developer changelog (`docs/CHANGELOG-DEV.md`) now lists every change since October 4 in three depths, Quick, Details and Deep. This page stays the short plain list.
 - Landing page and README: the checker numbers are measured again (the real 34-page example is checked in 0.7 ms after an edit in all three browsers, the 316-page test story in about 7 ms) and a 100-page row is added.
 - Typing: the totals line at the top is no longer rebuilt on a keystroke that changes none of its numbers, and word counts are remembered per paragraph (about 0.5 ms less work per keystroke).
 - Checker: stories of about 100 pages are checked about 30% faster (45 ms to 30 ms) because the "can a player come back for it" pass now goes through the move graph once instead of repeating. Answers are identical.
