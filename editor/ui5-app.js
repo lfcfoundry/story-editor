@@ -1022,7 +1022,9 @@ function renderTop() {
   function stat(n, one, many, tip, ico) {
     return h('span', { class: 'stat', title: tip }, [ico || null, h('b', { text: n.toLocaleString() }), ico ? null : ` ${n === 1 ? one : many}`]);
   }
-  if (sb) {
+  const statsSig = JSON.stringify(st);
+  if (sb && (statsSig !== sb._sig || !sb.firstChild)) {
+    sb._sig = statsSig; // the totals only change now and then, so a keystroke that changes none of them leaves the line alone
     sb.textContent = '';
     [
       stat(st.pages, 'page', 'pages', 'Pages in the story'),
