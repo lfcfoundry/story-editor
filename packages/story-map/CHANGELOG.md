@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.5 · 2026-10-31
+- Nothing changes in what this package gives: the drawings are exactly the same. Inside, the choke points and route shares are found with less work, and the layout does less repeated work, so a 316-page story is laid out about 15 to 20% faster.
+
 ## 1.0.4 · 2026-10-22
 - Nothing changes in what this package gives. Inside, the crossing count of a drawing can now also be worked out in the Story Editor's background worker, with the same answer.
 

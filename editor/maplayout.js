@@ -88,94 +88,156 @@ function mapImportance(project, ids, links) {
   if (!goal.length) goal = pick(p => p.ending);
   choke[start] = true;
   if (goal.length) {
-    /* A page is a choke point when, with it taken out, no other goal page can be reached from the start. Done on flat number lists, and each
-       search stops at the first goal page it meets (most pages are not choke points, so most searches are short). */
+    /* A page is a choke point when, with it taken out, no goal page can be reached from the start: it is on every route to the goals, so it
+       dominates a made-up page that every goal page leads to. The dominators come from one pass of the Cooper-Harvey-Kennedy method
+       (the nearest dominator of every page, repeated in reverse finishing order until nothing changes) on flat number lists: the same set
+       as taking each page out and searching again, found without a search for every page. */
     const n = ids.length,
       at = new Map(ids.map((id, i) => [id, i])),
-      off = new Int32Array(n + 1),
-      isGoal = new Uint8Array(n),
-      mark = new Int32Array(n),
-      queue = new Int32Array(n);
+      off = new Int32Array(n + 2),
+      isGoal = new Uint8Array(n);
     ids.forEach((id, i) => {
-      off[i + 1] = off[i] + outs[id].length;
+      off[i + 1] = off[i] + outs[id].length + (0 | 0);
     });
     const adj = new Int32Array(off[n]);
     ids.forEach((id, i) => outs[id].forEach((w, k) => (adj[off[i] + k] = at.get(w))));
     goal.forEach(g => (isGoal[at.get(g)] = 1));
-    const s = at.get(start);
-    let round = 0;
-    for (const v of reached) {
-      if (v === start) continue;
-      const skip = at.get(v);
-      round++;
-      let met = isGoal[s] === 1,
-        head = 0,
-        tail = 0;
-      mark[s] = round;
-      queue[tail++] = s;
-      while (!met && head < tail) {
-        const x = queue[head++];
-        for (let k = off[x]; k < off[x + 1]; k++) {
-          const w = adj[k];
-          if (w === skip || mark[w] === round) continue;
-          mark[w] = round;
-          if (isGoal[w]) {
-            met = true;
-            break;
+    const s = at.get(start),
+      T = n; // the made-up page every goal page leads to
+    if (isGoal[s] !== 1) {
+      /* depth-first finishing order from the start, goal pages also leading to T */
+      const num = new Int32Array(n + 1).fill(-1), // finishing number
+        seen = new Uint8Array(n + 1),
+        post = new Int32Array(n + 1),
+        stk = new Int32Array(n + 1),
+        it = new Int32Array(n + 1);
+      let np = 0,
+        sp = 0;
+      seen[s] = 1;
+      stk[sp++] = s;
+      while (sp) {
+        const x = stk[sp - 1];
+        const deg = x === T ? 0 : off[x + 1] - off[x] + (isGoal[x] ? 1 : 0);
+        if (it[x] < deg) {
+          const k = it[x]++,
+            w = k < off[x + 1] - off[x] ? adj[off[x] + k] : T;
+          if (!seen[w]) {
+            seen[w] = 1;
+            stk[sp++] = w;
           }
-          queue[tail++] = w;
+        } else {
+          num[x] = np;
+          post[np++] = x;
+          sp--;
         }
       }
-      if (!met) choke[v] = true;
+      /* predecessors (of reached pages only) */
+      const pc = new Int32Array(n + 2);
+      for (let i = 0; i < np; i++) {
+        const x = post[i];
+        if (x === T) continue;
+        for (let k = off[x]; k < off[x + 1]; k++) pc[adj[k] + 1]++;
+        if (isGoal[x]) pc[T + 1]++;
+      }
+      for (let i = 0; i <= n; i++) pc[i + 1] += pc[i];
+      const pl = new Int32Array(pc[n + 1]),
+        fill = pc.slice();
+      for (let i = 0; i < np; i++) {
+        const x = post[i];
+        if (x === T) continue;
+        for (let k = off[x]; k < off[x + 1]; k++) pl[fill[adj[k]]++] = x;
+        if (isGoal[x]) pl[fill[T]++] = x;
+      }
+      const idom = new Int32Array(n + 1).fill(-1);
+      idom[s] = s;
+      const meet = (a, b) => {
+        while (a !== b) {
+          while (num[a] < num[b]) a = idom[a];
+          while (num[b] < num[a]) b = idom[b];
+        }
+        return a;
+      };
+      for (let changed = true; changed; ) {
+        changed = false;
+        for (let i = np - 1; i >= 0; i--) {
+          const x = post[i];
+          if (x === s) continue;
+          let ni = -1;
+          for (let k = pc[x]; k < pc[x + 1]; k++) {
+            const p = pl[k];
+            if (idom[p] === -1) continue;
+            ni = ni === -1 ? p : meet(p, ni);
+          }
+          if (ni !== idom[x]) {
+            idom[x] = ni;
+            changed = true;
+          }
+        }
+      }
+      const isChokeN = new Uint8Array(n);
+      for (let x = idom[T]; x !== s && x !== -1; x = idom[x]) isChokeN[x] = 1;
+      for (const v of reached) if (v !== start && isChokeN[at.get(v)]) choke[v] = true;
     }
   }
-  /* routes: drop arrows that go back into a loop (depth-first), then count paths in what is left */
-  const state = { [start]: 1 },
-    post = [],
-    dag = { [start]: [] },
-    stack = [[start, 0]];
-  while (stack.length) {
-    const top = stack[stack.length - 1],
-      v0 = top[0],
-      list = outs[v0];
-    if (top[1] < list.length) {
-      const w = list[top[1]++];
-      if (state[w] === 1) continue; // an arrow back into the current route: a loop
-      dag[v0].push(w);
-      if (!state[w]) {
-        state[w] = 1;
-        dag[w] = [];
-        stack.push([w, 0]);
+  /* routes: drop arrows that go back into a loop (depth-first), then count paths in what is left. On flat number lists; every sum is added in
+     the order the old lists gave, so the shares come out the same to the last digit. */
+  const nR = ids.length,
+    atR = new Map(ids.map((id, i) => [id, i])),
+    offR = new Int32Array(nR + 1);
+  ids.forEach((id, i) => {
+    offR[i + 1] = offR[i] + outs[id].length;
+  });
+  const adjR = new Int32Array(offR[nR]),
+    keepR = new Uint8Array(offR[nR]),
+    stateR = new Uint8Array(nR),
+    curR = new Int32Array(nR),
+    stkR = new Int32Array(nR),
+    postR = new Int32Array(nR),
+    keptN = new Int32Array(nR);
+  ids.forEach((id, i) => outs[id].forEach((w, k) => (adjR[offR[i] + k] = atR.get(w))));
+  const s0 = atR.get(start);
+  let np = 0,
+    sp = 0;
+  stateR[s0] = 1;
+  stkR[sp++] = s0;
+  while (sp) {
+    const x = stkR[sp - 1],
+      e = offR[x] + curR[x];
+    if (e < offR[x + 1]) {
+      curR[x]++;
+      const w = adjR[e];
+      if (stateR[w] === 1) continue; // an arrow back into the current route: a loop
+      keepR[e] = 1;
+      keptN[x]++;
+      if (!stateR[w]) {
+        stateR[w] = 1;
+        stkR[sp++] = w;
       }
     } else {
-      state[v0] = 2;
-      post.push(v0);
-      stack.pop();
+      stateR[x] = 2;
+      postR[np++] = x;
+      sp--;
     }
   }
-  const topo = post.slice().reverse(),
-    pin = {},
-    pout = {};
+  const pinR = new Float64Array(nR),
+    poutR = new Float64Array(nR);
   let max = 0;
-  topo.forEach(v => {
-    pin[v] = v === start ? 1 : pin[v] || 0;
-    dag[v].forEach(w => {
-      pin[w] = (pin[w] || 0) + pin[v];
-    });
-  });
-  post.forEach(v => {
-    let s = byId[v].ending || !dag[v].length ? 1 : 0;
-    dag[v].forEach(w => {
-      s += pout[w] || 0;
-    });
-    pout[v] = s;
-  });
-  topo.forEach(v => {
-    max = Math.max(max, pin[v] * pout[v]);
-  });
-  topo.forEach(v => {
-    traffic[v] = max ? (pin[v] * pout[v]) / max : 0;
-  });
+  for (let i = np - 1; i >= 0; i--) {
+    const v = postR[i];
+    if (v === s0) pinR[v] = 1;
+    for (let e = offR[v]; e < offR[v + 1]; e++) if (keepR[e]) pinR[adjR[e]] += pinR[v];
+  }
+  for (let i = 0; i < np; i++) {
+    const v = postR[i];
+    let sum = byId[ids[v]].ending || !keptN[v] ? 1 : 0;
+    for (let e = offR[v]; e < offR[v + 1]; e++) if (keepR[e]) sum += poutR[adjR[e]];
+    poutR[v] = sum;
+  }
+  for (let i = np - 1; i >= 0; i--) max = Math.max(max, pinR[postR[i]] * poutR[postR[i]]);
+  for (let i = np - 1; i >= 0; i--) {
+    const v = postR[i];
+    traffic[ids[v]] = max ? (pinR[v] * poutR[v]) / max : 0;
+  }
   const spine = Object.keys(choke).sort((a, b) => base[a] - base[b]);
   return { choke, traffic, goal, spine, depth: base };
 }
@@ -492,6 +554,8 @@ function layered(G, opts = {}) {
     for (let k = 0; k + 1 < nL; k++) c += crossBetween(k);
     return c;
   };
+  const ver = new Int32Array(nL).fill(0),
+    settled = new Int32Array(3 * nL).fill(-2);
   const snapshot = () => L.map(list => list.slice());
   let best = snapshot(),
     bestC = totalCross();
@@ -501,20 +565,39 @@ function layered(G, opts = {}) {
       v.bary = ns.length ? ns.reduce((s, [o]) => s + o.pos, 0) / ns.length : v.pos;
     });
     L[k].sort((a, b) => laneOf(a) - laneOf(b) || a.bary - b.bary || a.pos - b.pos);
+    let moved = false;
     L[k].forEach((v, i) => {
+      if (v.pos !== i) moved = true;
       v.pos = i;
     });
+    if (moved) ver[k]++;
   };
+  /* A layer whose swaps found nothing, with its own and both neighbors' orders unchanged since, would find nothing again (versions in ver). */
   /** Swaps neighbors in a layer while that removes crossings (and keeps lanes in place). */
   const transpose = k => {
+    const s0 = k > 0 ? ver[k - 1] : -1,
+      s2 = k + 1 < nL ? ver[k + 1] : -1;
+    if (settled[3 * k] === s0 && settled[3 * k + 1] === ver[k] && settled[3 * k + 2] === s2) return;
     let improved = true,
       guard = 0;
+    const kept = new Map();
     while (improved && guard++ < 8) {
       improved = false;
       for (let i = 0; i + 1 < L[k].length; i++) {
         const a = L[k][i],
           b = L[k][i + 1];
         if (laneOf(a) !== laneOf(b)) continue;
+        const key = a.idx * vert.length + b.idx;
+        if (kept.has(key)) {
+          if (kept.get(key)) {
+            a.pos = i + 1;
+            b.pos = i;
+            L[k][i] = b;
+            L[k][i + 1] = a;
+            improved = true;
+          }
+          continue;
+        }
         /* Swapping two neighbors changes only the crossings between their own links (every other page stays on the same side of both),
            so those are counted directly instead of recounting the whole map: the same decision, far less work. */
         let before = 0,
@@ -530,6 +613,7 @@ function layered(G, opts = {}) {
         };
         if (k + 1 < nL) tally(down[a.idx], down[b.idx]);
         if (k > 0) tally(up[a.idx], up[b.idx]);
+        kept.set(key, after < before);
         if (after < before) {
           a.pos = i + 1;
           b.pos = i;
@@ -538,13 +622,35 @@ function layered(G, opts = {}) {
           improved = true;
         }
       }
+      if (improved) ver[k]++;
     }
+    if (!improved) {
+      settled[3 * k] = s0;
+      settled[3 * k + 1] = ver[k];
+      settled[3 * k + 2] = s2;
+    } else settled[3 * k] = -2;
   };
   const big = vert.length > 600; // very large maps: fewer passes, so the map stays quick
+  /* A round is decided by the orderings alone, so once an ordering comes back that an earlier round (or the start) already had, every later round repeats and nothing can improve. */
+  const seenOrd = [];
+  const ordOf = () => {
+    const a = new Int32Array(vert.length);
+    let n = 0;
+    for (let k = 0; k < nL; k++) for (let i = 0; i < L[k].length; i++) a[n++] = L[k][i].idx;
+    return a;
+  };
+  const sameOrd = (a, b) => {
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  };
+  seenOrd.push(ordOf());
   for (let it = 0; it < (big ? 2 : 6) && bestC > 0; it++) {
     for (let k = 1; k < nL; k++) sweep(k, up);
     for (let k = nL - 2; k >= 0; k--) sweep(k, down);
     if (!big) for (let k = 0; k < nL; k++) transpose(k);
+    const now = ordOf();
+    if (seenOrd.some(o => sameOrd(o, now))) break;
+    seenOrd.push(now);
     const c = totalCross();
     if (c < bestC) {
       bestC = c;
@@ -570,38 +676,64 @@ function layered(G, opts = {}) {
     });
   });
   const isChoke = v => !v.dummy && opts.spine && v.node.choke;
-  const placeLayer = (list, nb) => {
+  /* The same least-squares placement on flat number lists: each layer's gaps and choke flags are worked out once (they never change
+     between rounds), and the links of every vertex sit in three lists (start, neighbor, weight) in the original order, so every sum adds up
+     in the same order and the result is the same to the last digit. */
+  const nVp = vert.length,
+    cA = new Float64Array(nVp);
+  vert.forEach(v => {
+    cA[v.idx] = v.c;
+  });
+  const csrW = lists => {
+    const start = new Int32Array(nVp + 1);
+    for (let i = 0; i < nVp; i++) start[i + 1] = start[i] + lists[i].length;
+    const nb = new Int32Array(start[nVp]),
+      wt = new Float64Array(start[nVp]);
+    for (let i = 0; i < nVp; i++)
+      for (let j = 0; j < lists[i].length; j++) {
+        nb[start[i] + j] = lists[i][j][0].idx;
+        wt[start[i] + j] = lists[i][j][1];
+      }
+    return [start, nb, wt];
+  };
+  const upF = csrW(up),
+    downF = csrW(down),
+    bothF = csrW(vert.map((_, i) => up[i].concat(down[i])));
+  const gapsOf = L.map(list => list.map((v, i) => (i ? gapOf(list[i - 1], v) : 0)).slice(1)),
+    chokeOf = L.map(list => list.map(isChoke));
+  const placeLayer = (k, F) => {
+    const list = L[k];
     if (!list.length) return;
-    const want = [],
-      wt = [],
-      gaps = [];
-    list.forEach((v, i) => {
-      const ns = nb[v.idx];
+    const [S, N, W] = F,
+      want = [],
+      wt = [];
+    for (let i = 0; i < list.length; i++) {
+      const v = list[i],
+        id = v.idx;
       let s = 0,
         sw = 0;
-      ns.forEach(([o, w]) => {
-        s += o.c * w;
-        sw += w;
-      });
-      if (isChoke(v)) {
+      for (let e = S[id]; e < S[id + 1]; e++) {
+        s += cA[N[e]] * W[e];
+        sw += W[e];
+      }
+      if (chokeOf[k][i]) {
         want.push(0);
         wt.push(1000);
       } else {
-        want.push(sw ? s / sw : v.c);
+        want.push(sw ? s / sw : cA[id]);
         wt.push(sw ? sw + (v.dummy ? 2 : 0) : 0.2);
       }
-      if (i) gaps.push(gapOf(list[i - 1], v));
-    });
-    const xs = mapPlaceLine(want, wt, gaps);
-    list.forEach((v, i) => {
-      v.c = xs[i];
-    });
+    }
+    const xs = mapPlaceLine(want, wt, gapsOf[k]);
+    for (let i = 0; i < list.length; i++) cA[list[i].idx] = xs[i];
   };
-  const both = vert.map((_, i) => up[i].concat(down[i]));
   for (let it = 0; it < (big ? 3 : 8); it++) {
-    for (let k = 1; k < nL; k++) placeLayer(L[k], it % 3 === 2 ? both : up);
-    for (let k = nL - 2; k >= 0; k--) placeLayer(L[k], it % 3 === 2 ? both : down);
+    for (let k = 1; k < nL; k++) placeLayer(k, it % 3 === 2 ? bothF : upF);
+    for (let k = nL - 2; k >= 0; k--) placeLayer(k, it % 3 === 2 ? bothF : downF);
   }
+  vert.forEach(v => {
+    v.c = cA[v.idx];
+  });
   /* lanes: shift each lane so it sits in its own band */
   let lanes = [];
   if (opts.lane) {
