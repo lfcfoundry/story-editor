@@ -1013,6 +1013,49 @@ const EDGE_CAP = 150000; // above this many situations the move graph is not kep
 const PRUNE_AFTER = 20000;
 
 /**
+ * Facts about one piece of text (a block, a choice label, a heading), kept between checks: the check runs after every edit and nearly all the
+ * text is what it was last time. A WeakMap keyed by the block, choice or page, so nothing is saved with the story or kept alive, and a changed
+ * text is simply worked out again. `st` and `cu`: has a straight or a curly quote; `sents`: its sentences of 25 or more characters, trimmed.
+ */
+const KL_TEXT_FACTS = new WeakMap();
+
+function klTextFacts(owner, raw) {
+  let m = KL_TEXT_FACTS.get(owner);
+  if (m && m.raw === raw) return m;
+  const t = String(raw);
+  const sents = [];
+  t.split(/(?<=[.!?”"])\s+/).forEach(x => {
+    x = x.trim();
+    if (x.length >= 25) sents.push(x);
+  });
+  m = {
+    raw,
+    hole: /\b(todo|tbd|lorem ipsum|xxx+|placeholder|fixme)\b/i.test(t),
+    st: /["']/.test(t),
+    cu: /[\u2018\u2019\u201C\u201D]/.test(t),
+    words: (t.match(/\S+/g) || []).length,
+    sents
+  };
+  KL_TEXT_FACTS.set(owner, m);
+  return m;
+}
+
+
+/** The first word a page says twice in a row (across paragraph breaks too), or null; remembered while the paragraphs are the same strings. */
+const KL_REPEAT = new WeakMap();
+
+function klRepeatWord(p) {
+  const ts = p.blocks.map(b => b.text);
+  const m = KL_REPEAT.get(p);
+  if (m && m.ts.length === ts.length && m.ts.every((t, i) => t === ts[i])) return m.r;
+  const x = /\b([a-z]{2,})\s+\1\b/i.exec(ts.join('\n'));
+  const r = x ? x[1] : null;
+  KL_REPEAT.set(p, { ts, r });
+  return r;
+}
+
+
+/**
  * Checks a story: see analyzeRun for what comes back. Small stories are checked exactly as always. When a story with numbers has more
  * than PRUNE_AFTER situations, it is checked again with "dead" numbers forgotten, which gives the same verdicts in far fewer situations
  * (the answer then carries `pruned: true` and leaves numbers out of its explanations). `opt.prune` forces the choice (true or false).
@@ -1131,40 +1174,36 @@ function analyzeRun(project, limit, prune) {
   });
   const ttl = String(project.title || '').trim();
   if (!ttl || /^untitled story$/i.test(ttl)) N('', 'The story has no title yet. Type one in the top bar; it names the exported game.');
-  const holes = /\b(todo|tbd|lorem ipsum|xxx+|placeholder|fixme)\b/i;
   let straight = 0,
     curly = 0;
   order.forEach(p => {
     if (/^untitled page( \(\d+\))?$/i.test(String(p.name).trim())) N(p.id, `${label(p)} still has its starting name. Rename it so it is easy to find.`);
-    const texts = p.blocks.map(b => String(b.text)).concat(p.choices.map(c => String(c.label)), [String(p.heading)]);
-    if (texts.some(t => holes.test(t))) W(p.id, `${label(p)} has a leftover placeholder word (TODO, TBD, lorem ipsum…) in its words.`);
-    texts.forEach(t => {
-      if (/["']/.test(t)) straight++;
-      if (/[\u2018\u2019\u201C\u201D]/.test(t)) curly++;
+    const facts = p.blocks.map(b => klTextFacts(b, b.text)).concat(p.choices.map(c => klTextFacts(c, c.label)), [klTextFacts(p, p.heading)]);
+    if (facts.some(f => f.hole)) W(p.id, `${label(p)} has a leftover placeholder word (TODO, TBD, lorem ipsum…) in its words.`);
+    facts.forEach(f => {
+      if (f.st) straight++;
+      if (f.cu) curly++;
     });
-    const rep = /\b([a-z]{2,})\s+\1\b/i.exec(p.blocks.map(b => b.text).join('\n'));
-    if (rep && !/^(had|that)$/i.test(rep[1])) N(p.id, `${label(p)} repeats a word: ${q(`${rep[1]} ${rep[1]}`)}. A typo?`);
+    const rep = klRepeatWord(p);
+    if (rep && !/^(had|that)$/i.test(rep)) N(p.id, `${label(p)} repeats a word: ${q(`${rep} ${rep}`)}. A typo?`);
     /* a sentence said twice on one page, unless the two blocks can never show together (an "otherwise" chain, or one needs what the other forbids) */
     {
       let chain = -1;
       const seen = new Map();
       let dup = '';
-      p.blocks.forEach(b => {
+      p.blocks.forEach((b, bi) => {
         if (!b.orPrev) chain++;
-        String(b.text)
-          .split(/(?<=[.!?”"])\s+/)
-          .forEach(t => {
-            t = t.trim();
-            if (t.length < 25 || dup) return;
-            const prev = seen.get(t) || [];
-            if (prev.some(o => o.b === b || (o.chain !== chain && !(o.b.needs || []).some(n => (b.forbid || []).includes(n)) && !(b.needs || []).some(n => (o.b.forbid || []).includes(n))))) dup = t;
-            prev.push({ chain, b });
-            seen.set(t, prev);
-          });
+        facts[bi].sents.forEach(t => {
+          if (dup) return;
+          const prev = seen.get(t) || [];
+          if (prev.some(o => o.b === b || (o.chain !== chain && !(o.b.needs || []).some(n => (b.forbid || []).includes(n)) && !(b.needs || []).some(n => (o.b.forbid || []).includes(n))))) dup = t;
+          prev.push({ chain, b });
+          seen.set(t, prev);
+        });
       });
       if (dup) N(p.id, `${label(p)} says ${q(dup.length > 60 ? dup.slice(0, 57) + '…' : dup)} more than once. That is fine if you meant it; if not, one of them could change.`);
     }
-    const words = p.blocks.reduce((n, b) => n + (String(b.text).match(/\S+/g) || []).length, 0);
+    const words = p.blocks.reduce((n, b, bi) => n + facts[bi].words, 0);
     if (words > 350) N(p.id, `${label(p)} is long (${words} words). Players read it on one screen; splitting it (Ctrl+Shift+Enter at the cursor) gives them a choice sooner.`);
     if (!p.ending && p.choices.length > 7) N(p.id, `${label(p)} has ${p.choices.length} choices. Players may find that many hard to choose between.`);
     if (p.blocks.length > 1 && p.blocks.some(b => !String(b.text).trim())) W(p.id, `${label(p)} has an empty paragraph. Delete it, or write something in it.`);
