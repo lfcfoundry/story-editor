@@ -12,33 +12,27 @@
 
 ## What it is and how it works
 
-The Story Editor is for writing branching stories, the kind where the reader decides what happens next, and for making sure they work before anyone plays them. It is one HTML file that runs in your browser, offline, and each finished story becomes one small HTML file of its own.
+A single-file, offline editor for branching "choose your own path" stories, with a built-in checker that finds what is broken.
 
-1. **Write pages and choices.** A story is a set of pages, each with some text and a few choices that lead to other pages. Objects (a key, a lantern) and states (sick, trusted) let a paragraph or a choice appear only when the player has, or lacks, something, and pages and choices can give or take them. Numbers and dice checks are there when a story needs them. None of it is code: every rule is a field you fill in.
-2. **Check every route.** While you write, the checker plays the story by the same rules the finished game uses. Starting from page one, it visits every situation a player can be in: each page together with what the player carries, what they are, the values of their numbers and the outcome of every dice roll. It reports choices that lead nowhere, pages nobody can reach, places where a player gets stuck and endings no one can get to, explains each one in plain words, and can replay the shortest route to any page. It explores up to 200,000 situations, and if it has to stop early it says so instead of guessing.
-3. **See the shape.** The Story Page Map draws every page as a box and every choice as a line, in views that range from a plain flow to the shape of the whole story. It marks the pages every player has to pass through, and it can color pages by how often simulated players reach them or by how likely each ending is.
-4. **Share one file.** Export turns the story into a single HTML game of about 25 to 50 KB that plays in a browser on a phone, tablet or computer, online or off, with no server behind it. The story itself is saved as a plain `.story.json` file, and stories written in Twine can be imported.
+- **Write** pages and choices. Keys, states, numbers and dice are fields you fill in, not code.
+- **Check** every route as you type. It finds dead ends, unreachable pages and endings no one can reach, and says why.
+- **See** the story as a Story Page Map you can search and click.
+- **Share** one small HTML game, about 25 to 50 KB, that plays on almost any device, offline.
 
 You can also download `index.html` from this page and double-click it; nothing needs installing.
 
 ## Why it exists
 
-Branching stories outgrow the writer's memory quickly. Each choice splits the routes, and once choices depend on what the player carries or has done, the number of situations a player can be in grows by multiplication, not addition. The mistakes live in those combinations: an ending that needs a key only one route hands out, when that route never leads to the ending, or a door that opens only for a state the player has already lost. Rereading the text does not reveal them, and playtesting covers only the routes testers happen to take.
-
-The idea behind the editor is to keep a story's rules as data rather than code. Objects, states, numbers and dice are fields, not a scripting language. That limits what a story can do, and in return a program can explore every situation and prove whether an ending can or cannot happen. Writers who do not program can use it, and those who do get an exact check that most story tools leave to playtesting or random test runs.
-
-The single file follows from the same wish to keep things simple and lasting. A story and its game should not depend on a website staying online, on an account, or on a computer where you are allowed to install software. The editor works on locked-down school and office computers, a finished game can be emailed, copied to a USB stick or archived, and the editor never sends your story anywhere.
-
-How it compares with Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md).
+Branching stories break in ways rereading cannot catch, like an ending that needs a key only another route hands out. Because the rules are data rather than code, the editor can test every situation instead of hoping a playtester stumbles on the problem. And because it is one offline file, a story does not depend on a website, an account or an install. How it compares with Twine, Ink, Yarn Spinner and ChoiceScript, with sources, is in [docs/FORMAT-COMPARISON.md](docs/FORMAT-COMPARISON.md).
 
 ### What people use it for
 
-- **Classrooms.** Students write interactive fiction on school computers that allow no installs, and the checker's plain explanation of why an ending cannot be reached turns a broken story into a lesson in cause and effect.
-- **Writers.** Someone drafting a branching novella or game script can confirm that every ending is reachable before readers or playtesters see it.
-- **Game and puzzle designers.** Quests, puzzles and dialogue built on keys, stats and dice can be checked for dice rolls that can never pass or never fail and thresholds no player can reach.
-- **Training scenarios.** A safety drill, a customer conversation or a practice case can be written so every path ends somewhere meaningful, and the checker confirms that none quietly dead-ends.
-- **Twine authors.** Import a Twine 2, Twee 3 or Twine 1 story to get a second check. The editor turns SugarCube and Harlowe code into rules where it can and says in plain words what could not carry over.
-- **Developers.** The checker, the game player and the map drawing are separate MIT packages with no dependencies, for anyone who needs just one piece.
+- Classrooms, on computers that allow no installs
+- Writers confirming every ending is reachable before readers see it
+- Game designers testing keys, stats and dice
+- Training scenarios where no path should dead-end
+- Twine authors who want a second check
+- Developers reusing the checker, player or map as MIT packages
 
 ## Highlights
 
