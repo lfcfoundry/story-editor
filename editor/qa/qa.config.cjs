@@ -52,7 +52,8 @@ module.exports = {
     S('mapcull', 'mapcull.js', ['ui4-map.js', 'maplayout.js', 'ui.css', 'core.js'], false),
     S('mapprebuild', 'mapprebuild.js', ['ui4-map.js', 'maplayout.js', 'ui4-views.js', 'core.js'], false),
     S('curtext', 'curtext.js', ['ui1-state.js', 'ui3-write.js', 'ui5-app.js'], false),
-    S('crashsafe', 'crashsafe.js', ['ui1-state.js', 'savekit-durable.js', 'ui5-app.js'], false)
+    S('crashsafe', 'crashsafe.js', ['ui1-state.js', 'savekit-durable.js', 'ui5-app.js'], false),
+    S('deepcheck', 'deepcheck.js', ['ui4-views.js', 'ui4-status.js', 'checkwalk.js', 'checkworker.js'], false)
   ],
   /* commands that are not browser suites (run once, on the first engine's lane) */
   extra: [
