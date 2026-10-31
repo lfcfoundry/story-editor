@@ -115,7 +115,8 @@ function statusParts() {
     if (np) chip('bad', '✕', `${np} problem${np === 1 ? '' : 's'}`, '', 'Open the Check tab', () => setView('check'));
     if (np && a.problems.some(p => p.pid)) chip('btn', '→', 'Next problem', '', 'Open the page of the next problem', nextProblem);
     if (nw) chip('warn', '▲', `${nw} to look at`, '', 'Open the Check tab', () => setView('check'));
-    if (!np && a.truncated) chip('gray', '?', 'Not fully checked', '', 'The story is too large to check completely, so some problems may not show. Open the Check tab.', () => setView('check'));
+    if (a.truncated && deepRunning()) chip('gray', '…', 'Checking further', '', 'The story is too large for the quick check, so a deeper check is running in the background. Open the Check tab.', () => setView('check'));
+    else if (!np && a.truncated) chip('gray', '?', 'Not fully checked', '', 'The story is too large to check completely, so some problems may not show. Open the Check tab.', () => setView('check'));
     else if (!np && !nw) chip('ok', '✓', `No problems found: ${a.endings.length ? `${a.endings.length} ending${a.endings.length === 1 ? '' : 's'}` : `${project.passages.length} pages`}`, '', 'Every ending can be reached and nothing traps a player', () => setView('check'));
   }
   if (writing.length) chip('gray', '✎', `${writing.length} writing note${writing.length === 1 ? '' : 's'}`, '', 'Repeated words, names spelled two ways, long paragraphs and choices that read alike. Open the Check tab.', () => setView('check'));
