@@ -42,7 +42,7 @@ Branching stories break in ways rereading cannot catch, like an ending that need
 
 ## By the numbers
 
-Measured in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine, from the single file the editor ships as (median of repeated runs; lower is better). The checker rows were measured again on 2026-10-31 as the average of many repeated checks; the other rows are from 2026-10-29.
+Measured in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine, from the single file the editor ships as (median of repeated runs; lower is better). The checker rows were measured again on 2026-10-31 as the average of many repeated checks, the typing row on 2026-10-31 as the median of 40 keys; the other rows are from 2026-10-29.
 
 | Measure (lower is better) | Chromium | Firefox | WebKitGTK |
 |---|---:|---:|---:|
@@ -52,6 +52,7 @@ Measured in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine,
 | Same 316-page check, JavaScript only (no WebAssembly) | 33 ms | 47 ms | 43 ms |
 | Lay out the Story Page Map of 316 pages (layout only, warm) | 2.4 ms | 3.0 ms | 2.9 ms |
 | Open the Story Page Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
+| Typing in the 316-page test story, the editor's own work per keystroke | 5.0 ms | 5.6 ms | 8.2 ms |
 | Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
 
 ### Why it is this fast

@@ -2,6 +2,33 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Hidden per-keystroke and memory costs
+
+### Quick
+A keystroke no longer redoes whole-story work. The saved story text is spliced (only the edited page's JSON piece is rewritten, and "did anything change" is compared at the size of one page); Undo keeps the newest step whole and older ones as differences; the story fingerprint (`sigOf`) remembers its last text; the writing checks keep each page's part until that page changes; the autosave does not parse text the editor built itself. The checker's WebAssembly memories are let go when a small story follows a big one, and at once on the page when the worker takes over. Everything is identical: the saved text, Undo, the History list, every note and check.
+
+### Details
+Editor's own work per keystroke (input handler, 40 keys), 316-page test story, median of 3 alternating rounds, before to after (lower is better):
+
+| Measure | Chromium 155 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Typing in one paragraph | 5.98 to 4.99 ms | 7.17 to 5.60 ms | 11.62 to 8.18 ms |
+| Each key a new undo step (two fields in turn) | 3.95 to 2.66 ms | 4.28 to 3.05 ms | 6.83 to 4.90 ms |
+| 34-page example, typing in one paragraph | 1.54 to 1.26 ms | 1.45 to 1.50 ms (timer is whole ms) | 2.40 to 1.90 ms |
+
+- 2,040 pages (research round 14's `ty.js`, Chromium, 2 rounds): key to frame median 24.3-28.3 to 18.0-18.2 ms, worst 35.6-38.2 to 26.2-30.4 ms, longest freeze after the pause 170-235 to 52-63 ms. Firefox could not be driven by that tool here (it needs a display).
+- JavaScript heap after 80 edits in the 316-page story (Chromium, after a forced garbage collection): 21.9 to 6.1 MB.
+- Checker WebAssembly memory with the shared hook (`round7-elias-fano-trim/survey/hook.js`, `WASM_MEM.gc()` then `WASM_MEM.all()`), small 400 x 700 window, a 300-page generated story then the 34-page example: page 10.5 to 2.1 MB, worker 11.5 to 3.1 MB, total 22 to 5.2 MB (the 16 MB baseline). Real renderer memory (RssAnon, Chromium): 126 to 121 MB.
+- Check after an edit: no change beyond noise in 3 browsers (7 story sizes, 3 rounds, plus a 4-round Chromium recheck).
+
+### Deep
+- Splice: `storyText()` stringifies each passage on its own and the outer object with a marker in place of `passages`, so the result equals `JSON.stringify(project)` and `cutAt` knows each page's offsets. `pageEdit(page)` (text, heading, name and choice-wording handlers pass their page to `commit`) re-stringifies that page and splices it in; it falls back to the whole text when the passages array or `cur` changed under it. New suite `qa/curtext.js` types in four kinds of fields on 6 pages with a new page, Undo and Redo mixed in, and checks `cur === JSON.stringify(project)` after every step, that the save equals the story and that 40 Undos stay exact (3 browsers).
+- Undo: `pushUndo` turns the old top into `{ a, b, m }` (shared start and end lengths, its own middle) against the new step, found with 2 KB native slice compares and then letter by letter; `popUndo` makes the next one whole; `undoText(i)` rebuilds any step for `stepInfo` and History. The 24 M-character budget still counts each step at its whole size, so exactly the same steps are kept. New test `editor/undo-delta-equiv.mjs` (in `npm test`): 3,000 single differences and 5,339 undo steps over 8,000 random pushes and pops against plain copies; it fails if a pop does not rebuild or the budget drifts.
+- Memory: `klWalkTrim` / `klGraphTrim` start a fresh instance of the compiled module when memory is over 4 MB (walk) or 2 MB (graph) and 4 times what 3 calls in a row needed (one check can walk twice with different limits, so one small call is not enough); `klCheckRelease()` does it at once when the worker's answer arrives. New test `editor/walk-trim-equiv.mjs`: 108 checks of 36 mixed stories against a checker that never lets go, 0 differences, 19 memories let go, small stories after big ones hold no more than a fresh checker. Tried and dropped: sizing the walk's tables to 4 times the last count with a full-size retry. It cut only reserved, untouched pages (resident memory the same) and made the first check after opening a much bigger story 10 to 25% slower.
+- Writing checks: `writingPage` holds one page's notes (before the ignore list) and its capitalized and lower-case words; `writingChecks` replays them in page order, so the spelling check's first-seen order and 1,500-name cap are unchanged. A page's part is reused while a signature of its id, name, ending, texts, choice wording and the limits is the same. New test `editor/writing-cache-equiv.mjs`: 1,200 random edits in 30 stories, cached against uncached; the same run was also checked once against the previous `helpers.js`.
+- Found while testing, not caused by this change: in headless Chromium on a file page, a quick reload sometimes started from storage without the newest writes (the spare copy and a just-saved setting both gone), so `qa/helpers.js` "the ignored note is remembered" fails now and then, in the previous build too (1 of 8 under load). Left for the storage work.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `curtext`, `undohist`, `write1`, `write2`, `helpers` (see above), `checkworker`, `walk`, `reachability`, `mapprebuild`, `mapkey` and `phone` pass in all three; `npm test` passes. Packed editor 309,335 to 310,755 bytes.
+
 ## 2026-10-31 · Checker pruned-first hint and Map views built ahead
 
 ### Quick

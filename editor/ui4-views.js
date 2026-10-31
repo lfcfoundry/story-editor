@@ -861,6 +861,7 @@ function checkDone(e) {
     return;
   }
   checkLastMs = m.ms;
+  klCheckRelease(); // the worker checks now, so the memory a big story left in the page's own checker can go
   if (checkPre.text !== cur || (analysis && analysisFor === cur)) {
     checkPre.dropped++;
     return;

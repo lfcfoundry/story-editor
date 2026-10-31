@@ -39,7 +39,7 @@ const CHECK_DELAY = 500; // ms to wait after the last edit before re-running the
 
 let project; // the story being edited (see PART 1 for its shape)
 let cur; // JSON text of `project` as last committed
-const undoStack = []; // snapshots (JSON text) for Undo / Redo
+const undoStack = []; // snapshots for Undo: the newest holds the story's JSON text, older ones only what differs (see pushUndo)
 let redoStack = [];
 let undoBytes = 0;
 let lastKey = ''; // used to merge rapid typing into one undo step
@@ -271,6 +271,8 @@ let lastLocalSave = 0; // when the autosave last wrote to this browser (shown in
 let storeSeen; // the save text this window last read from storage or wrote to it; undefined while unknown (storage unreadable)
 /** Is this text a whole story the editor could open? Checked before every save so a broken state never overwrites a good one. */
 function savable(text) {
+  /* text the editor built from the story itself (storyText, pageEdit) is known whole without reading it back: 26 ms per save at 2,000 pages */
+  if (cutAt && text === cutAt.text) return cutAt.ok;
   try {
     const o = JSON.parse(text);
     return !!o && o.format === 'story-editor' && Array.isArray(o.passages) && o.passages.length > 0;
@@ -363,17 +365,101 @@ let epochs = 0;
 /** The story as it is now, as a snapshot. */
 const snap = () => ({ s: cur, e: epoch, t: Date.now() });
 
+/* Only the newest undo snapshot keeps the whole story text (`s`). Each older one keeps just what differs from the snapshot after it (`d`: the
+   length of the shared start, of the shared end, and its own middle), so a long session of writing in a big story holds a few kilobytes of
+   history instead of whole copies. undoText(i) rebuilds any snapshot's text when it is needed (Undo, the History list). The budget still
+   counts each step at its whole size (`n`), so exactly the same steps are kept as before. */
+/** What `old` keeps that `next` does not: { a: shared start, b: shared end, m: the rest of `old` }. */
+function undoDelta(old, next) {
+  const n = Math.min(old.length, next.length),
+    C = 2048; // whole chunks are compared by the browser's own string compare, then the last chunk letter by letter
+  let a = 0;
+  while (a + C <= n && old.slice(a, a + C) === next.slice(a, a + C)) a += C;
+  while (a < n && old.charCodeAt(a) === next.charCodeAt(a)) a++;
+  const lo = old.length,
+    ln = next.length;
+  let b = 0;
+  while (b + C <= n - a && old.slice(lo - b - C, lo - b) === next.slice(ln - b - C, ln - b)) b += C;
+  while (b < n - a && old.charCodeAt(lo - 1 - b) === next.charCodeAt(ln - 1 - b)) b++;
+  return { a, b, m: old.slice(a, old.length - b) };
+}
+const undoApply = (next, d) => next.slice(0, d.a) + d.m + next.slice(next.length - d.b);
+/** The story text of undo snapshot i. */
+function undoText(i) {
+  let k = i;
+  while (undoStack[k].s == null) k++;
+  let t = undoStack[k].s;
+  for (k--; k >= i; k--) t = undoApply(t, undoStack[k].d);
+  return t;
+}
 /** Adds a snapshot to the undo list, dropping the oldest ones when over budget. */
 function pushUndo(x) {
+  const top = undoStack[undoStack.length - 1];
+  if (top && top.s != null) {
+    top.d = undoDelta(top.s, x.s);
+    top.s = null;
+  }
+  x.n = x.s.length;
   undoStack.push(x);
-  undoBytes += x.s.length;
-  while (undoStack.length > UNDO_STEPS || (undoBytes > UNDO_BYTES && undoStack.length > 1)) undoBytes -= undoStack.shift().s.length;
+  undoBytes += x.n;
+  while (undoStack.length > UNDO_STEPS || (undoBytes > UNDO_BYTES && undoStack.length > 1)) undoBytes -= undoStack.shift().n;
 }
-/** Takes the newest snapshot off the undo list. */
+/** Takes the newest snapshot off the undo list (whole), and makes the one below it whole. */
 function popUndo() {
   const x = undoStack.pop();
-  undoBytes -= x.s.length;
+  undoBytes -= x.n;
+  const top = undoStack[undoStack.length - 1];
+  if (top && top.s == null) {
+    top.s = undoApply(x.s, top.d);
+    top.d = null;
+  }
   return x;
+}
+
+/* ----- the story as text, rewritten one page at a time while you type -----
+   Every edit records the story as JSON text (`cur`): it is what Undo keeps, what is saved, and how the checker and the Map know the story
+   changed. Turning a 300-page story into text takes a millisecond or two and leaves a copy of it behind for the garbage collector, on every
+   keystroke. So the text is built from one piece per page (exactly what JSON.stringify(project) gives), and `cutAt` remembers where each page's
+   piece sits. A keystroke in a page's text, heading, name or choice wording (which change nothing else in the story) only rewrites that page's
+   piece. Anything else, or anything unexpected, builds the whole text again. */
+let cutAt = null; // { text: the cur it describes, pages: the passages array, at: [start of each page's piece, ..., end of the last] }
+const PAGES_MARK = '\u0001pages\u0001';
+/** JSON.stringify(project), built page by page so a later text edit can replace one page's piece (see pageEdit). */
+function storyText() {
+  const P = project.passages;
+  const pieces = P.map(p => JSON.stringify(p));
+  project.passages = PAGES_MARK;
+  let outer;
+  try {
+    outer = JSON.stringify(project);
+  } finally {
+    project.passages = P;
+  }
+  const mark = JSON.stringify(PAGES_MARK),
+    i = outer.indexOf(mark);
+  const at = [i + 1];
+  for (const x of pieces) at.push(at[at.length - 1] + x.length + 1);
+  at[at.length - 1]--; // no comma after the last page
+  const s = `${outer.slice(0, i)}[${pieces.join(',')}]${outer.slice(i + mark.length)}`;
+  cutAt = { text: s, pages: P, at, ok: project.format === 'story-editor' && Array.isArray(P) && P.length > 0 }; // ok: what savable() would find
+  return s;
+}
+/** The story text after an edit that changed only page `page`'s own words (`cur` itself when that page's piece is unchanged), or null
+    when that cannot be done safely (then storyText runs). */
+function pageEdit(page) {
+  const c = cutAt;
+  if (!c || c.text !== cur || c.pages !== project.passages) return null;
+  const k = project.passages.indexOf(page);
+  if (k < 0 || c.at.length !== project.passages.length + 1) return null;
+  const was = c.at[k + 1] - c.at[k] - (k < project.passages.length - 1 ? 1 : 0);
+  const piece = JSON.stringify(page);
+  const d = piece.length - was;
+  c.changed = !(d === 0 && cur.slice(c.at[k], c.at[k] + was) === piece); // compared at the size of one page, not of the story
+  if (!c.changed) return cur;
+  const s = cur.slice(0, c.at[k]) + piece + cur.slice(c.at[k] + was);
+  for (let j = k + 1; j < c.at.length; j++) c.at[j] += d;
+  c.text = s;
+  return s;
 }
 
 /**
@@ -381,10 +467,13 @@ function popUndo() {
  * Calls with the same `key` within 1.2 s merge, so a burst of typing is one undo step (but never more than
  * 10 seconds of it, so Undo never throws away a long stretch of writing).
  */
-function commit(key) {
-  pruneVirtual(project);
-  const s = JSON.stringify(project);
-  if (s === cur) return;
+function commit(key, page) {
+  let s = page ? pageEdit(page) : null;
+  if (s === null) {
+    pruneVirtual(project);
+    s = storyText();
+    if (s === cur) return;
+  } else if (!cutAt.changed) return; // the page's piece is the same (comparing the whole new text would read the whole story)
   const now = Date.now();
   const merge = key && key === lastKey && now - lastT < 1200 && now - mergeStart < 10000;
   if (!merge) {

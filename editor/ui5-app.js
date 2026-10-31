@@ -253,10 +253,15 @@ function fileFollowsStory() {
 }
 
 /** A short fingerprint of a story's text, kept with the file record so a reload can tell whether the file still matches the work. */
+let sigLast = null,
+  sigVal = ''; // the last text asked about and its fingerprint: the Map asks about the same story text many times per edit
 function sigOf(t) {
+  if (t === sigLast) return sigVal;
   let x = 0;
   for (let i = 0; i < t.length; i++) x = (x * 31 + t.charCodeAt(i)) | 0;
-  return `${t.length}:${x}`;
+  sigLast = t;
+  sigVal = `${t.length}:${x}`;
+  return sigVal;
 }
 function keepFileRecord() {
   kvSet('file', storyFile ? { handle: storyFile, story: project.id, sig: savedText == null ? '' : sigOf(savedText) } : null);
@@ -2014,6 +2019,7 @@ function init() {
     xl: { sheet: () => translationSheet(project), csvParse, csvWrite }, // for the test suites
     refresh, // the test suites change the story directly, then ask for the same redraw an edit would
     checkFresh: () => analyze(project), // a check made on the page, to compare with the worker's (for the test suites)
+    curExact: () => cur === JSON.stringify(project), // the story text kept for Undo and saving is exactly the story (for the test suites)
     checkPre, // the background checker: how many checks were sent, answered and thrown away (for the test suites)
     mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
     mapKept: v => mapCache.get(mapLayoutKey(v || mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
