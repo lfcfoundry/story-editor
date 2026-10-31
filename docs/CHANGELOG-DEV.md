@@ -2,6 +2,30 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Page list A to Z: one collator, and the last order kept
+
+### Quick
+`listedPages()` sorted A to Z with `localeCompare(x, y, undefined, { sensitivity: 'base', numeric: true })`. Called with options, every comparison sets up the language rules again: sorting 2,040 names took 66 ms in Chromium, 32 in Firefox and 142 in WebKitGTK, and the page list is redrawn after every check and every key in a page name. `azPages()` now uses one `Intl.Collator`, made the first time it is needed. It also keeps the last order: with the same pages and names it is returned as it is, and when a name changed, the old order (nearly sorted already) is sorted again. Names that compare equal fall back to the story's order, which is what a fresh stable sort gave, so the order is identical.
+
+### Details
+Sorting 2,040 names alone, median of 9 (lower is better): Chromium 155.0.8059.39 66 to 2.4 ms, Firefox 158 32 to 1, WebKitGTK 2.52.6 142 to 3, same order in all three.
+
+Work per key in the page-name box with the list sorted A to Z, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Collator alone | 0.12x (0.10-0.14) | 0.31x (0.21-0.37) | 0.08x (0.06-0.10) |
+| Collator and the kept order | 0.08x (0.07-0.09), about 73 to 7 ms | 0.21x (0.06-0.29), about 47 to 6 ms | 0.07x (0.05-0.09), about 125 to 9-14 ms |
+
+All took 4 rounds; some were marked noisy, but every interval is far below 1.
+
+### Deep
+- Found while looking at what `renderList` costs per redraw: the sort was a hidden cost only in A to Z mode (written order and story order do not sort by name).
+- The kept order is dropped when another order is shown, so it never holds a closed story's pages.
+- No other `localeCompare` with options in our repositories.
+- `qa/write1.js` gains three checks (3 browsers): a page renamed key by key moves to the top, renamed pages move to the end with numbers in order (Zz9 before Zz10), and two names that differ only in capitals keep the story's order. The pages get their old names back afterwards.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `write1`, `phone` pass.
+
 ## 2026-10-31 · Writing notes keep their name and word totals between checks
 
 ### Quick
