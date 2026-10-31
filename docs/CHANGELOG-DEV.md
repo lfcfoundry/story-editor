@@ -2,6 +2,34 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Top bar redraw: kept word counts, tabs reused, one time formatter
+
+### Quick
+`renderTop` runs after every key and every check. Three costs in it are gone:
+- `storyStats` looked up every paragraph and choice of every page in `KL_WORDS` (0.75 ms per call at 2,040 pages in Chromium). `klPageWords(p)` keeps each page's count with the strings it was counted from and compares them by reference.
+- The tab buttons and the phone's drawer bar were rebuilt, with their listeners and icons, every time. They are now made again only when what they show changes (the open tab, the Game tab switch, the number of problems; the open page and its name).
+- The status line's `toLocaleTimeString([], options)` set up the language rules on every call. `clockText()` uses one `Intl.DateTimeFormat` (the History list uses it too).
+
+### Details
+All `requestAnimationFrame` work while typing 19 keys in a paragraph and the pause after, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Time formatter alone | 0.99x (0.96-1.07), inconclusive after 16 rounds | 0.92x (0.86-1.01), ok | 1.05x (0.93-1.20), inconclusive, noisy |
+| Kept word counts alone | 0.88x (0.84-0.90) | 0.66x (0.62-0.72) | 0.79x (0.58-1.00), noisy |
+| Tabs and drawer bar reused alone | 0.83x (0.75-0.92) | 0.77x (0.74-0.82) | 0.70x (0.52-0.81), noisy |
+| All three | **0.62x (0.59-0.63)** | **0.44x (0.37-0.60)**, noisy | **0.50x (0.44-0.57)** |
+
+Together they beat the product of the three alone in every browser (Chromium 0.72x expected, 0.62x measured).
+
+### Deep
+- Found with a CPU profile of 6 typing pauses at 2,040 pages (Chromium): 44 ms under `renderTop`, of which `storyStats` 17.9 ms (klWordCount 9.3), `statusParts` 7 ms (5.4 ms on the `toLocaleTimeString` line), tab and icon building most of the rest.
+- The time formatter alone is within noise here, but it is the same per-call `Intl` setup as the A to Z sort (see that entry), so it stays in.
+- `klPageWords` keeps references to the page's own strings, so it holds no copies. `stats-cache-equiv.mjs` (new, in `npm test`) edits 30 random stories 60 times each (texts, headings, choice labels, paragraphs and choices added, removed and swapped, pages added and removed) and compares the totals with a fresh count; breaking the label or heading comparison makes it fail.
+- `storyStats` lives in `core.js`, so the `story-format` package was regenerated (`npm run build`); its word totals are unchanged.
+- New suite `qa/topbar.js` (3 browsers): the Check tab's badge follows the check after start, typing, a new unlinked page and its Undo; typing keeps the same tab elements; the drawer bar's page button follows a rename; a tab click selects that tab. Leaving the problem count out of the tabs key, or the name out of the bar key, makes it fail.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `topbar`, `phone`, `undohist`, `opts`, `top10-editor`, `screens` pass; `npm test` passes.
+
 ## 2026-10-31 · Page list A to Z: one collator, and the last order kept
 
 ### Quick

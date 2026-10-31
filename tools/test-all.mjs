@@ -30,6 +30,7 @@ const steps = [
   ['Undo: steps kept as differences rebuild the same texts', ['node', 'editor/undo-delta-equiv.mjs']],
   ['Checker: letting memory go gives the same answers', ['node', 'editor/walk-trim-equiv.mjs']],
   ['Writing checks: kept page parts give the same notes', ['node', 'editor/writing-cache-equiv.mjs']],
+  ['Stats line: kept page word counts equal fresh ones', ['node', 'editor/stats-cache-equiv.mjs']],
   ['Map crossing count: WebAssembly equals JavaScript', ['node', 'editor/cross-equiv.mjs', '400', '99']],
   ['Map layout: the background worker equals the page build', ['node', 'editor/map-worker-equiv.mjs', '60', '7']],
   ['Checker: the background worker equals the page check', ['node', 'editor/check-worker-equiv.mjs', '120', '3']]

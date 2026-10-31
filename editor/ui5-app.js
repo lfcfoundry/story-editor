@@ -1059,52 +1059,59 @@ function renderTop() {
         : `Saved to ${storyFile.name}`
       : 'Save your story to a file (Ctrl+S). The first time you choose where; after that it saves straight there.';
   }
+  /* the tabs and the phone's drawer bar are made again only when what they show changed (they were rebuilt, with their listeners, after
+     every key and every check) */
   const nav = $('#tabs');
-  nav.textContent = '';
-  TABS.filter(t => t[0] !== 'game' || adv('game')).forEach(t => {
-    const ti =
-      t[0] === 'write'
-        ? icon('pen', 18)
-        : t[0] === 'map'
-          ? icon('mapi', 18)
-          : t[0] === 'items'
-            ? itemsTabIcon(19)
-            : t[0] === 'play'
-              ? icon('play', 17)
-              : t[0] === 'game'
-                ? icon('dice', 17)
-                : t[0] === 'check'
-                  ? icon('check', 17)
-                  : null;
-    const b = h(
-      'button',
-      {
-        type: 'button',
-        role: 'tab',
-        title: t[2],
-        'aria-selected': String(view === t[0]),
-        'aria-controls': 'main',
-        tabindex: view === t[0] ? '0' : '-1',
-        'data-tab': t[0],
-        onclick() {
-          setView(t[0]);
-        }
-      },
-      [ti, h('span', { class: 'tl', text: t[1] })]
-    );
-    if (t[0] === 'check' && analysis) {
-      const n = analysis.problems.length;
-      b.appendChild(h('span', { class: `badge${n ? '' : ' ok'}`, text: n ? String(n) : '✓', 'aria-label': n ? `${n} problems` : 'no problems' }));
-    }
-    nav.appendChild(b);
-  });
+  const tabsKey = `${view}|${adv('game')}|${analysis ? analysis.problems.length : '-'}`;
+  if (nav._key !== tabsKey) {
+    nav._key = tabsKey;
+    nav.textContent = '';
+    TABS.filter(t => t[0] !== 'game' || adv('game')).forEach(t => {
+      const ti =
+        t[0] === 'write'
+          ? icon('pen', 18)
+          : t[0] === 'map'
+            ? icon('mapi', 18)
+            : t[0] === 'items'
+              ? itemsTabIcon(19)
+              : t[0] === 'play'
+                ? icon('play', 17)
+                : t[0] === 'game'
+                  ? icon('dice', 17)
+                  : t[0] === 'check'
+                    ? icon('check', 17)
+                    : null;
+      const b = h(
+        'button',
+        {
+          type: 'button',
+          role: 'tab',
+          title: t[2],
+          'aria-selected': String(view === t[0]),
+          'aria-controls': 'main',
+          tabindex: view === t[0] ? '0' : '-1',
+          'data-tab': t[0],
+          onclick() {
+            setView(t[0]);
+          }
+        },
+        [ti, h('span', { class: 'tl', text: t[1] })]
+      );
+      if (t[0] === 'check' && analysis) {
+        const n = analysis.problems.length;
+        b.appendChild(h('span', { class: `badge${n ? '' : ' ok'}`, text: n ? String(n) : '✓', 'aria-label': n ? `${n} problems` : 'no problems' }));
+      }
+      nav.appendChild(b);
+    });
+  }
   renderStatus();
   /* On narrow screens the two side lists are drawers; their buttons live in their own bar under the tabs. */
   const bar = $('#drawerbar');
-  bar.textContent = '';
   bar.hidden = view !== 'write';
-  if (view === 'write') {
-    const cp = byId(selId) || project.passages[0];
+  const cp = view === 'write' ? byId(selId) || project.passages[0] : null;
+  const barKey = cp ? `${cp.id}\u0001${pname(cp)}` : '';
+  if (bar._key !== barKey) bar.textContent = '';
+  if (cp && bar._key !== barKey) {
     bar.appendChild(
       h('button', {
         type: 'button',
@@ -1155,6 +1162,7 @@ function renderTop() {
       }, [icon('gift', 16), h('span', { class: 'dl', text: ' Items ▸' })])
     );
   }
+  bar._key = barKey;
   const warn = $('#nosave');
   if (warn) warn.hidden = storageOk;
   if (typing) renderKeyrow(); // Undo and Redo may have changed
