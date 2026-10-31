@@ -442,10 +442,18 @@ function copyText(text, ta) {
 
 /* ----- small form helpers ----- */
 
-/** Grows a textarea to fit its text (never smaller than two lines). */
-function autosize(t) {
+/** Grows a textarea to fit its text (never smaller than two lines). `was` (the text before this key, optional) lets a key that only added
+    text skip the measuring when the text still fits: measuring sets the height to auto and reads it back, which lays the page out on every key. */
+function autosize(t, was) {
+  if (was !== undefined && t.style.height && t.value.length > was.length && onlyAdded(was, t.value) && t.scrollHeight <= t.clientHeight) return;
   t.style.height = 'auto';
   t.style.height = `${Math.max(t.scrollHeight + 2, 54)}px`;
+}
+/** True when b is a with text inserted in one place (nothing taken out), so b cannot need fewer lines than a. */
+function onlyAdded(a, b) {
+  let i = 0;
+  while (i < a.length && a.charCodeAt(i) === b.charCodeAt(i)) i++;
+  return b.endsWith(a.slice(i));
 }
 /**
  * The same for many at once. Reading a height forces the browser to lay the page out, so doing "reset, read, set" one box at

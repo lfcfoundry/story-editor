@@ -2340,8 +2340,9 @@ function textSection(p) {
       value: b.text,
       rows: 2,
       oninput: function (e) {
+        const was = b.text;
         b.text = e.target.value;
-        autosize(e.target);
+        autosize(e.target, was);
         commit(`b:${p.id}${i}`, p);
         showWordCount(p);
       },

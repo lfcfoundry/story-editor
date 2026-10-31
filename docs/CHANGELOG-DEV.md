@@ -2,6 +2,25 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Paragraph box auto-height skips the measure when the text still fits
+
+### Quick
+`autosize` set the box's height to auto and read `scrollHeight` back on every key, which made the browser lay the page out twice per key (research round 25). It now gets the text from before the key. If the key only inserted text (nothing taken out) and the text still fits (`scrollHeight <= clientHeight`), it returns without touching the height. Box heights are identical.
+
+### Details
+Work per key in a paragraph box (the input handlers, auto-height included), 51-page story, 40 keys. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.38x (median 0.8 to 0.3 ms) | 0.47x (0.29-0.59), sum of 40 keys | 0.27x (0.26-0.47), sum of 40 keys |
+
+All three took 4 rounds. Firefox and WebKitGTK time in whole milliseconds, so the sum of the 40 keys is compared.
+
+### Deep
+- Only pure insertions can skip, checked by `onlyAdded` (common prefix, then the rest of the old text must end the new one). A deletion or a replaced selection can need fewer lines, so it always measures.
+- Tried and dropped: CSS `field-sizing: content` (all three browsers support it). It removes the measuring entirely, but boxes come out 1 to 12 px different from today (54.4 vs 66 px for an empty two-line box, 64 vs 66 in WebKitGTK), so it would be a look change.
+- New suite `qa/autosize.js` (3 browsers): after 75 edits on 3 pages (words that fit, words that wrap, new lines, deletions, typing at the start, a replaced selection), every paragraph box equals a fresh measure. With the insertion check removed it fails on 24 of 75.
+
 ## 2026-10-31 · Packed page starts after two frames and decodes base64 natively; every delivered file is Latin-1 (rounds 29 and 33)
 
 ### Quick
