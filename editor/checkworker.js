@@ -17,5 +17,5 @@ function checkWorkerSource() {
   const data = Object.keys(CHECK_WORKER_DATA)
     .map(k => `const ${k}=${JSON.stringify(CHECK_WORKER_DATA[k])};`)
     .join('\n');
-  return `'use strict';\nlet klGraphMod;const klWalkMods=[undefined,undefined];const klHashHints=Object.create(null);const KL_TEXT_FACTS=new WeakMap(),KL_REPEAT=new WeakMap();\n${data}\n${arrows}\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const A=analyze(JSON.parse(m.text));postMessage({seq:m.seq,r:{problems:A.problems,warnings:A.warnings,notes:A.notes,endings:A.endings,states:A.states,grouped:A.grouped,pruned:A.pruned,truncated:A.truncated},ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+  return `'use strict';\nlet klGraphMod;const klWalkMods=[undefined,undefined];const klHashHints=Object.create(null);let klPruneHint=false;const KL_TEXT_FACTS=new WeakMap(),KL_REPEAT=new WeakMap();\n${data}\n${arrows}\n${fns}\nonmessage=e=>{const m=e.data;try{const t=performance.now();const A=analyze(JSON.parse(m.text));postMessage({seq:m.seq,r:{problems:A.problems,warnings:A.warnings,notes:A.notes,endings:A.endings,states:A.states,grouped:A.grouped,pruned:A.pruned,truncated:A.truncated},ms:performance.now()-t})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
 }

@@ -48,7 +48,7 @@ Measured in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine,
 |---|---:|---:|---:|
 | Check after an edit, The Keeper's Light (34 pages, 649 situations) | 0.7 ms | 0.7 ms | 0.7 ms |
 | Check after an edit, a generated test story (316 pages, 24,313 situations) | 6.8 ms | 7.3 ms | 7.2 ms |
-| Check after an edit, a generated 100-page story (78,726 situations) | 30 ms | 28 ms | 30 ms |
+| Check after an edit, a generated 100-page story (78,726 situations) | 25 ms | 28 ms | 29 ms |
 | Same 316-page check, JavaScript only (no WebAssembly) | 33 ms | 47 ms | 43 ms |
 | Lay out the Story Page Map of 316 pages (layout only, warm) | 2.4 ms | 3.0 ms | 2.9 ms |
 | Open the Story Page Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |

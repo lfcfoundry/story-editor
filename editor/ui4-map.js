@@ -498,7 +498,8 @@ function mapBuild(viewName) {
 }
 /* ----- the first drawing of a big story, built ahead in the background -----
    Laying out a big story's Map takes 30-40 ms the first time (the code is cold), long enough to freeze the screen. So once the checker has run,
-   a background worker builds the layout of the Map view you last used, and the Map finds it ready. The worker runs the same functions
+   a background worker builds the layout of the Map view you last used, then the other plain views one after another (also while the Map is
+   open), and the Map finds them ready, so switching views does not freeze either. The worker runs the same functions
    (maplayout.js, mapWorkerSource) on a copy of the story text. If anything differs (the story changed, a Map was drawn meanwhile, the browser
    refuses workers) the result is simply thrown away and the Map builds itself as always. */
 const MAP_PRE_MIN = 60; // pages; smaller stories build in a few ms, so the worker is not started
@@ -510,15 +511,20 @@ function mapPrebuildSoon() {
   mapPre.timer = setTimeout(mapPrebuild, MAP_PRE_WAIT);
 }
 function mapPrebuild() {
-  if (view === 'map') return; // the Map is on screen: it builds for itself
   loadMapOpts();
   const full = adv('map');
-  const vname = mapViews().some(v => v[0] === mapOpts.view) ? mapOpts.view : 'flow';
+  const shown = mapViews().some(v => v[0] === mapOpts.view) ? mapOpts.view : 'flow';
   const color = full ? mapOpts.color : 'none';
-  if (!MAP_PLAIN.includes(vname) || color === 'odds' || color === 'heat') return;
+  if (color === 'odds' || color === 'heat') return;
   const as = full ? mapAs : {};
+  /* the view you last used first, then the other plain views, one at a time, so switching views finds them ready too; the one on screen builds itself */
+  const avail = MAP_PLAIN.filter(v => v === shown || mapViews().some(x => x[0] === v));
+  const vname = [shown, ...avail.filter(v => v !== shown)].find(
+    v => MAP_PLAIN.includes(v) && !(view === 'map' && v === shown) && !mapCache.has(mapLayoutKey(v, color, as))
+  );
+  if (!vname) return;
   const ck = mapLayoutKey(vname, color, as);
-  if (mapCache.has(ck) || mapPre.job?.ck === ck) return;
+  if (mapPre.job && mapPre.job.text === cur) return; // one at a time: the answer starts the next
   if (!mapPre.worker) {
     try {
       const url = URL.createObjectURL(new Blob([mapWorkerSource()], { type: 'text/javascript' }));
@@ -557,6 +563,7 @@ function mapPrebuilt(e) {
   }
   if (job.text !== cur || mapPrev[job.vname] !== job.prevRef || mapCache.has(job.ck)) {
     mapPre.dropped++;
+    mapPrebuild();
     return;
   }
   const L = m.L;
@@ -570,6 +577,7 @@ function mapPrebuilt(e) {
   mapPre.ms = m.ms;
   mapPre.take = performance.now() - t0;
   speedNote('map ahead', mapPre.take, `${L.nodes.length} boxes took in (${Math.round(m.ms)} ms worked out in the background)`);
+  mapPrebuild(); // the next view, if any
 }
 
 /** Builds a layout from scratch (mapBuild keeps the results). */

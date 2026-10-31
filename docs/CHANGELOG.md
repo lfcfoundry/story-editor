@@ -5,6 +5,8 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Checker: big stories with numbers are checked up to a fifth faster after each edit; the answers are exactly the same.
+- Story Page Map: for big stories the other Map views are now prepared in the background too, so switching views no longer freezes the screen (in Chrome about 50 to 24 ms).
 - Story Page Map: building the Map's graph does less work, so layouts are about 5 to 15% faster in Chrome and Safari-style browsers (Firefox about the same). The drawings are exactly the same.
 - The landing page and README explain what the editor is, how it works and why it exists in a few short lines, with a list of what people use it for.
 - Story Page Map: the Map's layout is faster again, about 15 to 30% for a 316-page story and up to half the time for small ones. The drawings are exactly the same, and a new test checks 360 drawings against the old ones on every change.

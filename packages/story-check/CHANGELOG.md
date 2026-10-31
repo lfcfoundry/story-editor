@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.1.1 · 2026-10-31
+- Nothing changes in the answers. A big story with numbers that needed the pruned check last time is checked that way first, instead of first running a plain check that is then thrown away, so repeated checks of such stories are about 13 to 22% faster.
+
 ## 1.1.0 · 2026-10-24
 - Problems about a page that can never be reached now carry `code: 'unreachable-page'`, so tools can recognize them without relying on the wording of the message. Nothing else changes; the field is only present on those problems.
 
