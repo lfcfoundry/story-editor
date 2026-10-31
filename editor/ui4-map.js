@@ -91,7 +91,7 @@ const SIM_MODES = [
 let mapRiverSel = null; // River: { page } or { from, to } being followed, or null
 /** The simulated players for the story as it is now, with the current settings (recomputed only after a change). */
 function playData() {
-  const key = JSON.stringify([cur, mapSim, mapAs]);
+  const key = JSON.stringify([sigOf(cur), mapSim, mapAs]); // the fingerprint, not a quoted copy of the whole story
   if (mapPlay.key !== key) mapPlay = { key, data: playtest(project, { runs: mapSim.runs, mode: mapSim.mode, as: mapAs }) };
   return mapPlay.data;
 }

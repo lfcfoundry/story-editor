@@ -58,7 +58,7 @@ function klCrossWasm(segs) {
   }
 }
 
-let klGraphMod; // undefined: not tried yet; null: not usable; else { ex, mem, heap }
+let klGraphMod; // undefined: not tried yet; null: not usable; else { ex, mem, heap, mod }
 
 function klGraphInit() {
   if (klGraphMod !== undefined) return klGraphMod;
@@ -68,14 +68,34 @@ function klGraphInit() {
     const txt = atob(KL_GRAPH_B64);
     const bytes = new Uint8Array(txt.length);
     for (let i = 0; i < txt.length; i++) bytes[i] = txt.charCodeAt(i);
+    const mod = new WebAssembly.Module(bytes);
     const mem = new WebAssembly.Memory({ initial: 16 });
-    const inst = new WebAssembly.Instance(new WebAssembly.Module(bytes), { env: { memory: mem } });
+    const inst = new WebAssembly.Instance(mod, { env: { memory: mem } });
     const hb = inst.exports.__heap_base;
-    klGraphMod = { ex: inst.exports, mem, heap: ((hb.value === undefined ? hb : hb.value) + 15) & ~15 };
+    klGraphMod = { ex: inst.exports, mem, heap: ((hb.value === undefined ? hb : hb.value) + 15) & ~15, mod };
   } catch (e) {
     klGraphMod = null;
   }
   return klGraphMod;
+}
+
+/** WebAssembly memory only grows. When a big story left the graph memory four times larger than KL_TRIM_AFTER calls in a row needed (and over 2 MB), a fresh
+    instance of the same compiled module with a small memory takes over and the old memory is let go. Nothing is kept in it between calls. */
+function klGraphTrim(M, need) {
+  const have = M.mem.buffer.byteLength;
+  if (have <= 2 << 20 || have < 4 * (M.heap + need)) {
+    M.roomy = 0;
+    return M;
+  }
+  if (++M.roomy < KL_TRIM_AFTER) return M;
+  try {
+    const mem = new WebAssembly.Memory({ initial: 16 });
+    const inst = new WebAssembly.Instance(M.mod, { env: { memory: mem } });
+    klGraphMod = { ex: inst.exports, mem, heap: M.heap, mod: M.mod };
+    return klGraphMod;
+  } catch (e) {
+    return M;
+  }
 }
 
 /**
@@ -85,7 +105,7 @@ function klGraphInit() {
  * for each, the first of `hidden` that cannot reach any of `good`, or undefined.
  */
 function klGraphWasm(edges, n) {
-  const M = klGraphInit();
+  let M = klGraphInit();
   if (!M || !(n > 0)) return null;
   try {
     const nE = edges.length >> 1;
@@ -106,6 +126,7 @@ function klGraphWasm(edges, n) {
     take('ok', n, 1);
     take('scr', n * 6, 4); // the strongly connected parts search of firstCuts: six lists of n numbers
     take('tail', 0, 1); // the questions of a call go after this
+    M = klGraphTrim(M, bytes + 64);
     const base = M.heap;
     const room = need => {
       if (base + need > 1 << 30) throw new Error('too big');
@@ -170,7 +191,7 @@ function klGraphWasm(edges, n) {
 const KL_WALK64_B64 = /*WASM64:BEGIN*/ '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' /*WASM64:END*/;
 
 const klHashHints = Object.create(null); // per walk limit: slots the situation table starts with, sized from the last walk with that limit, so a small story does not clear a table made for a huge one
-const klWalkMods = [undefined, undefined]; // per flag width (32, 64): undefined: not tried yet; null: not usable; else { walk, mem, heap }
+const klWalkMods = [undefined, undefined]; // per flag width (32, 64): undefined: not tried yet; null: not usable; else { walk, mem, heap, mod }
 
 function klWalkInit(wide) {
   if (klWalkMods[wide] !== undefined) return klWalkMods[wide];
@@ -181,10 +202,11 @@ function klWalkInit(wide) {
     const txt = atob(b64);
     const bytes = new Uint8Array(txt.length);
     for (let i = 0; i < txt.length; i++) bytes[i] = txt.charCodeAt(i);
+    const mod = new WebAssembly.Module(bytes);
     const mem = new WebAssembly.Memory({ initial: 32 });
-    const inst = new WebAssembly.Instance(new WebAssembly.Module(bytes), { env: { memory: mem } });
+    const inst = new WebAssembly.Instance(mod, { env: { memory: mem } });
     const hb = inst.exports.__heap_base;
-    klWalkMods[wide] = { walk: inst.exports.walk, mem, heap: ((hb.value === undefined ? hb : hb.value) + 15) & ~15 };
+    klWalkMods[wide] = { walk: inst.exports.walk, mem, heap: ((hb.value === undefined ? hb : hb.value) + 15) & ~15, mod };
   } catch (e) {
     klWalkMods[wide] = null;
   }
@@ -198,16 +220,52 @@ function klWalkInit(wide) {
  */
 function klWalkWasm(a) {
   if (!(a.bits <= 64)) return null;
-  const M = klWalkInit(a.bits > 30 ? 1 : 0);
-  if (!M) return null;
+  const wide = a.bits > 30 ? 1 : 0;
+  if (!klWalkInit(wide)) return null;
   try {
-    return klWalkRun(M, a, a.bits > 30 ? 2 : 1);
+    return klWalkRun(wide, a, wide + 1);
   } catch (e) {
     return null;
   }
 }
 
-function klWalkRun(M, a, W) {
+/** Like klGraphTrim, for the walk: memory four times larger than KL_TRIM_AFTER walks in a row needed (and over 4 MB) is let go for a
+    fresh small one. A big story's walk takes about 10 MB (room for 200,000 situations), and before this it stayed taken after a small story
+    followed, in the page and in the worker alike. A check can walk twice with different limits (PRUNE_AFTER, then the full limit), so one
+    small walk is not enough to let go of what the next walk needs. */
+const KL_TRIM_AFTER = 3;
+function klWalkTrim(wide, need) {
+  const M = klWalkMods[wide];
+  const have = M.mem.buffer.byteLength;
+  if (have <= 4 << 20 || have < 4 * (M.heap + need)) {
+    M.roomy = 0;
+    return M;
+  }
+  if (++M.roomy < KL_TRIM_AFTER) return M;
+  try {
+    const mem = new WebAssembly.Memory({ initial: 32 });
+    const inst = new WebAssembly.Instance(M.mod, { env: { memory: mem } });
+    klWalkMods[wide] = { walk: inst.exports.walk, mem, heap: M.heap, mod: M.mod };
+  } catch (e) {}
+  return klWalkMods[wide];
+}
+
+/** Lets go of the page's big checker memories at once (used when the worker has taken over checking, so the page's walk is idle). */
+function klCheckRelease() {
+  for (let w = 0; w < 2; w++) {
+    const M = klWalkMods[w];
+    if (M && M.mem.buffer.byteLength > 4 << 20) {
+      M.roomy = KL_TRIM_AFTER;
+      klWalkTrim(w, 0);
+    }
+  }
+  if (klGraphMod && klGraphMod.mem.buffer.byteLength > 2 << 20) {
+    klGraphMod.roomy = KL_TRIM_AFTER;
+    klGraphTrim(klGraphMod, 0);
+  }
+}
+
+function klWalkRun(wide, a, W) {
   const { order, pre, fields, bitOf, limit, edgeCap, starts } = a;
   const np = order.length;
   if (!(limit <= 1500000) || np === 0) return null;
@@ -373,6 +431,7 @@ function klWalkRun(M, a, W) {
   take('dupCi', np, 4);
   take('soft', np, 4);
   take('exits', sitCap, 1);
+  const M = klWalkTrim(wide, bytes + 64);
   const base = M.heap;
   const need = base + bytes + 64;
   if (need > 1 << 30) return null;

@@ -1921,7 +1921,7 @@ function pageBar(p) {
     title: 'Page name. Only you see this; players never do.',
     oninput: function (e) {
       p.name = e.target.value;
-      commit(`n:${p.id}`);
+      commit(`n:${p.id}`, p);
       renderSide.list && renderSide.list();
     },
     onchange: function () {
@@ -1938,7 +1938,7 @@ function pageBar(p) {
     title: 'A title shown large at the top of the page when players read it. Leave empty for none.',
     oninput: function (e) {
       p.heading = e.target.value;
-      commit(`h:${p.id}`);
+      commit(`h:${p.id}`, p);
     }
   });
   const cur = !p.ending ? 'page' : p.valence || '';
@@ -2313,7 +2313,7 @@ function textSection(p) {
       oninput: function (e) {
         b.text = e.target.value;
         autosize(e.target);
-        commit(`b:${p.id}${i}`);
+        commit(`b:${p.id}${i}`, p);
         showWordCount(p);
       },
       onblur: function (e) {
@@ -2442,7 +2442,7 @@ function choicesSection(p) {
       title: 'The words on the button. Enter adds another choice; Ctrl+Enter (Cmd+Enter on a Mac) opens the page it leads to, creating it if needed.',
       oninput: function (e) {
         c.label = e.target.value;
-        commit(`c:${p.id}${i}`);
+        commit(`c:${p.id}${i}`, p);
       },
       onkeydown: function (e) {
         keysC(e);

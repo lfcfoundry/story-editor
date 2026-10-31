@@ -6,8 +6,8 @@
    check-worker-equiv.mjs proves the text is complete and gives the same answer as analyze().
    Copyright (c) 2026 LFC Foundry. MIT License.
    ============================================================================ */
-const CHECK_WORKER_FUNCS = [analyze, analyzeRun, klGraphWasm, klGraphInit, condSummary, klGroupValues, joinAnd, parseStatTest, klWalkWasm, klWalkRun, klWalkInit, vidOf, parseSend, givenOf, virtualRefs, klTextFacts, klRepeatWord];
-const CHECK_WORKER_DATA = { PRUNE_AFTER, KL_GRAPH_B64, EDGE_CAP, KL_WALK_B64, KL_WALK64_B64, STAT_SPAN_COMFY };
+const CHECK_WORKER_FUNCS = [analyze, analyzeRun, klGraphWasm, klGraphInit, klGraphTrim, condSummary, klGroupValues, joinAnd, parseStatTest, klWalkWasm, klWalkRun, klWalkInit, klWalkTrim, vidOf, parseSend, givenOf, virtualRefs, klTextFacts, klRepeatWord];
+const CHECK_WORKER_DATA = { PRUNE_AFTER, KL_TRIM_AFTER, KL_GRAPH_B64, EDGE_CAP, KL_WALK_B64, KL_WALK64_B64, STAT_SPAN_COMFY };
 const CHECK_WORKER_ARROWS = { kindOf };
 function checkWorkerSource() {
   const fns = CHECK_WORKER_FUNCS.map(f => f.toString()).join('\n');

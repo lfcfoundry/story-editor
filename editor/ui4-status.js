@@ -11,10 +11,10 @@ const HIST_SHOW = 20; // steps listed in History (the undo list itself keeps mor
 function stepInfo(i) {
   const x = undoStack[i];
   const next = undoStack[i + 1];
-  const to = next ? next.s : cur;
-  if (!x.info || x.infoFor !== to) {
-    x.info = x.e !== (next ? next.e : epoch) ? { text: 'Open another story', pid: '' } : describeChange(x.s, to);
-    x.infoFor = to;
+  const toward = next || cur; // a snapshot never changes, so the step it follows is known by the snapshot itself
+  if (!x.info || x.infoFor !== toward) {
+    x.info = x.e !== (next ? next.e : epoch) ? { text: 'Open another story', pid: '' } : describeChange(undoText(i), next ? undoText(i + 1) : cur);
+    x.infoFor = toward;
   }
   return x.info;
 }

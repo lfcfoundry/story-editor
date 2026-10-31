@@ -199,11 +199,87 @@ function alikeKey(label) {
   return writeWords(label).filter(w => !['the', 'a', 'an', 'to', 'and', 'of'].includes(w));
 }
 
+/** One page's part of writingChecks (see WRITE_CACHE): its notes before the ignore list, and its words for the spelling check. */
+function writingPage(p, texts, L, nameOf, mins, q) {
+  const adds = [];
+  const push = (kind, key, msg) => adds.push([kind, key, msg]);
+  const caps = new Map(); // capitalized word -> times on this page, in the order first seen
+  const lower = new Set();
+  const all = texts.join('\n');
+  const words = writeWords(all);
+  /* a word typed twice in a row */
+  let reps = 0;
+  const re = /(^|[^\p{L}\p{N}'’])(\p{L}[\p{L}'’]*)[ \t]+\2(?![\p{L}\p{N}'’])/giu;
+  for (const m of all.matchAll(re)) {
+    if (WRITE_OK_TWICE.has(m[2].toLowerCase()) || reps >= 3) continue;
+    reps++;
+    push('repeat', `repeat|${p.id}|${m[2].toLowerCase()}|${reps}`, `On ${nameOf(p)} the word ${q(m[2])} is typed twice in a row: ${q(`${m[2]} ${m[2]}`)}.`);
+  }
+  /* a word used again and again on one page */
+  if (words.length >= 60) {
+    const n = new Map();
+    words.forEach(w => {
+      if (w.length >= 5 && !WRITE_STOP.has(w)) n.set(w, (n.get(w) || 0) + 1);
+    });
+    [...n.entries()]
+      .filter(([, c]) => c >= 5 && c / words.length >= 0.04)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .forEach(([w, c]) => push('overuse', `overuse|${p.id}|${w}`, `On ${nameOf(p)} the word ${q(w)} comes up ${c} times in ${words.length} words. Is there another way to say it?`));
+  }
+  /* capitalized words (for the spelling check below) and which words are ever written in lower case */
+  for (const m of all.matchAll(/\p{L}[\p{L}'’]*/gu)) {
+    const w = m[0];
+    if (w[0] === w[0].toLowerCase()) lower.add(w);
+    else if (/^\p{Lu}\p{Ll}{2,}$/u.test(w)) caps.set(w, (caps.get(w) || 0) + 1);
+  }
+  /* long paragraphs and pages */
+  let total = 0;
+  texts.forEach(t => {
+    const w = writeWords(t).length;
+    total += w;
+    if (w > L.para) push('long', `long|${p.id}|para`, `A paragraph on ${nameOf(p)} is ${w} words (${mins(w)} to read). Would it read better as two?`);
+  });
+  if (total > L.page) push('long', `long|${p.id}|page`, `${nameOf(p)} is ${total} words (${mins(total)} to read), a long time before the player chooses.`);
+  /* choices that read alike */
+  if (!p.ending) {
+    const cs = (p.choices || []).filter(c => String(c.label || '').trim());
+    let pairs = 0;
+    const seen = new Set();
+    for (let i = 0; i < cs.length && pairs < 20; i++) {
+      for (let j = i + 1; j < cs.length && pairs < 20; j++) {
+        const a = String(cs[i].label).trim();
+        const b = String(cs[j].label).trim();
+        if (a.toLowerCase() === b.toLowerCase()) continue; // exactly alike: the checker already says so
+        const ka = alikeKey(a);
+        const kb = alikeKey(b);
+        if (!ka.length || !kb.length) continue;
+        const same = ka.join(' ') === kb.join(' ');
+        const shared = ka.filter(w => kb.includes(w)).length;
+        const close = Math.min(ka.length, kb.length) >= 3 && shared / (ka.length + kb.length - shared) >= 0.8;
+        const pk = [ka.join(' '), kb.join(' ')].sort().join('|');
+        if ((same || close) && !seen.has(pk)) {
+          seen.add(pk);
+          pairs++;
+          push('alike', `alike|${p.id}|${ka.join(' ')}|${kb.join(' ')}`, `On ${nameOf(p)} the choices ${q(a)} and ${q(b)} read almost alike. Players may not see the difference.`);
+        }
+      }
+    }
+  }
+  return { adds, caps: [...caps], lower: [...lower] };
+}
+
+/* Each page's own part of the writing checks (its notes, and the capitalized and lower-case words the spelling check needs) is kept with the
+   page until its words, choices, name or the limits change, so a pause in typing re-reads one page, not all of them (a 2,000-page story spent
+   about 170 ms here in Chromium). writing-cache-equiv.mjs checks the answers equal the uncached ones. */
+const WRITE_CACHE = new WeakMap(); // page -> { sig, adds: [[kind, key, msg]], caps: [[word, count]], lower: [words] }
+
 /**
  * The writing checks. `lim` = { para, page, wpm, ignore } where para and page are word counts, wpm the reading speed, ignore a Set of keys the author turned off.
  * Returns [{ pid, kind, key, msg }]: kinds 'repeat', 'overuse', 'name', 'long', 'alike'. Notes for the author, never mistakes in the story.
+ * `cache` (WRITE_CACHE unless null) keeps each page's part between calls.
  */
-function writingChecks(project, lim) {
+function writingChecks(project, lim, cache = WRITE_CACHE) {
   const L = Object.assign({ para: 150, page: 600, wpm: 230, ignore: new Set() }, lim || {});
   const out = [];
   const add = (pid, kind, key, msg) => {
@@ -218,73 +294,24 @@ function writingChecks(project, lim) {
   };
   const names = new Map(); // a capitalized word -> { n, pid }
   const lower = new Set();
+  const limSig = `${L.para}|${L.page}|${L.wpm}`;
   pages.forEach(p => {
     const texts = (p.blocks || []).map(b => String(b.text || ''));
-    const all = texts.join('\n');
-    const words = writeWords(all);
-    /* a word typed twice in a row */
-    let reps = 0;
-    const re = /(^|[^\p{L}\p{N}'’])(\p{L}[\p{L}'’]*)[ \t]+\2(?![\p{L}\p{N}'’])/giu;
-    for (const m of all.matchAll(re)) {
-      if (WRITE_OK_TWICE.has(m[2].toLowerCase()) || reps >= 3) continue;
-      reps++;
-      add(p.id, 'repeat', `repeat|${p.id}|${m[2].toLowerCase()}|${reps}`, `On ${nameOf(p)} the word ${q(m[2])} is typed twice in a row: ${q(`${m[2]} ${m[2]}`)}.`);
+    const sig = cache && `${limSig}\u0000${p.id}\u0000${p.name}\u0000${p.ending ? 1 : 0}\u0000${texts.join('\u0001')}\u0000${(p.choices || []).map(c => String(c.label || '')).join('\u0001')}`;
+    let part = cache && cache.get(p);
+    if (!part || part.sig !== sig) {
+      part = writingPage(p, texts, L, nameOf, mins, q);
+      part.sig = sig;
+      if (cache) cache.set(p, part);
     }
-    /* a word used again and again on one page */
-    if (words.length >= 60) {
-      const n = new Map();
-      words.forEach(w => {
-        if (w.length >= 5 && !WRITE_STOP.has(w)) n.set(w, (n.get(w) || 0) + 1);
-      });
-      [...n.entries()]
-        .filter(([, c]) => c >= 5 && c / words.length >= 0.04)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 2)
-        .forEach(([w, c]) => add(p.id, 'overuse', `overuse|${p.id}|${w}`, `On ${nameOf(p)} the word ${q(w)} comes up ${c} times in ${words.length} words. Is there another way to say it?`));
-    }
-    /* capitalized words (for the spelling check below) and which words are ever written in lower case */
-    for (const m of all.matchAll(/\p{L}[\p{L}'’]*/gu)) {
-      const w = m[0];
-      if (w[0] === w[0].toLowerCase()) lower.add(w);
-      else if (/^\p{Lu}\p{Ll}{2,}$/u.test(w)) {
-        const e = names.get(w);
-        if (e) e.n++;
-        else if (names.size < 1500) names.set(w, { n: 1, pid: p.id });
-      }
-    }
-    /* long paragraphs and pages */
-    let total = 0;
-    texts.forEach(t => {
-      const w = writeWords(t).length;
-      total += w;
-      if (w > L.para) add(p.id, 'long', `long|${p.id}|para`, `A paragraph on ${nameOf(p)} is ${w} words (${mins(w)} to read). Would it read better as two?`);
+    part.adds.forEach(a => add(p.id, a[0], a[1], a[2]));
+    /* a name's first page is where it is first seen; the list stops growing at 1,500 names */
+    part.caps.forEach(([w, k]) => {
+      const e = names.get(w);
+      if (e) e.n += k;
+      else if (names.size < 1500) names.set(w, { n: k, pid: p.id });
     });
-    if (total > L.page) add(p.id, 'long', `long|${p.id}|page`, `${nameOf(p)} is ${total} words (${mins(total)} to read), a long time before the player chooses.`);
-    /* choices that read alike */
-    if (!p.ending) {
-      const cs = (p.choices || []).filter(c => String(c.label || '').trim());
-      let pairs = 0;
-      const seen = new Set();
-      for (let i = 0; i < cs.length && pairs < 20; i++) {
-        for (let j = i + 1; j < cs.length && pairs < 20; j++) {
-          const a = String(cs[i].label).trim();
-          const b = String(cs[j].label).trim();
-          if (a.toLowerCase() === b.toLowerCase()) continue; // exactly alike: the checker already says so
-          const ka = alikeKey(a);
-          const kb = alikeKey(b);
-          if (!ka.length || !kb.length) continue;
-          const same = ka.join(' ') === kb.join(' ');
-          const shared = ka.filter(w => kb.includes(w)).length;
-          const close = Math.min(ka.length, kb.length) >= 3 && shared / (ka.length + kb.length - shared) >= 0.8;
-          const pk = [ka.join(' '), kb.join(' ')].sort().join('|');
-          if ((same || close) && !seen.has(pk)) {
-            seen.add(pk);
-            pairs++;
-            add(p.id, 'alike', `alike|${p.id}|${ka.join(' ')}|${kb.join(' ')}`, `On ${nameOf(p)} the choices ${q(a)} and ${q(b)} read almost alike. Players may not see the difference.`);
-          }
-        }
-      }
-    }
+    part.lower.forEach(w => lower.add(w));
   });
   /* the same name spelled two ways: a rare spelling one letter away from a common one, neither ever written as an everyday word (in lower case) */
   const list = [...names.entries()].filter(([w]) => !lower.has(w.toLowerCase()));

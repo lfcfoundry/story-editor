@@ -5,6 +5,8 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Typing in big stories: the editor does 17 to 30% less work per keystroke in a 316-page story, typing in a 2,040-page story reaches the screen about 30% sooner in Chrome (median 26 to 18 ms), and the pause after typing no longer freezes it for 170 to 235 ms (now about 60 ms). Undo keeps only what changed between steps, so 80 edits hold about 6 MB instead of 22 MB. Everything you see and save is exactly the same.
+- Checker memory: after a big story, the checker gives back memory it no longer needs, in the page and in its background helper (in Chrome about 7 MB less with the 34-page example open). Answers are the same.
 - Checker: big stories with numbers are checked up to a fifth faster after each edit; the answers are exactly the same.
 - Story Page Map: for big stories the other Map views are now prepared in the background too, so switching views no longer freezes the screen (in Chrome about 50 to 24 ms).
 - Story Page Map: building the Map's graph does less work, so layouts are about 5 to 15% faster in Chrome and Safari-style browsers (Firefox about the same). The drawings are exactly the same.

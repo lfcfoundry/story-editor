@@ -25,6 +25,9 @@ const steps = [
   ['Map choke points equal the plain way', ['node', 'editor/choke-equiv.mjs', '2000', '1']],
   ['Map drawings match the saved fingerprints', ['node', 'editor/map-golden.mjs']],
   ['Checker: trying the pruned check first gives the same answer', ['node', 'editor/prune-hint-equiv.mjs']],
+  ['Undo: steps kept as differences rebuild the same texts', ['node', 'editor/undo-delta-equiv.mjs']],
+  ['Checker: letting memory go gives the same answers', ['node', 'editor/walk-trim-equiv.mjs']],
+  ['Writing checks: kept page parts give the same notes', ['node', 'editor/writing-cache-equiv.mjs']],
   ['Map crossing count: WebAssembly equals JavaScript', ['node', 'editor/cross-equiv.mjs', '400', '99']],
   ['Map layout: the background worker equals the page build', ['node', 'editor/map-worker-equiv.mjs', '60', '7']],
   ['Checker: the background worker equals the page check', ['node', 'editor/check-worker-equiv.mjs', '120', '3']]
