@@ -2,6 +2,33 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Start-up of big stories, page list rows, Safety space line
+
+### Quick
+Opening a big story does less work before the first screen. The first check of a story with 500 or more pages goes to the background checker; the writing checks fill in 6 ms slices after the first screen; three whole-page layouts at start are now one (the window width for menus, the page list's scroll and the phone keyboard lift were read too early); the keyboard lift sets its style only when it changes (setting it restyled every element). Page list rows are made again only when something they show changes. The Safety dialog's space line counts the autosave's real room. Everything on screen is the same.
+
+### Details
+Start of a 2,040-page story, freezes over 50 ms, before (PR 69) to after (lower is better):
+
+| Browser | Before | After |
+|---|---|---|
+| Chromium 155 (trace, long tasks, 4 runs) | 910 to 1,100 ms in 3 or 4 freezes (the biggest 377 to 500) | 420 to 600 ms in 2 or 3 (the biggest 361 to 452) |
+| Firefox 158 (gaps between frames, 3-4 runs) | 725 to 940 ms (the second freeze 400 to 467) | 400 to 530 ms (the second 134 to 167) |
+| WebKitGTK 2.52.6 (gaps between frames, 3-6 runs) | 960 to 1,520 ms for the first two | 600 to 1,130 ms |
+
+- Typing in a page's name box at 2,040 pages, the input handler's median of 40 keys (lower is better): Chromium 38.1 to 3.3 ms, Firefox 36 to 2 ms, WebKitGTK 48 to 4 ms.
+- 51-page and 510-page stories: no change beyond noise in the three browsers.
+- Safety space line: the sum of UTF-8 bytes of every localStorage key and value against 5 MB (5,242,880 bytes), the same count all three browsers use (research round 12). `storage.estimate()` reports other storage and a quota of gigabytes.
+
+### Deep
+- The first check of a story with 500 or more pages counts as slow (`CHECK_BIG_PAGES`), so it goes to the worker like any check that took longer than the hybrid limit. `writingWarmSoon()` (200 or more pages) fills the per-page writing cache in 6 ms slices from a timer, so the first Check tab or status line read finds it warm; `writingChecks` uses the same `writingLimits` and `writingPart` as before, checked equal to the old helpers on 19 slices.
+- Forced layouts were found by tracing with `disabled-by-default-devtools.timeline.stack`: `window.innerWidth` read at load for the menus (now read when a menu opens), `ul.scrollTop = 0` and the open page's in-view check in `renderSide` (now in `sideScrollFix` before the next frame, and a zero scroll is not set on a new list), the item list's zero scroll, and the visualViewport lift (now before the first frame and only on change; setting `--kb` on the root restyled the whole page, 85 ms at 2,040 pages).
+- Page list rows are kept in a WeakMap by page with a key of everything a row shows; unchanged rows are reused, and the list is rebuilt in order only when rows move.
+- Tried and dropped: `content-visibility: auto` on page list rows. It helped while the start had three layouts, but after the merge into one it made no difference in Chromium or Firefox, and WebKitGTK showed its first screen 200 to 300 ms later with it.
+- Test harness: `qa/helpers.js` now seeds the story from the test and reloads, with no start-up script. In Chromium a script injected at the start of a file page can see an old copy of the storage after a reload (research round 18); "the ignored note is remembered" failed about 1 in 6 runs before and passed 10 of 10 after.
+- Not changed (on a card): the first layout costs about 60 ms even with a 51-page story, so no block under 50 ms needs the start to be split behind the opening screen, which would show the page filling in.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `helpers`, `phone`, `screens`, `round3`, `mapcull`, `mapprebuild`, `textstress`, `top5-new`, `fix2`, `inter`, `marks`, `opts`, `real`, `tools8`, `top10-editor`, `top10-export`, `write1`, `write2`, `checkworker`, `curtext` and `safety` pass in all three; `npm test` passes.
+
 ## 2026-10-31 · Hidden per-keystroke and memory costs
 
 ### Quick
