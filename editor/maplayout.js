@@ -544,10 +544,58 @@ function layered(G, opts = {}) {
       v.pos = i;
     });
   });
+  /* Ordering on flat number lists (same arithmetic, same order): one list of vertex numbers per layer, their places in one list, and the
+     links of every vertex as index-and-neighbor lists. */
+  const nV = vert.length,
+    posA = new Int32Array(nV),
+    laneA = new Float64Array(nV),
+    baryA = new Float64Array(nV);
+  const csr = lists => {
+    const start = new Int32Array(nV + 1);
+    for (let i = 0; i < nV; i++) start[i + 1] = start[i] + lists[i].length;
+    const nb = new Int32Array(start[nV]);
+    for (let i = 0; i < nV; i++) for (let j = 0; j < lists[i].length; j++) nb[start[i] + j] = lists[i][j][0].idx;
+    return [start, nb];
+  };
+  const [uS, uN] = csr(up),
+    [dS, dN] = csr(down);
+  const LA = L.map(list => Int32Array.from(list, v => v.idx));
+  vert.forEach(v => {
+    posA[v.idx] = v.pos;
+    laneA[v.idx] = laneOf(v);
+  });
+  const byBary = (a, b) => laneA[a] - laneA[b] || baryA[a] - baryA[b] || posA[a] - posA[b];
+  /* Crossings between layer k and k+1 (accumulator tree of Barth, Juenger and Mutzel): the layer list is already in position order, each
+     vertex's lower positions are put in order, and a tree over the lower layer counts earlier links that end further down. */
+  let cxLow = new Int32Array(64),
+    cxTree = new Int32Array(64);
   const crossBetween = k => {
-    const segs = [];
-    L[k].forEach(u => down[u.idx].forEach(([d]) => segs.push([u.pos, d.pos])));
-    return mapCrossPairs(segs);
+    const upper = LA[k],
+      nLow = LA[k + 1].length;
+    const m = dS[nV];
+    if (cxLow.length < m) cxLow = new Int32Array(m);
+    if (cxTree.length < nLow + 2) cxTree = new Int32Array(2 * nLow + 2);
+    cxTree.fill(0, 0, nLow + 2);
+    let c = 0,
+      done = 0;
+    for (let j = 0; j < upper.length; j++) {
+      const u = upper[j],
+        s0 = dS[u],
+        len = dS[u + 1] - s0;
+      if (!len) continue;
+      for (let t = 0; t < len; t++) cxLow[t] = posA[dN[s0 + t]];
+      if (len > 1) cxLow.subarray(0, len).sort();
+      for (let t = 0; t < len; t++) {
+        let q = 0;
+        for (let x = cxLow[t] + 1; x > 0; x -= x & -x) q += cxTree[x];
+        c += done - q;
+      }
+      for (let t = 0; t < len; t++) {
+        for (let x = cxLow[t] + 1; x <= nLow + 1; x += x & -x) cxTree[x]++;
+        done++;
+      }
+    }
+    return c;
   };
   const totalCross = () => {
     let c = 0;
@@ -556,69 +604,67 @@ function layered(G, opts = {}) {
   };
   const ver = new Int32Array(nL).fill(0),
     settled = new Int32Array(3 * nL).fill(-2);
-  const snapshot = () => L.map(list => list.slice());
+  const snapshot = () => LA.map(list => list.slice());
   let best = snapshot(),
     bestC = totalCross();
-  const sweep = (k, nb) => {
-    L[k].forEach(v => {
-      const ns = nb[v.idx];
-      v.bary = ns.length ? ns.reduce((s, [o]) => s + o.pos, 0) / ns.length : v.pos;
-    });
-    L[k].sort((a, b) => laneOf(a) - laneOf(b) || a.bary - b.bary || a.pos - b.pos);
+  const sweep = (k, S, N) => {
+    const list = LA[k];
+    for (let j = 0; j < list.length; j++) {
+      const v = list[j],
+        a = S[v],
+        e = S[v + 1];
+      let sum = 0;
+      for (let t = a; t < e; t++) sum += posA[N[t]];
+      baryA[v] = e > a ? sum / (e - a) : posA[v];
+    }
+    list.sort(byBary);
     let moved = false;
-    L[k].forEach((v, i) => {
-      if (v.pos !== i) moved = true;
-      v.pos = i;
-    });
+    for (let j = 0; j < list.length; j++) {
+      if (posA[list[j]] !== j) moved = true;
+      posA[list[j]] = j;
+    }
     if (moved) ver[k]++;
   };
-  /* A layer whose swaps found nothing, with its own and both neighbors' orders unchanged since, would find nothing again (versions in ver). */
-  /** Swaps neighbors in a layer while that removes crossings (and keeps lanes in place). */
+  /** Swaps neighbors in a layer while that removes crossings (and keeps lanes in place); a settled layer with unchanged neighbors is skipped,
+      and a pair's decision is kept for the rest of the call. */
   const transpose = k => {
     const s0 = k > 0 ? ver[k - 1] : -1,
       s2 = k + 1 < nL ? ver[k + 1] : -1;
     if (settled[3 * k] === s0 && settled[3 * k + 1] === ver[k] && settled[3 * k + 2] === s2) return;
+    const list = LA[k];
     let improved = true,
       guard = 0;
     const kept = new Map();
     while (improved && guard++ < 8) {
       improved = false;
-      for (let i = 0; i + 1 < L[k].length; i++) {
-        const a = L[k][i],
-          b = L[k][i + 1];
-        if (laneOf(a) !== laneOf(b)) continue;
-        const key = a.idx * vert.length + b.idx;
-        if (kept.has(key)) {
-          if (kept.get(key)) {
-            a.pos = i + 1;
-            b.pos = i;
-            L[k][i] = b;
-            L[k][i + 1] = a;
-            improved = true;
-          }
-          continue;
+      for (let i = 0; i + 1 < list.length; i++) {
+        const a = list[i],
+          b = list[i + 1];
+        if (laneA[a] !== laneA[b]) continue;
+        const key = a * nV + b;
+        let d = kept.get(key);
+        if (d === undefined) {
+          let before = 0,
+            after = 0;
+          const tally = (S, N) => {
+            for (let p = S[a]; p < S[a + 1]; p++)
+              for (let q = S[b]; q < S[b + 1]; q++) {
+                const x = posA[N[p]],
+                  y = posA[N[q]];
+                if (x > y) before++;
+                else if (x < y) after++;
+              }
+          };
+          if (k + 1 < nL) tally(dS, dN);
+          if (k > 0) tally(uS, uN);
+          d = after < before;
+          kept.set(key, d);
         }
-        /* Swapping two neighbors changes only the crossings between their own links (every other page stays on the same side of both),
-           so those are counted directly instead of recounting the whole map: the same decision, far less work. */
-        let before = 0,
-          after = 0;
-        const tally = (ea, eb) => {
-          for (let p = 0; p < ea.length; p++)
-            for (let q = 0; q < eb.length; q++) {
-              const x = ea[p][0].pos,
-                y = eb[q][0].pos;
-              if (x > y) before++;
-              else if (x < y) after++;
-            }
-        };
-        if (k + 1 < nL) tally(down[a.idx], down[b.idx]);
-        if (k > 0) tally(up[a.idx], up[b.idx]);
-        kept.set(key, after < before);
-        if (after < before) {
-          a.pos = i + 1;
-          b.pos = i;
-          L[k][i] = b;
-          L[k][i + 1] = a;
+        if (d) {
+          posA[a] = i + 1;
+          posA[b] = i;
+          list[i] = b;
+          list[i + 1] = a;
           improved = true;
         }
       }
@@ -631,12 +677,12 @@ function layered(G, opts = {}) {
     } else settled[3 * k] = -2;
   };
   const big = vert.length > 600; // very large maps: fewer passes, so the map stays quick
-  /* A round is decided by the orderings alone, so once an ordering comes back that an earlier round (or the start) already had, every later round repeats and nothing can improve. */
+  /* a round is decided by the orderings alone, so a repeated ordering means every later round repeats */
   const seenOrd = [];
   const ordOf = () => {
-    const a = new Int32Array(vert.length);
+    const a = new Int32Array(nV);
     let n = 0;
-    for (let k = 0; k < nL; k++) for (let i = 0; i < L[k].length; i++) a[n++] = L[k][i].idx;
+    for (let k = 0; k < nL; k++) for (let i = 0; i < LA[k].length; i++) a[n++] = LA[k][i];
     return a;
   };
   const sameOrd = (a, b) => {
@@ -645,8 +691,8 @@ function layered(G, opts = {}) {
   };
   seenOrd.push(ordOf());
   for (let it = 0; it < (big ? 2 : 6) && bestC > 0; it++) {
-    for (let k = 1; k < nL; k++) sweep(k, up);
-    for (let k = nL - 2; k >= 0; k--) sweep(k, down);
+    for (let k = 1; k < nL; k++) sweep(k, uS, uN);
+    for (let k = nL - 2; k >= 0; k--) sweep(k, dS, dN);
     if (!big) for (let k = 0; k < nL; k++) transpose(k);
     const now = ordOf();
     if (seenOrd.some(o => sameOrd(o, now))) break;
@@ -658,8 +704,8 @@ function layered(G, opts = {}) {
     }
   }
   best.forEach((list, k) => {
-    L[k] = list;
-    list.forEach((v, i) => {
+    L[k] = Array.from(list, i => vert[i]);
+    L[k].forEach((v, i) => {
       v.pos = i;
     });
   });
@@ -701,13 +747,66 @@ function layered(G, opts = {}) {
     bothF = csrW(vert.map((_, i) => up[i].concat(down[i])));
   const gapsOf = L.map(list => list.map((v, i) => (i ? gapOf(list[i - 1], v) : 0)).slice(1)),
     chokeOf = L.map(list => list.map(isChoke));
-  const placeLayer = (k, F) => {
+  /* mapPlaceLine on reused flat buffers: the same steps and the same arithmetic, so the same numbers, without making arrays each call. */
+  let pvOff = new Float64Array(64),
+    pvS = new Float64Array(64),
+    pvW = new Float64Array(64),
+    pvN = new Int32Array(64),
+    pvWant = new Float64Array(64),
+    pvWt = new Float64Array(64);
+  const placeFlat = (n, gaps, k) => {
+    const off = pvOff,
+      S = pvS,
+      Wb = pvW,
+      Nb = pvN;
+    off[0] = 0;
+    for (let i = 1; i < n; i++) off[i] = off[i - 1] + gaps[i - 1];
+    let nb = 0;
+    for (let i = 0; i < n; i++) {
+      S[nb] = pvWt[i] * (pvWant[i] - off[i]);
+      Wb[nb] = pvWt[i];
+      Nb[nb] = 1;
+      nb++;
+      while (nb > 1) {
+        const b = nb - 1,
+          a = nb - 2;
+        if (S[a] / Wb[a] <= S[b] / Wb[b]) break;
+        S[a] += S[b];
+        Wb[a] += Wb[b];
+        Nb[a] += Nb[b];
+        nb--;
+      }
+    }
     const list = L[k];
-    if (!list.length) return;
-    const [S, N, W] = F,
-      want = [],
-      wt = [];
-    for (let i = 0; i < list.length; i++) {
+    let i = 0;
+    for (let bI = 0; bI < nb; bI++) {
+      const v = Math.max(S[bI] / Wb[bI], -Infinity);
+      for (let t = 0; t < Nb[bI]; t++, i++) pvOff[i] = v + off[i];
+    }
+    for (let t = 1; t < n; t++) if (pvOff[t] < pvOff[t - 1] + gaps[t - 1]) pvOff[t] = pvOff[t - 1] + gaps[t - 1];
+    let changed = false;
+    for (let t = 0; t < n; t++) {
+      const id = list[t].idx;
+      if (cA[id] !== pvOff[t]) changed = true;
+      cA[id] = pvOff[t];
+    }
+    return changed;
+  };
+  const placeLayer = (k, F) => {
+    const list = L[k],
+      n = list.length;
+    if (!n) return false;
+    if (pvWant.length < n) {
+      const cap = 2 * n;
+      pvOff = new Float64Array(cap);
+      pvS = new Float64Array(cap);
+      pvW = new Float64Array(cap);
+      pvN = new Int32Array(cap);
+      pvWant = new Float64Array(cap);
+      pvWt = new Float64Array(cap);
+    }
+    const [S, N, W] = F;
+    for (let i = 0; i < n; i++) {
       const v = list[i],
         id = v.idx;
       let s = 0,
@@ -717,19 +816,28 @@ function layered(G, opts = {}) {
         sw += W[e];
       }
       if (chokeOf[k][i]) {
-        want.push(0);
-        wt.push(1000);
+        pvWant[i] = 0;
+        pvWt[i] = 1000;
       } else {
-        want.push(sw ? s / sw : cA[id]);
-        wt.push(sw ? sw + (v.dummy ? 2 : 0) : 0.2);
+        pvWant[i] = sw ? s / sw : cA[id];
+        pvWt[i] = sw ? sw + (v.dummy ? 2 : 0) : 0.2;
       }
     }
-    const xs = mapPlaceLine(want, wt, gapsOf[k]);
-    for (let i = 0; i < list.length; i++) cA[list[i].idx] = xs[i];
+    return placeFlat(n, gapsOf[k], k);
   };
+  /* A round of one kind (the up-then-down passes, or the both-sides passes) that moves nothing would move nothing again; once a round of
+     each kind in a row has moved nothing, every later round is the same, so the loop stops there. */
+  let stillA = false,
+    stillB = false;
   for (let it = 0; it < (big ? 3 : 8); it++) {
-    for (let k = 1; k < nL; k++) placeLayer(k, it % 3 === 2 ? bothF : upF);
-    for (let k = nL - 2; k >= 0; k--) placeLayer(k, it % 3 === 2 ? bothF : downF);
+    const B = it % 3 === 2;
+    let moved = false;
+    for (let k = 1; k < nL; k++) if (placeLayer(k, B ? bothF : upF)) moved = true;
+    for (let k = nL - 2; k >= 0; k--) if (placeLayer(k, B ? bothF : downF)) moved = true;
+    if (moved) stillA = stillB = false;
+    else if (B) stillB = true;
+    else stillA = true;
+    if (stillA && stillB) break;
   }
   vert.forEach(v => {
     v.c = cA[v.idx];

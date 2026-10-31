@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.6 · 2026-10-31
+- Nothing changes in what this package gives: the drawings are exactly the same. Inside, the page order is tried on flat number lists, crossings are counted with a faster tally, and the line-up step stops as soon as nothing moves, so a 316-page story is laid out about 15 to 25% faster again.
+
 ## 1.0.5 · 2026-10-31
 - Nothing changes in what this package gives: the drawings are exactly the same. Inside, the choke points and route shares are found with less work, and the layout does less repeated work, so a 316-page story is laid out about 15 to 20% faster.
 

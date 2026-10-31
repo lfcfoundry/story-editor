@@ -2,6 +2,20 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Story Page Map layout, round 2
+
+### Quick
+Ordering and crossing counts run on flat number lists with a faster crossing tally, and the line-up step works on reused number buffers and stops as soon as a round moves nothing. Drawings are identical; a 316-page story is laid out 17 to 29% faster than after the previous release, small stories 18 to 59%.
+
+### Details
+- Layout build (`mapBuildPlain`), warm, median of 3 alternating rounds, before to after, 316 pages flow view: Chromium 155.0.8059.39 3.44 to 2.62 ms, Firefox 158.0 4.30 to 3.58 ms, WebKitGTK 2.52.6 4.37 to 3.10 ms; top-down view 3.19 to 2.58 / 4.07 to 3.50 / 4.20 to 3.10 ms. 34-page example: 0.35 to 0.28 / 0.84 to 0.37 / 0.30 to 0.19 ms; 51-page example 0.47 to 0.39 / 1.18 to 0.48 / 0.50 to 0.35 ms.
+- Every drawing is identical: 1,800 layouts compared with the previous code (seeded stories of 10 to 250 pages, three views, with and without last time's order), 0 differences.
+- New permanent test `editor/map-golden.mjs`: 360 drawing fingerprints written by the previous code, in `npm test`. It fails when one coordinate moves by a billionth.
+- `story-map` 1.0.5 to 1.0.6 (no change in what it gives).
+
+### Deep
+The rule for this round: retest the ideas dropped earlier, alone and then all together, on the guess that together they beat the sum of the parts. Four pieces: (1) ordering on flat typed arrays (positions, lanes and barycenters by node index, neighbor lists in CSR form), dropped in the previous release as inside the noise; (2) the crossing count between two layers with the Barth-Jünger-Mutzel accumulator tree over lower positions sorted per upper node, instead of comparing edge pairs; (3) the PAVA line-up (`placeFlat`) on reused Float64 buffers, with the very same additions in the same order as `mapPlaceLine`; (4) an exact early stop in placement: once one round of each kind (up/down and both ways) changed nothing, later rounds cannot change anything either, so they are skipped. Alone, 316 pages flow, Chromium / Firefox / WebKitGTK: (2) 2.73 / 4.25 / 3.93 ms; (1)+(2) 2.67 / 3.23 / 3.50; (3)+(4) 3.01 / 4.63 / 4.29; (1) alone was inside the noise last time. All four: 2.62 / 3.58 / 3.10. Flat ordering alone did nothing, but with the accumulator count on the same flat lists it gives Firefox its biggest gain (34-page example 0.84 to 0.37 ms), so the dropped idea paid off only stacked. The Firefox 316-page number varies most between rounds (a 4-round recheck gave 22% and 15%). Also tried and dropped: skipping situations whose items can no longer matter in the checker (2% fewer situations on the 51-page example, but it changed the checker's notes, so unsafe). **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapcull`, `mapprebuild`, `mapkey`, `bugs12` and `screens` pass in all three; `npm test` passes (including `map-golden`, `map-worker-equiv`, `choke-equiv` and packages up to date).
+
 ## 2026-10-31 · Story Page Map layout
 
 ### Quick

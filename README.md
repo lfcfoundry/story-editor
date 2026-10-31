@@ -34,7 +34,7 @@ Measured in Chromium 155, Firefox 158 and WebKitGTK 2.52, on one 4-core machine,
 | Check after an edit, a generated test story (316 pages, 24,313 situations) | 6.8 ms | 7.3 ms | 7.2 ms |
 | Check after an edit, a generated 100-page story (78,726 situations) | 30 ms | 28 ms | 30 ms |
 | Same 316-page check, JavaScript only (no WebAssembly) | 33 ms | 47 ms | 43 ms |
-| Lay out the Story Page Map of 316 pages (layout only, warm) | 3.3 ms | 4.3 ms | 4.4 ms |
+| Lay out the Story Page Map of 316 pages (layout only, warm) | 2.6 ms | 3.6 ms | 3.1 ms |
 | Open the Story Page Map of 316 pages, first time | 48 ms | 27 ms | 72 ms |
 | Open the editor from the file, ready to type | 285 ms | 369 ms | 932 ms |
 
