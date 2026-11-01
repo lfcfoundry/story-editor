@@ -10,6 +10,7 @@ const SETTINGS = JSON.stringify({ chosen: true, remember: true, advanced: { writ
   const b = await B.launch(); const errs = [];
   const ctx = await b.newContext({ viewport: { width: 1200, height: 850 }, locale: 'en-US' });
   await ctx.addInitScript(([s, st]) => { if (!localStorage.getItem('qa-seeded')) { localStorage.setItem('qa-seeded', '1'); localStorage.setItem('story-editor-v1-settings', st); localStorage.setItem('story-editor-v1', s); } }, [sample, SETTINGS]);
+  await ctx.addInitScript(() => { window.__verCheck = true; }); // every undo step must rebuild its text; no story version number may stand for two texts
   const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message));
   await pg.goto(EDITOR); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(500);
   const attr = (sel, a) => pg.evaluate(([s, a]) => document.querySelector(s)[a] || document.querySelector(s).getAttribute(a), [sel, a]);

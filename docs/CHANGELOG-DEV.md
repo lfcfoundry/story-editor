@@ -34,6 +34,20 @@ Pages alone and items alone were each measured. The page list carries almost all
 - **Why it was hidden.** Each listener is small, but a 2,040-page list holds them for every row, and in Chromium each one also carries a registration record and a vector slot on the page side. The V8 heap shows only 1.3 MB of it.
 - **New suite `listrows`.** Rows carry no listeners. Clicking a name opens the page. Right-click opens the menu and Escape closes it. Dragging carries the id and name. In written order, a drop on the top half moves the page there and clears the bar, and a drop on itself changes nothing. Clicking an item gives it to the page, and right-clicking an item opens its menu. Where touch events can be made (Chromium), a long press opens the menu and the lifted finger does not open the page. The suite passes against the old build too, apart from the listener count.
 - **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6. Suites: `listrows`, `listdots`, `fix2`, `inter`, `marks`, `opts`, `real`, `round3`, `tools8`, `top10-editor`, `top10-export`, `touch1` (Chromium), `write1`, `write2`, `phone`, `fuzz1`.
+## 2026-11-01 · Undo steps reuse the stretch one-page edits changed instead of comparing whole texts
+
+### Quick
+- `pushUndo` stored each older snapshot as a difference found by `undoDelta`, which compares the two whole story texts from both ends. `pageEdit` already knows the stretch it changed, so `commit` now folds each edit's stretch into `undoSpan` (prefix kept = smallest `at`, suffix kept = smallest `keep`), and `pushUndo` uses it when the snapshot and the current text are the ones it describes. Anything else (a whole-story replace, a restore, a stretch that does not match) still goes through `undoDelta`.
+- Shipped on the owner's call although no end-to-end gain could be measured.
+
+### Details
+`undoDelta` alone on a 1.8 M character story text with one edit in the middle, median of 31: Chromium 155 0.4 ms, Firefox 158 about 2 ms, WebKitGTK 2.52.6 about 1 ms (timer steps of 1 ms in the last two). The kept stretch costs well under 0.01 ms. It runs once per undo step (each typing pause), not per key.
+
+Input-handler time over 5 typing bursts at 2,040 pages, early-stop A/B with 8 to 24 rounds, new/old, lower is better: Chromium 0.95 (ok), Firefox 1.02 (inconclusive, noisy), WebKitGTK 1.01 (inconclusive, noisy). An earlier 4-round run read 0.96 / 1.14 / 0.85. Neither run shows a change beyond noise.
+
+### Deep
+- **Safety.** The stretch may be wider than the exact difference, which only keeps a few more characters in the step. With `globalThis.__verCheck` on (undohist sets it), every step is checked to rebuild its text exactly.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `undohist`, `curtext`, `fuzz1`, `topbar`, `zsave`, `crashsafe`, `write1`; `npm test` (including `undo-delta-equiv`).
 
 ## 2026-11-01 · Packed autosave: big stories saved deflated, the worker sent only the changed stretch
 

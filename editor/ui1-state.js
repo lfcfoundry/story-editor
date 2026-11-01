@@ -549,6 +549,8 @@ function undoDelta(old, next) {
   while (b < n - a && old.charCodeAt(lo - 1 - b) === next.charCodeAt(ln - 1 - b)) b++;
   return { a, b, m: old.slice(a, old.length - b) };
 }
+let undoSpan = null, // { base: the newest snapshot's text, text: the story now, at, keep }: what one-page edits since that snapshot changed
+  editLast = null; // the stretch the last pageEdit changed
 const undoApply = (next, d) => next.slice(0, d.a) + d.m + next.slice(next.length - d.b);
 /** The story text of undo snapshot i. */
 function undoText(i) {
@@ -562,9 +564,14 @@ function undoText(i) {
 function pushUndo(x) {
   const top = undoStack[undoStack.length - 1];
   if (top && top.s != null) {
-    top.d = undoDelta(top.s, x.s);
+    /* one-page edits since that snapshot already say which stretch changed (undoSpan, kept by commit): no need to compare the two whole texts
+       (0.4 to 2 ms at 2,040 pages, once per undo step). The stretch may be a little wider than the exact difference, which only keeps a few more characters. */
+    const sp = undoSpan;
+    top.d = sp && sp.base === top.s && sp.text === x.s ? { a: sp.at, b: sp.keep, m: top.s.slice(sp.at, top.s.length - sp.keep) } : undoDelta(top.s, x.s);
+    if (globalThis.__verCheck && undoApply(x.s, top.d) !== top.s) throw new Error('an undo step does not rebuild its text');
     top.s = null;
   }
+  undoSpan = null;
   x.n = x.s.length;
   undoStack.push(x);
   undoBytes += x.n;
@@ -624,6 +631,7 @@ function pageEdit(page) {
   if (!c.changed) return cur;
   const s = cur.slice(0, c.at[k]) + piece + cur.slice(c.at[k] + was);
   zsaveSpan(cur, s, c.at[k], cur.length - c.at[k] - was);
+  editLast = { was: cur, now: s, at: c.at[k], keep: cur.length - c.at[k] - was };
   for (let j = k + 1; j < c.at.length; j++) c.at[j] += d;
   c.text = s;
   return s;
@@ -635,7 +643,9 @@ function pageEdit(page) {
  * 10 seconds of it, so Undo never throws away a long stretch of writing).
  */
 function commit(key, page) {
+  editLast = null;
   let s = page ? pageEdit(page) : null;
+  const ed = editLast;
   if (s === null) {
     pruneVirtual(project);
     s = storyText();
@@ -650,6 +660,13 @@ function commit(key, page) {
   redoStack = [];
   cur = s;
   curVer = ++curVers;
+  /* the stretch this edit changed, added to the one since the newest undo snapshot (see pushUndo) */
+  const top = undoStack[undoStack.length - 1];
+  if (ed && ed.now === s && undoSpan && undoSpan.text === ed.was) {
+    undoSpan.at = Math.min(undoSpan.at, ed.at);
+    undoSpan.keep = Math.min(undoSpan.keep, ed.keep);
+    undoSpan.text = s;
+  } else undoSpan = ed && ed.now === s && top && top.s === ed.was ? { base: ed.was, text: s, at: ed.at, keep: ed.keep } : null;
   lastKey = key || '';
   lastT = now;
   persistSoon();
