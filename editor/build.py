@@ -228,6 +228,7 @@ os.environ.setdefault("ESBUILD", HERE + "node_modules/.bin/esbuild")   # shrinks
 _page, _info = lzma_pack.pack(_raw, title="Story Editor", encoding="base64", minifier="esbuild", wasm=True, tune=[(1, 0, 0), (2, 0, 0), (3, 0, 0)])   # three settings, 0.5 s; the full 15-setting search (2.7 s) saved at most 100 bytes more
 _page = _page.replace(b"<!doctype html>", b"<!doctype html>\n" + FOUNDRY.encode("utf8"), 1)   # the header stays readable at the top of the delivered file
 open(HERE + "story-editor.html", "wb").write(_page)   # bytes: the header holds emoji, which must stay UTF-8
+open(HERE + "../play/index.html", "wb").write(_page)   # the copy the site serves at /play/ (tools/play-check.mjs, run by npm test, checks it is this build)
 print("packed story-editor.html with LZMA (lc=%d pb=%d): %d KB plain -> %d KB" % (_info["lc"], _info["pb"], len(_raw) // 1024, len(_page) // 1024))
 open(HERE + "story-editor.artifact.html", "w", encoding="utf8").write(artifact)
 print("built story-editor.html (%d KB plain), stamped %s" % (len(standalone.encode("utf8")) // 1024, STAMP))
