@@ -2,6 +2,21 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-01 · Undo steps reuse the stretch one-page edits changed instead of comparing whole texts
+
+### Quick
+- `pushUndo` stored each older snapshot as a difference found by `undoDelta`, which compares the two whole story texts from both ends. `pageEdit` already knows the stretch it changed, so `commit` now folds each edit's stretch into `undoSpan` (prefix kept = smallest `at`, suffix kept = smallest `keep`), and `pushUndo` uses it when the snapshot and the current text are the ones it describes. Anything else (a whole-story replace, a restore, a stretch that does not match) still goes through `undoDelta`.
+- Shipped on the owner's call although no end-to-end gain could be measured.
+
+### Details
+`undoDelta` alone on a 1.8 M character story text with one edit in the middle, median of 31: Chromium 155 0.4 ms, Firefox 158 about 2 ms, WebKitGTK 2.52.6 about 1 ms (timer steps of 1 ms in the last two). The kept stretch costs well under 0.01 ms. It runs once per undo step (each typing pause), not per key.
+
+Input-handler time over 5 typing bursts at 2,040 pages, early-stop A/B with 8 to 24 rounds, new/old, lower is better: Chromium 0.95 (ok), Firefox 1.02 (inconclusive, noisy), WebKitGTK 1.01 (inconclusive, noisy). An earlier 4-round run read 0.96 / 1.14 / 0.85. Neither run shows a change beyond noise.
+
+### Deep
+- **Safety.** The stretch may be wider than the exact difference, which only keeps a few more characters in the step. With `globalThis.__verCheck` on (undohist sets it), every step is checked to rebuild its text exactly.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `undohist`, `curtext`, `fuzz1`, `topbar`, `zsave`, `crashsafe`, `write1`; `npm test` (including `undo-delta-equiv`).
+
 ## 2026-11-01 · Packed autosave: big stories saved deflated, the worker sent only the changed stretch
 
 ### Quick
