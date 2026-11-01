@@ -2,6 +2,24 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · The Map keys its layouts by a story version number instead of a fingerprint of the whole text
+
+### Quick
+`sigOf(cur)` hashed the whole story text (31-multiply over every character) to name the story's version in Map cache keys, the play-test cache and the built-ahead marks (`mapAhead`, `mapDropAhead`). It ran once per new `cur`, which is after every typing pause, and a fresh text is also a joined string, so it was flattened first: 13 ms in Chromium and Firefox and 20 ms in WebKitGTK at 2,040 pages (1.8 M characters). `curVer` now numbers the versions: every place that sets `cur` to new text takes a new number, and a snapshot (`snap`) keeps its number, so Undo and Redo bring the same number back. `curSig()` returns `v` + the number. The file record still uses `sigOf`, because it must match across reloads.
+
+### Details
+Page time in all worker answer handlers over 4 typing pauses, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.58x (0.57-0.61) | 0.51x (0.50-0.77) | 0.36x (0.33-0.78) |
+
+### Deep
+- **The only risk:** a number that stands for two texts would show a layout from another version. Two numbers for one text (text typed back to what it was) just miss the cache. With `window.__verCheck` on, `curSig()` also fingerprints the text and throws if a number has been seen with another text. `mapprebuild`, `mapkey`, `curtext` and `fuzz1` turn it on. A build with one missing bump (in `commit`) fails `mapprebuild` and `fuzz1` at once ("story version 1 stood for two different texts").
+- The places that set `cur`: `commit`, `restore`, `undoMany`, `replaceProject`, `applyStamp` and `init`.
+- A `Map` from text to number was also measured: 4 to 6 ms per new text, because the engine still hashes or compares the long string.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapprebuild`, `mapkey`, `curtext`, `fuzz1` pass with the check on.
+
 ## 2026-10-31 · Map views built ahead are reused when only words on pages changed
 
 ### Quick

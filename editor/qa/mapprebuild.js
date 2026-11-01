@@ -40,6 +40,7 @@ const SAME = v => `(() => {
   const ctx = await b.newContext({ viewport: { width: 1200, height: 850 } });
   const open = async (n, init) => {
     const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+    await pg.addInitScript(() => { window.__verCheck = true; }); // curSig: no story version number may stand for two texts
     if (init) await pg.addInitScript(init);
     await pg.goto(EDITOR); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 30000 });
     const json = await pg.evaluate(`(${mkSrc})([${n}])`);

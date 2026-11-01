@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Typing in big stories: after each pause the editor no longer reads through the whole story to tell which version of it the Map's prepared drawings belong to; it numbers the versions instead. In a 2,040-page story that takes 42 to 64% off the editor's work after each typing pause (0.58 times in Chrome, 0.51 in Firefox, 0.36 in Safari-style browsers). The Map looks exactly the same.
 - Typing in big stories: the Story Page Map views prepared in the background are no longer prepared again when you only changed the words on a page, since the Map does not show them. In a 2,040-page story this halves the editor's own work after typing pauses in Chrome (0.48 times; Firefox 0.75, Safari-style browsers 0.63), and the background helper works 5 times less. The Map looks exactly the same.
 - Typing in big stories: the bar at the top (tabs, totals, status line) is redrawn with about half the work after each key and each check (2,040 pages: 0.44 to 0.62 times the drawing work while typing, depending on the browser). It looks exactly the same.
 - Page list sorted A to Z: in big stories the list no longer stalls the editor while you type. Typing a page name in a 2,040-page story took about 70 ms per key in Chrome, 47 in Firefox and 125 in Safari-style browsers, and now takes about 7, 6 and 9 to 14, and the list no longer pays that cost after every check. The order is exactly the same.

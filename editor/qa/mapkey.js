@@ -9,6 +9,7 @@ const sample = fs.readFileSync(__dirname + '/fixtures/sample.story.json', 'utf8'
   const b = await B.launch();
   const ctx = await b.newContext({ viewport: { width: 1366, height: 800 } });
   await ctx.addInitScript(([s]) => { if (!localStorage.getItem('qa-seeded')) { localStorage.setItem('qa-seeded', '1'); localStorage.setItem('story-editor-v1-settings', JSON.stringify({ chosen: true, remember: true, advanced: { write: true, map: true, items: true, game: true } })); localStorage.setItem('story-editor-v1-story', s); } }, [sample]);
+  await ctx.addInitScript(() => { window.__verCheck = true; }); // curSig: no story version number may stand for two texts
   const errs = []; const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message));
   const load = async () => { await pg.goto(FILE); await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.click('#tabs button:has-text("Map")'); await pg.waitForSelector('.fkhead'); await pg.waitForTimeout(300); };
   const open = () => pg.evaluate(() => document.querySelector('.fktoggle').getAttribute('aria-expanded') === 'true');

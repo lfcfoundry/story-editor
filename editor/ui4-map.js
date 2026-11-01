@@ -91,7 +91,7 @@ const SIM_MODES = [
 let mapRiverSel = null; // River: { page } or { from, to } being followed, or null
 /** The simulated players for the story as it is now, with the current settings (recomputed only after a change). */
 function playData() {
-  const key = JSON.stringify([sigOf(cur), mapSim, mapAs]); // the fingerprint, not a quoted copy of the whole story
+  const key = JSON.stringify([curSig(), mapSim, mapAs]); // the fingerprint, not a quoted copy of the whole story
   if (mapPlay.key !== key) mapPlay = { key, data: playtest(project, { runs: mapSim.runs, mode: mapSim.mode, as: mapAs }) };
   return mapPlay.data;
 }
@@ -478,7 +478,7 @@ function mapGroups(G) {
 const mapCache = new Map(); // settings + a fingerprint of the story text -> layout, so the same story always looks the same (Undo puts pages back)
 /** The key a layout is kept under in mapCache. */
 function mapLayoutKey(viewName, color, as) {
-  return viewName === 'shape' ? '' : JSON.stringify([sigOf(cur), viewName, mapOpts.merge, mapOpts.traffic, color, as, mapOpen, mapSim]);
+  return viewName === 'shape' ? '' : JSON.stringify([curSig(), viewName, mapOpts.merge, mapOpts.traffic, color, as, mapOpen, mapSim]);
 }
 function mapKeep(ck, L) {
   mapCache.set(ck, L);
@@ -511,7 +511,7 @@ const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, sent: nu
    held about 15 MB of layouts nobody saw. They are dropped as soon as the story changes (a layout that was shown stays, so Undo still finds it). */
 const mapAhead = new WeakMap(); // layout built ahead and not shown yet -> the fingerprint of the story it was built for
 function mapDropAhead() {
-  const now = sigOf(cur);
+  const now = curSig();
   for (const [k, L] of mapCache) if (mapAhead.has(L) && mapAhead.get(L) !== now) mapCache.delete(k);
 }
 function mapPrebuildSoon() {
@@ -600,7 +600,7 @@ function mapPrebuilt(e) {
       mapPrebuild();
       return;
     }
-    mapAhead.set(L, sigOf(cur));
+    mapAhead.set(L, curSig());
     mapKeep(job.ck, L);
     mapPre.same++;
     mapPrebuild();
@@ -608,7 +608,7 @@ function mapPrebuilt(e) {
   }
   const { G, L } = mapUnpackPlain(m.json);
   mapPre.last[job.vname] = { h: m.h, L };
-  mapAhead.set(L, sigOf(cur)); // built ahead for this version of the story, not shown yet (see mapDropAhead)
+  mapAhead.set(L, curSig()); // built ahead for this version of the story, not shown yet (see mapDropAhead)
   L.view = job.vname;
   L.G = G;
   mapLazyGroups(L, null);

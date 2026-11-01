@@ -263,6 +263,17 @@ function sigOf(t) {
   sigVal = `${t.length}:${x}`;
   return sigVal;
 }
+/** The Map's name for the story as it is now (see curVer). A test can turn on window.__verCheck to prove no number ever stood for two texts. */
+const verSeen = new Map();
+function curSig() {
+  if (window.__verCheck) {
+    const h = sigOf(cur),
+      was = verSeen.get(curVer);
+    if (was !== undefined && was !== h) throw new Error(`story version ${curVer} stood for two different texts`);
+    verSeen.set(curVer, h);
+  }
+  return `v${curVer}`;
+}
 function keepFileRecord() {
   kvSet('file', storyFile ? { handle: storyFile, story: project.id, sig: savedText == null ? '' : sigOf(savedText) } : null);
 }
@@ -287,6 +298,7 @@ function applyStamp(st, at) {
   const same = cur === at; // false when the person kept typing while the file was being written: those edits stay unsaved
   Object.assign(project, st.s);
   cur = JSON.stringify(project);
+  curVer = ++curVers;
   persistSoon();
   return same ? cur : st.compact;
 }
@@ -1832,6 +1844,7 @@ function init() {
   }
   if (project.id === STARTER.id) project.id = uid('s_'); // older copies of the example all shared one id
   cur = JSON.stringify(project);
+  curVer = ++curVers;
   selId = project.start;
   /* remembered look: light unless dark was chosen */
   loadSettings();
