@@ -1371,6 +1371,29 @@ function klWordCount(owner, raw) {
 }
 
 
+/* A page's words (heading, paragraphs, choice labels), remembered with the strings they were counted from. The stats line asks after every
+   key and every check; looking up each paragraph and choice in KL_WORDS cost 0.75 ms per call at 2,000 pages (Chromium), while comparing a
+   page's strings with the ones it had is a few pointer checks. */
+const KL_PAGE = new WeakMap(); // page -> { heading, texts: [paragraph texts], labels: [choice labels], n }
+
+function klPageWords(p) {
+  const B = p.blocks,
+    C = p.choices;
+  const c = KL_PAGE.get(p);
+  if (c && c.heading === p.heading && c.texts.length === B.length && c.labels.length === C.length) {
+    let same = true;
+    for (let i = 0; same && i < B.length; i++) same = c.texts[i] === B[i].text;
+    for (let i = 0; same && i < C.length; i++) same = c.labels[i] === C[i].label;
+    if (same) return c.n;
+  }
+  let n = klWordCount(p, p.heading);
+  B.forEach(b => (n += klWordCount(b, b.text)));
+  C.forEach(ch => (n += klWordCount(ch, ch.label)));
+  KL_PAGE.set(p, { heading: p.heading, texts: B.map(b => b.text), labels: C.map(ch => ch.label), n });
+  return n;
+}
+
+
 function storyStats(project) {
   let words = 0;
   let choices = 0;
@@ -1392,14 +1415,8 @@ function storyStats(project) {
     });
   });
   project.passages.forEach(p => {
-    words += klWordCount(p, p.heading);
-    p.blocks.forEach(b => {
-      words += klWordCount(b, b.text);
-    });
-    p.choices.forEach(ch => {
-      words += klWordCount(ch, ch.label);
-      choices++;
-    });
+    words += klPageWords(p);
+    choices += p.choices.length;
     if (p.ending && p.valence === 'good') good++;
     if (p.ending && p.valence === 'bad') bad++;
   });

@@ -59,7 +59,7 @@ function historyDialog() {
     if (!n) list.appendChild(h('div', { class: 'hint', text: 'Nothing to undo yet in this session.' }));
     for (let i = n - 1; i >= Math.max(0, n - HIST_SHOW); i--) {
       const info = stepInfo(i);
-      const when = undoStack[i].t ? new Date(undoStack[i].t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+      const when = undoStack[i].t ? clockText(undoStack[i].t) : '';
       const steps = n - i;
       list.appendChild(
         h(
@@ -102,6 +102,13 @@ function nextProblem() {
 }
 
 /** What the status line says, as a list: { cls, ico, text, longText, tip, fn } (is my work kept, how old is the file copy, what the checker says right now). */
+/* A time of day as "4:05 PM", from one formatter made once. toLocaleTimeString with options sets up the language rules again on every call,
+   and the status line asked after every key and every check (Chromium profile, 2,000 pages: 5 ms of the top bar's 44 over 6 typing pauses). */
+let clockFmt = null;
+function clockText(t) {
+  if (!clockFmt) clockFmt = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
+  return clockFmt.format(new Date(t));
+}
 function statusParts() {
   const out = [];
   const chip = (cls, ico, text, longText, tip, fn) => out.push({ cls, ico, text, longText, tip, fn });
@@ -124,7 +131,7 @@ function statusParts() {
   if (!storageOk) {
     chip('bad', '⚠', 'Not kept in this browser. Save a file.', '', 'This browser refuses to keep the story between visits');
   } else {
-    const t = lastLocalSave ? new Date(lastLocalSave).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    const t = lastLocalSave ? clockText(lastLocalSave) : '';
     if (saveTimer) chip('gray', '…', 'Saving', '', 'Writing to this browser');
     else chip('ok', '✓', t, t ? 'Saved in this browser, ' : 'Saved in this browser', 'The story is autosaved in this browser after every change');
   }

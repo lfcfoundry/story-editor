@@ -59,6 +59,11 @@ const CHECK_DELAY = 500; // ms to wait after the last edit before re-running the
 
 let project; // the story being edited (see PART 1 for its shape)
 let cur; // JSON text of `project` as last committed
+/* Which version of the story `cur` is: a new number whenever `cur` is set to new text, and the snapshot's own number when Undo or Redo brings one
+   back. The Map keys its layouts by it (curSig). It used to fingerprint the whole text instead: at 2,000 pages that read 1.8 million characters
+   after every typing pause, 13 to 20 ms. Two versions with the same text just miss the cache; one number never stands for two texts. */
+let curVer = 0,
+  curVers = 0;
 const undoStack = []; // snapshots for Undo: the newest holds the story's JSON text, older ones only what differs (see pushUndo)
 let redoStack = [];
 let undoBytes = 0;
@@ -402,7 +407,7 @@ document.addEventListener('visibilitychange', () => {
 let epoch = 0;
 let epochs = 0;
 /** The story as it is now, as a snapshot. */
-const snap = () => ({ s: cur, e: epoch, t: Date.now() });
+const snap = () => ({ s: cur, e: epoch, t: Date.now(), v: curVer });
 
 /* Only the newest undo snapshot keeps the whole story text (`s`). Each older one keeps just what differs from the snapshot after it (`d`: the
    length of the shared start, of the shared end, and its own middle), so a long session of writing in a big story holds a few kilobytes of
@@ -521,6 +526,7 @@ function commit(key, page) {
   }
   redoStack = [];
   cur = s;
+  curVer = ++curVers;
   lastKey = key || '';
   lastT = now;
   persistSoon();
@@ -540,6 +546,7 @@ function renderTopSoon() {
 /** Loads a snapshot (used by Undo and Redo). */
 function restore(x) {
   cur = x.s;
+  curVer = x.v ?? ++curVers;
   epoch = x.e;
   project = normalizeProject(JSON.parse(cur));
   fileFollowsStory();
@@ -576,6 +583,7 @@ function undoMany(k) {
     redoStack.push(snap());
     x = popUndo();
     cur = x.s;
+    curVer = x.v ?? ++curVers;
     epoch = x.e;
   }
   if (said.pid) selId = said.pid;
@@ -592,6 +600,7 @@ function replaceProject(p, msg) {
   redoStack = [];
   project = p;
   cur = JSON.stringify(project);
+  curVer = ++curVers;
   selId = project.start;
   view = 'write';
   lastKey = '';

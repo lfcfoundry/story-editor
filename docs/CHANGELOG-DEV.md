@@ -2,6 +2,139 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · The Map keys its layouts by a story version number instead of a fingerprint of the whole text
+
+### Quick
+`sigOf(cur)` hashed the whole story text (31-multiply over every character) to name the story's version in Map cache keys, the play-test cache and the built-ahead marks (`mapAhead`, `mapDropAhead`). It ran once per new `cur`, which is after every typing pause, and a fresh text is also a joined string, so it was flattened first: 13 ms in Chromium and Firefox and 20 ms in WebKitGTK at 2,040 pages (1.8 M characters). `curVer` now numbers the versions: every place that sets `cur` to new text takes a new number, and a snapshot (`snap`) keeps its number, so Undo and Redo bring the same number back. `curSig()` returns `v` + the number. The file record still uses `sigOf`, because it must match across reloads.
+
+### Details
+Page time in all worker answer handlers over 4 typing pauses, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.58x (0.57-0.61) | 0.51x (0.50-0.77) | 0.36x (0.33-0.78) |
+
+### Deep
+- **The only risk:** a number that stands for two texts would show a layout from another version. Two numbers for one text (text typed back to what it was) just miss the cache. With `window.__verCheck` on, `curSig()` also fingerprints the text and throws if a number has been seen with another text. `mapprebuild`, `mapkey`, `curtext` and `fuzz1` turn it on. A build with one missing bump (in `commit`) fails `mapprebuild` and `fuzz1` at once ("story version 1 stood for two different texts").
+- The places that set `cur`: `commit`, `restore`, `undoMany`, `replaceProject`, `applyStamp` and `init`.
+- A `Map` from text to number was also measured: 4 to 6 ms per new text, because the engine still hashes or compares the long string.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapprebuild`, `mapkey`, `curtext`, `fuzz1` pass with the check on.
+
+## 2026-10-31 · Map views built ahead are reused when only words on pages changed
+
+### Quick
+After every typing pause the background worker built two Map views again for the new story text, and the page unpacked each answer, although typing in a paragraph never changes a layout. The worker now strips paragraph texts, headings and notes before it builds and hashes what is left with the view and options (`mapStructKey`: the length and two 32-bit FNV-1a hashes). The page sends the hash of the last never-shown layout it holds for that view (`mapPre.last`), and when they match the worker answers `same` without building. The page then keeps that layout for the new version of the story.
+
+### Details
+Page time in all worker answer handlers (the check and the Map views built ahead) over 4 typing pauses, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.48x (0.43-0.49), median about 147 to 67 ms | 0.75x (0.66-0.94), noisy, 5 rounds | 0.63x (0.57-0.92) |
+
+In each run the worker built 10 layouts before and 2 after; the other 8 were answered `same`.
+
+### Deep
+- Because the worker builds from the stripped story, a layout cannot depend on the stripped words. `map-worker-equiv.mjs` now gives its random stories paragraph texts, headings and notes and still finds the worker's 1,920 layouts equal to the Map tab's own build from the full story. After each answer it sends the same story with only those words changed (it must answer `same`, 720 times) and with a renamed page (it must build again).
+- Only a layout that was never shown is reused (`mapAhead` still marks it), so nothing drawn on screen is shared between two versions. Like any layout built ahead, it is dropped when the story changes again; at most one per view is held for the comparison, the same layouts the cache keeps for the current story.
+- `mapprebuild`: after a paragraph edit the three layouts are kept without building and equal a fresh build for the edited story; a renamed page gets three new builds. In this run the Chromium leg of the suite took 35 s instead of 96 s.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapprebuild`, `mapkey`, `checkworker`, `csp` pass; `npm test` passes.
+
+## 2026-10-31 · Top bar redraw: kept word counts, tabs reused, one time formatter
+
+### Quick
+`renderTop` runs after every key and every check. Three costs in it are gone:
+- `storyStats` looked up every paragraph and choice of every page in `KL_WORDS` (0.75 ms per call at 2,040 pages in Chromium). `klPageWords(p)` keeps each page's count with the strings it was counted from and compares them by reference.
+- The tab buttons and the phone's drawer bar were rebuilt, with their listeners and icons, every time. They are now made again only when what they show changes (the open tab, the Game tab switch, the number of problems; the open page and its name).
+- The status line's `toLocaleTimeString([], options)` set up the language rules on every call. `clockText()` uses one `Intl.DateTimeFormat` (the History list uses it too).
+
+### Details
+All `requestAnimationFrame` work while typing 19 keys in a paragraph and the pause after, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Time formatter alone | 0.99x (0.96-1.07), inconclusive after 16 rounds | 0.92x (0.86-1.01), ok | 1.05x (0.93-1.20), inconclusive, noisy |
+| Kept word counts alone | 0.88x (0.84-0.90) | 0.66x (0.62-0.72) | 0.79x (0.58-1.00), noisy |
+| Tabs and drawer bar reused alone | 0.83x (0.75-0.92) | 0.77x (0.74-0.82) | 0.70x (0.52-0.81), noisy |
+| All three | **0.62x (0.59-0.63)** | **0.44x (0.37-0.60)**, noisy | **0.50x (0.44-0.57)** |
+
+Together they beat the product of the three alone in every browser (Chromium 0.72x expected, 0.62x measured).
+
+### Deep
+- Found with a CPU profile of 6 typing pauses at 2,040 pages (Chromium): 44 ms under `renderTop`, of which `storyStats` 17.9 ms (klWordCount 9.3), `statusParts` 7 ms (5.4 ms on the `toLocaleTimeString` line), tab and icon building most of the rest.
+- The time formatter alone is within noise here, but it is the same per-call `Intl` setup as the A to Z sort (see that entry), so it stays in.
+- `klPageWords` keeps references to the page's own strings, so it holds no copies. `stats-cache-equiv.mjs` (new, in `npm test`) edits 30 random stories 60 times each (texts, headings, choice labels, paragraphs and choices added, removed and swapped, pages added and removed) and compares the totals with a fresh count; breaking the label or heading comparison makes it fail.
+- `storyStats` lives in `core.js`, so the `story-format` package was regenerated (`npm run build`); its word totals are unchanged.
+- New suite `qa/topbar.js` (3 browsers): the Check tab's badge follows the check after start, typing, a new unlinked page and its Undo; typing keeps the same tab elements; the drawer bar's page button follows a rename; a tab click selects that tab. Leaving the problem count out of the tabs key, or the name out of the bar key, makes it fail.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `topbar`, `phone`, `undohist`, `opts`, `top10-editor`, `screens` pass; `npm test` passes.
+
+## 2026-10-31 · Page list A to Z: one collator, and the last order kept
+
+### Quick
+`listedPages()` sorted A to Z with `localeCompare(x, y, undefined, { sensitivity: 'base', numeric: true })`. Called with options, every comparison sets up the language rules again: sorting 2,040 names took 66 ms in Chromium, 32 in Firefox and 142 in WebKitGTK, and the page list is redrawn after every check and every key in a page name. `azPages()` now uses one `Intl.Collator`, made the first time it is needed. It also keeps the last order: with the same pages and names it is returned as it is, and when a name changed, the old order (nearly sorted already) is sorted again. Names that compare equal fall back to the story's order, which is what a fresh stable sort gave, so the order is identical.
+
+### Details
+Sorting 2,040 names alone, median of 9 (lower is better): Chromium 155.0.8059.39 66 to 2.4 ms, Firefox 158 32 to 1, WebKitGTK 2.52.6 142 to 3, same order in all three.
+
+Work per key in the page-name box with the list sorted A to Z, 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Collator alone | 0.12x (0.10-0.14) | 0.31x (0.21-0.37) | 0.08x (0.06-0.10) |
+| Collator and the kept order | 0.08x (0.07-0.09), about 73 to 7 ms | 0.21x (0.06-0.29), about 47 to 6 ms | 0.07x (0.05-0.09), about 125 to 9-14 ms |
+
+All took 4 rounds; some were marked noisy, but every interval is far below 1.
+
+### Deep
+- Found while looking at what `renderList` costs per redraw: the sort was a hidden cost only in A to Z mode (written order and story order do not sort by name).
+- The kept order is dropped when another order is shown, so it never holds a closed story's pages.
+- No other `localeCompare` with options in our repositories.
+- `qa/write1.js` gains three checks (3 browsers): a page renamed key by key moves to the top, renamed pages move to the end with numbers in order (Zz9 before Zz10), and two names that differ only in capitals keep the story's order. The pages get their old names back afterwards.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `write1`, `phone` pass.
+
+## 2026-10-31 · Writing notes keep their name and word totals between checks
+
+### Quick
+After each typing pause `writingChecks` merged every page's lower-case words into a new set (about 80,000 adds at 2,040 pages) and added up every page's capitalized words again, although only one page had changed. `writingTotals` now keeps both with the cache, together with the list of page parts they were added up from. Parts that changed have their lower-case words taken off and the new ones added (a count of pages per word). The name totals are kept when every changed part has the same page and the same capitalized words; otherwise they are added up again. When pages are added or removed, only the stretch between the unchanged start and end of the list is looked at. The notes are identical.
+
+### Details
+Writing notes after an edit, 2,040-page story, warm cache (median of 31 edits per load). Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Typing in a page | 0.25x (0.18-0.31), about 2.0 to 0.5 ms | 0.29x (0.00-0.33), 3 to 0-1 ms | 0.20x (0.20-0.22), 5 to 1 ms |
+| A page added | 0.33x (0.22-0.38), about 2.0 to 0.6 ms | 0.33x (0.33-0.33), 3 to 1 ms | 0.25x (0.22-0.35), 4 to 1-2 ms |
+
+All took 4 rounds. Firefox and WebKitGTK time in whole milliseconds.
+
+### Deep
+- Where the time went before (Chromium, 2,040 pages, per check): page parts 0.2-0.3 ms, merging the lower-case words 1.1 ms, adding up the names 0.2 ms; the pairwise name comparison was 0 (57 names).
+- Tried alone first: only the lower-case words kept (a set of the parts counted last time, diffed with a new set): 0.39x/0.41x/0.50x. Stacked with the kept names and the index-by-index diff: 0.25x/0.29x/0.20x, about twice the gain of either alone.
+- The first version rebuilt the counts when the number of pages changed, which made adding a page 1.28x (Chromium) and 1.5x (WebKitGTK) slower than before; the unchanged-start-and-end stretch fixed it.
+- A part is never changed after `writingPart` makes it, so the same part object always has the same words. The kept names also check that the page id is the same, so two pages with the same names that change places still move a name's first page.
+- `writing-cache-equiv.mjs`: the rare spellings (Marta, Tobyn) now come only from edits, so name notes appear (410 in the run), edits also write them in lower case, and a new case swaps two pages with the same names. Breaking the subtraction, the add check or the page-id check each makes it fail.
+- The plain editor's size ceiling went from 720,000 to 740,000 bytes (the stack was at 720,105), under the owner's Oct 18 rule to raise ceilings while chasing speed.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `write1`, `write2`, `helpers` pass; `npm test` passes.
+
+## 2026-10-31 · Paragraph box auto-height skips the measure when the text still fits
+
+### Quick
+`autosize` set the box's height to auto and read `scrollHeight` back on every key, which made the browser lay the page out twice per key (research round 25). It now gets the text from before the key. If the key only inserted text (nothing taken out) and the text still fits (`scrollHeight <= clientHeight`), it returns without touching the height. Box heights are identical.
+
+### Details
+Work per key in a paragraph box (the input handlers, auto-height included), 51-page story, 40 keys. Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.38x (median 0.8 to 0.3 ms) | 0.47x (0.29-0.59), sum of 40 keys | 0.27x (0.26-0.47), sum of 40 keys |
+
+All three took 4 rounds. Firefox and WebKitGTK time in whole milliseconds, so the sum of the 40 keys is compared.
+
+### Deep
+- Only pure insertions can skip, checked by `onlyAdded` (common prefix, then the rest of the old text must end the new one). A deletion or a replaced selection can need fewer lines, so it always measures.
+- Tried and dropped: CSS `field-sizing: content` (all three browsers support it). It removes the measuring entirely, but boxes come out 1 to 12 px different from today (54.4 vs 66 px for an empty two-line box, 64 vs 66 in WebKitGTK), so it would be a look change.
+- New suite `qa/autosize.js` (3 browsers): after 75 edits on 3 pages (words that fit, words that wrap, new lines, deletions, typing at the start, a replaced selection), every paragraph box equals a fresh measure. With the insertion check removed it fails on 24 of 75.
+
 ## 2026-10-31 · Packed page starts after two frames and decodes base64 natively; every delivered file is Latin-1 (rounds 29 and 33)
 
 ### Quick

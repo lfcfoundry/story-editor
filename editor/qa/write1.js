@@ -79,6 +79,13 @@ await pg.locator('.sortbtn').click();await pg.waitForTimeout(100);await pg.click
 const names=await pg.$$eval('#pages button',e=>e.map(x=>x.textContent.trim()).filter(Boolean));
 const sorted=[...names].sort((x,y)=>x.localeCompare(y,undefined,{sensitivity:'base'}));
 ok(names.length>5&&JSON.stringify(names.map(x=>x.toLowerCase()))===JSON.stringify(sorted.map(x=>x.toLowerCase())),'A to Z lists pages alphabetically ('+names.length+')');
+/* A to Z follows names typed in the name box, key by key, and names that compare equal keep the story's order (the order is kept between redraws and re-sorted from the old one) */
+{const azSame=async()=>pg.evaluate(()=>{const C=(x,y)=>x.localeCompare(y,undefined,{sensitivity:'base',numeric:true});const want=window.__editor.project.passages.map(p=>p.name||'Untitled page').sort(C);const got=[...document.querySelectorAll('#pages .nm')].map(e=>e.textContent);return JSON.stringify(want)===JSON.stringify(got)?'':got.slice(0,4).join(' | ')+' vs '+want.slice(0,4).join(' | ');});
+const ids=await pg.evaluate(()=>window.__editor.project.passages.map(p=>p.id));const was=await pg.evaluate(()=>window.__editor.project.passages.map(p=>p.name));const rename=async(id,name)=>{await pg.evaluate(id=>window.__editor.openPage(id),id);await pg.waitForTimeout(150);await pg.fill('#pname','');await pg.focus('#pname');await pg.keyboard.type(name,{delay:5});await pg.waitForTimeout(150);};
+await rename(ids[2],'Aardvark hall');let bad=await azSame();const first=await pg.$eval('#pages .nm',e=>e.textContent);ok(!bad&&first==='Aardvark hall','A to Z: a page renamed key by key moves to the top ('+(bad||first)+')');
+await rename(ids[2],'Zz10 tower');await rename(ids[4],'Zz9 tower');bad=await azSame();ok(!bad,'A to Z: renamed pages move to the end, numbers in order ('+bad+')');
+await rename(ids[5],'twin page');await rename(ids[1],'Twin page');bad=await azSame();ok(!bad,'A to Z: names that differ only in capitals keep the story order ('+bad+')');
+for(const i of [1,2,4,5])await rename(ids[i],was[i]);await pg.evaluate(()=>document.activeElement&&document.activeElement.blur());await pg.waitForTimeout(300);}
 await pg.locator('.sortbtn').click();await pg.click('[role=menuitem]:has-text("Story order"), [role=menuitemradio]:has-text("Story order")');await pg.waitForTimeout(200);
 ok(/Story order/.test(await pg.innerText('.sortbtn')),'Story order chosen');
 await pg.locator('.sortbtn').click();await pg.click('[role=menuitem]:has-text("Written order"), [role=menuitemradio]:has-text("Written order")');

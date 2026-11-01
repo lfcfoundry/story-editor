@@ -15,6 +15,7 @@ const SIZES = [[1280, 900], [820, 1100], [390, 780], [1600, 1000], [600, 800]];
     let s = (seed + (+process.env.SEEDBASE||0)) * 7919 + 13; const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; const pick = a => a[Math.floor(rnd() * a.length)];
     const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
     await ctx.addInitScript(() => { try { if (!sessionStorage.getItem('fz')) { sessionStorage.setItem('fz', '1'); localStorage.setItem('story-editor-v1-settings', JSON.stringify({ chosen: true, remember: true, advanced: { write: true, map: true, items: true, game: true } })); localStorage.setItem('story-editor-v1-toured', '1'); } } catch (e) {} });
+    await ctx.addInitScript(() => { window.__verCheck = true; }); // curSig: no story version number may stand for two texts
     const pg = await ctx.newPage(); const errs = [];
     pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
     pg.on('dialog', d => d.dismiss().catch(() => {}));
