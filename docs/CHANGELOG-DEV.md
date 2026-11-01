@@ -2,6 +2,29 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-01 · Page switch keeps the page list element; story order looks pages up through one Map (round 38)
+
+### Quick
+- **S.** `renderSide` emptied `#side` and made a new `ul#pages` on every call, so `renderList` (which already reuses unchanged rows) put all 2,046 rows into a new list. The browser then laid every row out again when the page's paragraph boxes measured themselves (`autosizeAll` → `scrollHeight`). That cost about 67 ms of a page switch in a Chromium profile. Now the list element stays in place, the parts above it are made again, and only changed rows are swapped (two, on a switch: the old and new current page).
+- **F.** `listedPages` (story order) and `nextUnwritten` looked each page up with `byId`, a scan of every page for each page (n×n, about 11 ms at 2,040 pages). They now use one `pagesById()` Map per call, first page per id winning, as `byId` does.
+- Round 38's third idea (word counts) is already in PR 81 (`klPageWords`). Its "story text rebuilt on every key" was measured on the old /play/ copy; since PR 69, text keys go through `pageEdit`.
+
+### Details
+Median of 7 page-list clicks (click plus forced layout), 2,040 pages. Early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| S alone | 0.33x | 0.35x | 0.26x |
+| F alone | 0.88x ok | 0.74x | 0.96x ok |
+| **S + F** | **0.23x** | **0.23x** | **0.20x** |
+
+All three against the same build (the editor as merged in PR 82), each browser in its own run. F alone is within the 5% limit or faster everywhere.
+
+### Deep
+- **Stacking.** S and F together beat S alone in every browser: S takes the layout away, which leaves F's lookups as a large share of what remains.
+- **Scroll position.** The kept list keeps its own scroll position; `sideScrollFix` still brings the open page into view.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6. Page-list suites: `fix2`, `inter`, `listdots`, `marks`, `opts`, `real`, `round3`, `tools8`, `top10-editor`, `touch1` (Chromium), `write1`, `write2`, `phone`, `fuzz1`.
+
 ## 2026-10-31 · Page list problem dots follow the newest check
 
 ### Quick

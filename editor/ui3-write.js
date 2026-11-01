@@ -890,12 +890,22 @@ function azPages() {
 function listedPages() {
   if (prefs.sort === 'az') return azPages();
   azLast = null; // not kept for another order (it holds the pages)
-  if (prefs.sort === 'story') return storyOrder(project).map(o => ({ p: byId(o.id), depth: Math.min(o.depth, 6), loose: o.loose }));
+  if (prefs.sort === 'story') {
+    const at = pagesById(); // one look-up table, not a scan of every page for each page (n*n: about 11 ms at 2,040 pages)
+    return storyOrder(project).map(o => ({ p: at.get(o.id) ?? null, depth: Math.min(o.depth, 6), loose: o.loose }));
+  }
   return project.passages.map(p => ({ p, depth: 0 }));
+}
+/** id -> page, the first page with that id winning, as byId finds it. */
+function pagesById() {
+  const at = new Map();
+  for (const p of project.passages) if (!at.has(p.id)) at.set(p.id, p);
+  return at;
 }
 /** The next page with no text yet, after the open one in story order (wrapping round); null if there is none. */
 function nextUnwritten() {
-  const order = storyOrder(project).map(o => byId(o.id));
+  const at = pagesById();
+  const order = storyOrder(project).map(o => at.get(o.id) ?? null);
   const i = order.findIndex(p => p.id === selId);
   for (let n = 1; n <= order.length; n++) {
     const p = order[(i + n) % order.length];
@@ -911,7 +921,15 @@ function renderSide() {
   const side = $('#side');
   side.hidden = view !== 'write';
   if (view !== 'write') return;
-  side.textContent = '';
+  /* The page list itself (#pages) stays where it is and only its changed rows are swapped (renderList); everything above it is made again.
+     Building a new list and putting all its rows in made the browser lay out every row again: at 2,040 pages that was about 67 ms of each
+     page switch in Chromium. */
+  const keepUl = $('#pages')?.parentNode === side ? $('#pages') : null;
+  if (keepUl) {
+    while (side.firstChild !== keepUl) side.removeChild(side.firstChild);
+    while (keepUl.nextSibling) side.removeChild(keepUl.nextSibling);
+  } else side.textContent = '';
+  const put = el => (keepUl ? side.insertBefore(el, keepUl) : side.appendChild(el));
   const sortBtn = h('button', {
     type: 'button',
     class: 'btn small ghost sortbtn',
@@ -937,14 +955,14 @@ function renderSide() {
       );
     }
   });
-  side.appendChild(
+  put(
     h('div', { class: 'sidehd' }, [
       h('span', { class: 'sidehd-t' }, [`Pages `, h('span', { class: 'hint tip', text: String(project.passages.length) })]),
       sortBtn,
       sideToggle('pages')
     ])
   );
-  side.appendChild(
+  put(
     h('div', { class: 'tools' }, [
       h('div', { class: 'newrow' }, [
         h('button', {
@@ -994,20 +1012,21 @@ function renderSide() {
     ])
   );
   if (project.passages.length <= 3)
-    side.appendChild(
+    put(
       h('div', {
         class: 'hint tip',
         text: 'Drag a page onto a choice to link it, or drag pages up and down to reorder. Right-click (or press and hold) for more.'
       })
     );
-  side.appendChild(
-    h('ul', {
-      id: 'pages',
-      onscroll: function (e) {
-        pagesScroll = e.target.scrollTop;
-      }
-    })
-  );
+  if (!keepUl)
+    side.appendChild(
+      h('ul', {
+        id: 'pages',
+        onscroll: function (e) {
+          pagesScroll = e.target.scrollTop;
+        }
+      })
+    );
   renderList();
 
   /* Redrawing the list must not jump it back to the top: restore where it was, then make
