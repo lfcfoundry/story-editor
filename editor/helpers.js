@@ -206,7 +206,13 @@ function writingPage(p, texts, L, nameOf, mins, q) {
   const caps = new Map(); // capitalized word -> times on this page, in the order first seen
   const lower = new Set();
   const all = texts.join('\n');
-  const words = writeWords(all);
+  /* a word never spans two paragraphs, so the page's words are its paragraphs' words in turn (the long-paragraph check below counts them) */
+  const paraWords = texts.map(writeWords);
+  let words = paraWords[0] || [];
+  if (paraWords.length > 1) {
+    words = [];
+    for (const pw of paraWords) for (let i = 0; i < pw.length; i++) words.push(pw[i]);
+  }
   /* a word typed twice in a row */
   let reps = 0;
   const re = /(^|[^\p{L}\p{N}'’])(\p{L}[\p{L}'’]*)[ \t]+\2(?![\p{L}\p{N}'’])/giu;
@@ -235,8 +241,8 @@ function writingPage(p, texts, L, nameOf, mins, q) {
   }
   /* long paragraphs and pages */
   let total = 0;
-  texts.forEach(t => {
-    const w = writeWords(t).length;
+  texts.forEach((t, i) => {
+    const w = paraWords[i].length;
     total += w;
     if (w > L.para) push('long', `long|${p.id}|para`, `A paragraph on ${nameOf(p)} is ${w} words (${mins(w)} to read). Would it read better as two?`);
   });
@@ -244,6 +250,7 @@ function writingPage(p, texts, L, nameOf, mins, q) {
   /* choices that read alike */
   if (!p.ending) {
     const cs = (p.choices || []).filter(c => String(c.label || '').trim());
+    const keys = cs.map(c => alikeKey(String(c.label).trim())); // once per choice, not once per pair
     let pairs = 0;
     const seen = new Set();
     for (let i = 0; i < cs.length && pairs < 20; i++) {
@@ -251,8 +258,8 @@ function writingPage(p, texts, L, nameOf, mins, q) {
         const a = String(cs[i].label).trim();
         const b = String(cs[j].label).trim();
         if (a.toLowerCase() === b.toLowerCase()) continue; // exactly alike: the checker already says so
-        const ka = alikeKey(a);
-        const kb = alikeKey(b);
+        const ka = keys[i];
+        const kb = keys[j];
         if (!ka.length || !kb.length) continue;
         const same = ka.join(' ') === kb.join(' ');
         const shared = ka.filter(w => kb.includes(w)).length;

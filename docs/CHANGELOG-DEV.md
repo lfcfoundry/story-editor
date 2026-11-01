@@ -2,6 +2,26 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-01 · Writing notes read each paragraph's words once
+
+### Quick
+- `writingPage` split the page's whole text into words (`writeWords(all)`) and then split each paragraph again to count its words for the long-paragraph note. Now it splits each paragraph once and joins the lists for the whole page. A word never spans two paragraphs, so the lists are the same.
+- The "choices that read alike" note worked out each choice's key words once per pair of choices. Now it does it once per choice.
+
+### Details
+`writingPage` over every page of a 2,040-page story (the work `writingWarm` does in slices after a story opens), median of 21 interleaved runs. New/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Words once per paragraph | 0.85x | 0.81x | 0.81x |
+| Keys once per choice | 0.95x | 0.96x | 0.96x |
+| **Both** | **0.77x** (114 to 88 ms) | **0.76x** (109 to 83 ms) | **0.78x** (124 to 97 ms) |
+
+### Deep
+- **Same notes.** The bench compares every page's notes and word lists from the old and new code before timing them. `writing-cache-equiv` (npm test) passes.
+- **Where the rest goes.** Of the remaining time, about 18 ms is the "typed twice" pattern, about 22 ms the capitalized and lower-case word scan, and about 17 ms the word split. Merging the two scans is not exact (their word patterns differ on digits), so they stay apart.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `helpers`, `bugs12`, `foundry`, `top10-player`, `write1`, `fuzz1`; `npm test`.
+
 ## 2026-11-01 · The page and item lists listen once for all their rows
 
 ### Quick
