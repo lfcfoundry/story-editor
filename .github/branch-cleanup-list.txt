@@ -1,0 +1,4 @@
+claude/map-visible-part
+claude/project-thread-o1reg1
+claude/project-thread-p8rvk2
+claude/qa-since-picker
