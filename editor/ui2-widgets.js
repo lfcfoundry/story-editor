@@ -530,46 +530,41 @@ function dropZone(el, onDrop, type = DRAG) {
   });
 }
 
-/**
- * Lets list entries be dragged into a new order. `list()` returns the array
- * (project.passages or project.items) and `id` is this entry's id. A bar shows
- * whether the dragged entry will land before or after this one.
- */
-function reorderTarget(el, type, list, id) {
-  function half(e) {
-    const r = el.getBoundingClientRect();
-    return e.clientY < r.top + r.height / 2 ? 'before' : 'after';
-  }
-  function clear() {
-    el.classList.remove('ins-before', 'ins-after');
-  }
-  el.addEventListener('dragover', e => {
-    if (!carries(e, type)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    clear();
-    el.classList.add(`ins-${half(e)}`);
-  });
-  el.addEventListener('dragleave', clear);
-  el.addEventListener('drop', e => {
-    if (!carries(e, type)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const pos = half(e);
-    const from = e.dataTransfer.getData(type);
-    clear();
-    if (!from || from === id) return;
-    const arr = list();
-    let fi = -1;
-    let i;
-    for (i = 0; i < arr.length; i++) if (arr[i].id === from) fi = i;
-    if (fi < 0) return;
-    const moved = arr.splice(fi, 1)[0];
-    let ti = -1;
-    for (i = 0; i < arr.length; i++) if (arr[i].id === id) ti = i;
-    arr.splice(pos === 'before' ? ti : ti + 1, 0, moved);
-    refresh();
-  });
+/* Lists whose entries can be dragged into a new order (the page and item lists, see listRows): `list()` returns the array (project.passages
+   or project.items) and `id` is the entry's id. A bar shows whether the dragged entry will land before or after the one under the pointer. */
+/** Which half of `el` the pointer is over. */
+function reorderHalf(el, e) {
+  const r = el.getBoundingClientRect();
+  return e.clientY < r.top + r.height / 2 ? 'before' : 'after';
+}
+function reorderClear(el) {
+  el.classList.remove('ins-before', 'ins-after');
+}
+function reorderOver(el, e, type) {
+  if (!carries(e, type)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  reorderClear(el);
+  el.classList.add(`ins-${reorderHalf(el, e)}`);
+}
+function reorderDrop(el, e, type, list, id) {
+  if (!carries(e, type)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const pos = reorderHalf(el, e);
+  const from = e.dataTransfer.getData(type);
+  reorderClear(el);
+  if (!from || from === id) return;
+  const arr = list();
+  let fi = -1;
+  let i;
+  for (i = 0; i < arr.length; i++) if (arr[i].id === from) fi = i;
+  if (fi < 0) return;
+  const moved = arr.splice(fi, 1)[0];
+  let ti = -1;
+  for (i = 0; i < arr.length; i++) if (arr[i].id === id) ti = i;
+  arr.splice(pos === 'before' ? ti : ti + 1, 0, moved);
+  refresh();
 }
 
 /**
@@ -1171,6 +1166,110 @@ function longPress(el, fn) {
     },
     true
   );
+}
+
+/* ----- the rows of a long list (pages, items) share one set of listeners on the list -----
+   Each row used to get eleven listeners of its own (click, drag, right-click, four for the long press, the long-press click guard and three
+   for being a place to drop a dragged row): about 22,000 at 2,000 pages, each with its own function, made again whenever a row is. The list
+   now listens once and finds the row an event came from. A row is a button registered with listRow(button, how):
+   how = { click(e), drag(e), menu(e), press(x, y), reorder: null or { type, list, id } }. */
+const LIST_ROW = new WeakMap(); // row button -> how
+const LIST_ON = new WeakSet(); // lists already listening
+function listRow(btn, how) {
+  LIST_ROW.set(btn, how);
+  return btn;
+}
+/** Makes `list` (a ul) answer for its registered rows; returns it. */
+function listRows(list) {
+  if (LIST_ON.has(list)) return list;
+  LIST_ON.add(list);
+  const rowAt = e => {
+    const b = e.target && e.target.closest ? e.target.closest('button') : null;
+    return b && LIST_ROW.has(b) && list.contains(b) ? b : null;
+  };
+  let t = 0;
+  let sx = 0;
+  let sy = 0;
+  let fired = false;
+  let upAt = 0;
+  const cancel = () => {
+    clearTimeout(t);
+    t = 0;
+  };
+  /* the finger lifting after a long press must not also "click" the row underneath (as longPress does) */
+  list.addEventListener(
+    'click',
+    e => {
+      if (Date.now() - upAt < 500 && rowAt(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    true
+  );
+  list.addEventListener('click', e => {
+    const b = rowAt(e);
+    if (b) LIST_ROW.get(b).click(e);
+  });
+  list.addEventListener('dragstart', e => {
+    const b = rowAt(e);
+    if (b) LIST_ROW.get(b).drag(e);
+  });
+  list.addEventListener('contextmenu', e => {
+    const b = rowAt(e);
+    if (b) LIST_ROW.get(b).menu(e);
+  });
+  list.addEventListener(
+    'touchstart',
+    e => {
+      const b = rowAt(e);
+      if (!b || e.touches.length !== 1) return;
+      const c = e.touches[0];
+      sx = c.clientX;
+      sy = c.clientY;
+      fired = false;
+      cancel();
+      t = setTimeout(() => {
+        t = 0;
+        if (!document.querySelector('.ctx')) {
+          fired = true;
+          LIST_ROW.get(b).press(sx, sy);
+        }
+      }, 550);
+    },
+    { passive: true }
+  );
+  list.addEventListener(
+    'touchmove',
+    e => {
+      const c = e.touches[0];
+      if (Math.abs(c.clientX - sx) + Math.abs(c.clientY - sy) > 10) cancel();
+    },
+    { passive: true }
+  );
+  list.addEventListener('touchend', () => {
+    cancel();
+    if (fired) upAt = Date.now();
+  });
+  list.addEventListener('touchcancel', cancel);
+  const re = e => {
+    const b = rowAt(e);
+    const r = b && LIST_ROW.get(b).reorder;
+    return r ? [b, r] : null;
+  };
+  list.addEventListener('dragover', e => {
+    const x = re(e);
+    if (x) reorderOver(x[0], e, x[1].type);
+  });
+  list.addEventListener('dragleave', e => {
+    const x = re(e);
+    if (x) reorderClear(x[0]);
+  });
+  list.addEventListener('drop', e => {
+    const x = re(e);
+    if (x) reorderDrop(x[0], e, x[1].type, x[1].list, x[1].id);
+  });
+  return list;
 }
 
 /* ----- tiny icons -----

@@ -1020,12 +1020,14 @@ function renderSide() {
     );
   if (!keepUl)
     side.appendChild(
-      h('ul', {
-        id: 'pages',
-        onscroll: function (e) {
-          pagesScroll = e.target.scrollTop;
-        }
-      })
+      listRows(
+        h('ul', {
+          id: 'pages',
+          onscroll: function (e) {
+            pagesScroll = e.target.scrollTop;
+          }
+        })
+      )
     );
   renderList();
 
@@ -1046,7 +1048,7 @@ function renderSide() {
         lis.push(kept.li);
         return;
       }
-      const pbtn = h(
+      const pbtn = listRow(h(
         'button',
         {
           type: 'button',
@@ -1054,18 +1056,6 @@ function renderSide() {
           draggable: 'true',
           style: depth ? `padding-left:${8 + depth * 12}px` : null,
           title: 'Click to edit. Drag onto a choice to link to it, or within this list to reorder. Right-click for more.',
-          ondragstart: function (e) {
-            e.dataTransfer.setData(DRAG, p.id);
-            e.dataTransfer.setData('text/plain', pname(p));
-            e.dataTransfer.effectAllowed = 'linkMove';
-          },
-          onclick: function () {
-            openPage(p);
-          },
-          oncontextmenu: function (e) {
-            e.preventDefault();
-            ctxMenu(e.clientX, e.clientY, pageMenu(p), viaKeys);
-          }
         },
         [
           h('span', { class: 'nm', text: pname(p) }),
@@ -1079,11 +1069,20 @@ function renderSide() {
           pageEmpty(p) ? h('span', { class: 'pico empty', title: 'No text on this page yet' }) : null,
           bad[p.id] ? h('span', { class: 'dot', title: 'The checker found a problem here' }) : null
         ]
-      );
-      longPress(pbtn, (x, y) => {
-        ctxMenu(x, y, pageMenu(p));
+      ), {
+        click: () => openPage(p),
+        drag: e => {
+          e.dataTransfer.setData(DRAG, p.id);
+          e.dataTransfer.setData('text/plain', pname(p));
+          e.dataTransfer.effectAllowed = 'linkMove';
+        },
+        menu: e => {
+          e.preventDefault();
+          ctxMenu(e.clientX, e.clientY, pageMenu(p), viaKeys);
+        },
+        press: (x, y) => ctxMenu(x, y, pageMenu(p)),
+        reorder: dragOrder ? { type: DRAG, list: () => project.passages, id: p.id } : null
       });
-      if (dragOrder) reorderTarget(pbtn, DRAG, () => project.passages, p.id);
       const li = h('li', {}, [pbtn]);
       sideRows.set(p, { key, li });
       lis.push(li);
@@ -1159,12 +1158,14 @@ function renderItemSide() {
       sideToggle('items')
     ])
   );
-  const il = h('ul', {
-    id: 'itemlist',
-    onscroll: function (e) {
-      itemsScroll = e.target.scrollTop;
-    }
-  });
+  const il = listRows(
+    h('ul', {
+      id: 'itemlist',
+      onscroll: function (e) {
+        itemsScroll = e.target.scrollTop;
+      }
+    })
+  );
   [
     ['object', 'Objects', 'Things the player can carry or hand over'],
     ['state', 'States', 'Conditions the player is in, like sick or brave']
@@ -1192,15 +1193,12 @@ function renderItemSide() {
       );
       if (!members.length) il.appendChild(h('li', { class: 'hint', style: 'padding:2px 10px 6px', text: 'None yet.' }));
       members.forEach(it => {
-        const ibtn = h(
+        const ibtn = listRow(h(
           'button',
           {
             type: 'button',
             class: it.kind === 'state' ? 'state' : it.kind === 'stat' ? 'stat' : '',
             draggable: 'true',
-            onclick: function (e) {
-              giveToPage(it, e.shiftKey);
-            },
             title: touchOnly()
               ? it.kind === 'stat'
                 ? 'Tap to add a change to this number on the open page. Press and hold for more.'
@@ -1209,22 +1207,22 @@ function renderItemSide() {
                   ? 'Click to add a change to this number on the open page (Numbers row). '
                   : 'Click to put it in this page’s Gets box; Shift+click for Loses. ') +
                 'Or drag it onto a paragraph, a choice or an effects box. Drag within this list to reorder.',
-            ondragstart: function (e) {
-              e.dataTransfer.setData(DRAGI, it.id);
-              e.dataTransfer.setData('text/plain', it.name);
-              e.dataTransfer.effectAllowed = 'linkMove';
-            },
-            oncontextmenu: function (e) {
-              e.preventDefault();
-              ctxMenu(e.clientX, e.clientY, itemMenu(it), viaKeys);
-            }
           },
           [itemIcon(it, 13), h('span', { class: 'nm', text: it.name })]
-        );
-        longPress(ibtn, (x, y) => {
-          ctxMenu(x, y, itemMenu(it));
+        ), {
+          click: e => giveToPage(it, e.shiftKey),
+          drag: e => {
+            e.dataTransfer.setData(DRAGI, it.id);
+            e.dataTransfer.setData('text/plain', it.name);
+            e.dataTransfer.effectAllowed = 'linkMove';
+          },
+          menu: e => {
+            e.preventDefault();
+            ctxMenu(e.clientX, e.clientY, itemMenu(it), viaKeys);
+          },
+          press: (x, y) => ctxMenu(x, y, itemMenu(it)),
+          reorder: { type: DRAGI, list: () => project.items, id: it.id }
         });
-        reorderTarget(ibtn, DRAGI, () => project.items, it.id);
         il.appendChild(h('li', {}, [ibtn]));
       });
     });

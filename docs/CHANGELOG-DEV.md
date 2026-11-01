@@ -2,6 +2,39 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-01 · The page and item lists listen once for all their rows
+
+### Quick
+- Every page-list row got eleven listeners of its own: `click`, `dragstart`, `contextmenu` (from `h()`), `touchstart` / `touchmove` / `touchend` / `touchcancel` and a capturing `click` guard (`longPress`), and `dragover` / `dragleave` / `drop` in written order (`reorderTarget`). Each one has its own closure. At 2,040 pages that came to 44,725 listeners after opening the story.
+- Now `listRows(ul)` puts one set of listeners on `#pages` and `#itemlist`. A row is a button registered with `listRow(btn, { click, drag, menu, press, reorder })` in a WeakMap, and each event finds its row with `closest('button')`. The reorder logic is shared as `reorderOver` / `reorderClear` / `reorderDrop`; `reorderTarget` is gone (it had no other users).
+
+### Details
+2,040-page story (the example story 40 times over), Chromium 155.0.8059.39, after opening with garbage collected:
+
+| | before | after |
+|---|---|---|
+| Event listeners added while opening | 44,725 | 298 |
+| Heap snapshot, JS and page objects (lower is better) | 44.8 MB | 37.3 MB |
+| Of that, browser-side objects | 27.0 MB | 20.7 MB |
+| V8 heap in use | 18.5 MB | 17.2 MB |
+
+Early-stop A/B with a 5% limit, new/old, lower is better:
+
+| | Chromium 155 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Reopen until the editor exists | 0.82x (noisy) | 0.95x | 0.92x |
+| Page switch | 0.99x (noisy) | 1.00x | 0.85x |
+
+Pages alone and items alone were each measured. The page list carries almost all of the gain, and the items list adds about 120 listeners' worth in this story. Both stacked are kept, because a story with many items gains the same way.
+
+### Deep
+- **Same answers.** `click`, `dragstart` and `contextmenu` run the row's own handler. The long press keeps one timer per list; there is only one finger at a time.
+- **Long-press guard.** The guard that stops the lifted finger from also clicking now listens in the capture phase on the list, so it covers the whole row. Before, it sat on the button, so a lift on the button's own padding (not on its name or icons) still opened the page under the menu.
+- **Drop target.** A drop on a row stops at the list, as it stopped at the row before; nothing between the row and the list listens.
+- **Why it was hidden.** Each listener is small, but a 2,040-page list holds them for every row, and in Chromium each one also carries a registration record and a vector slot on the page side. The V8 heap shows only 1.3 MB of it.
+- **New suite `listrows`.** Rows carry no listeners. Clicking a name opens the page. Right-click opens the menu and Escape closes it. Dragging carries the id and name. In written order, a drop on the top half moves the page there and clears the bar, and a drop on itself changes nothing. Clicking an item gives it to the page, and right-clicking an item opens its menu. Where touch events can be made (Chromium), a long press opens the menu and the lifted finger does not open the page. The suite passes against the old build too, apart from the listener count.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6. Suites: `listrows`, `listdots`, `fix2`, `inter`, `marks`, `opts`, `real`, `round3`, `tools8`, `top10-editor`, `top10-export`, `touch1` (Chromium), `write1`, `write2`, `phone`, `fuzz1`.
+
 ## 2026-11-01 · Undo steps reuse the stretch one-page edits changed instead of comparing whole texts
 
 ### Quick

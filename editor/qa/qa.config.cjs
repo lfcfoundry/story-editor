@@ -56,6 +56,7 @@ module.exports = {
     S('deepcheck', 'deepcheck.js', ['ui4-views.js', 'ui4-status.js', 'checkwalk.js', 'checkworker.js'], false),
     S('topbar', 'topbar.js', ['ui5-app.js', 'ui4-status.js', 'core.js'], false),
     S('listdots', 'listdots.js', ['ui3-write.js', 'ui4-views.js'], false),
+    S('listrows', 'listrows.js', ['ui2-widgets.js', 'ui3-write.js'], false),
     S('zsave', 'zsave.js', ['ui1-state.js', 'ui5-app.js'], false),
     S('autosize', 'autosize.js', ['ui2-widgets.js', 'ui3-write.js'], false)
   ],
