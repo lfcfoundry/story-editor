@@ -169,6 +169,19 @@ BODY = """<!-- Page frame. The editor fills #side, #main and #itemside with Java
 CSP = ("default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; "
        "connect-src 'none'; form-action 'none'; base-uri 'none'")
 
+# ---- round 33 (2026-10-31): one character above U+00FF anywhere in a page makes Chromium keep the whole page's text at 2 bytes per character.
+#      So the page holds none: the minifier writes the script and styles in ASCII (minify.mjs), the two JSON blocks get \u escapes (outside
+#      their strings JSON is plain ASCII, so any such character sits inside a string, where the escape reads back the same), and the markup
+#      gets &#x...; references. The build stops if one is left (below). The text people see is exactly the same.
+def json_latin1(text):
+    return "".join(c if ord(c) <= 0xFF else "".join("\\u%04x" % u for u in ([ord(c)] if ord(c) <= 0xFFFF else [0xD800 + ((ord(c) - 0x10000) >> 10), 0xDC00 + ((ord(c) - 0x10000) & 0x3FF)])) for c in text)
+def markup_latin1(text):
+    return "".join(c if ord(c) <= 0xFF else "&#x%x;" % ord(c) for c in text)
+if re.search(r"<script|<style", BODY, re.I):
+    raise SystemExit("BUILD STOPPED: the page body now holds a script or style block; markup_latin1 would escape it as markup")
+BODY = markup_latin1(BODY)
+starter, GAME_PARTS = json_latin1(starter), json_latin1(GAME_PARTS)
+
 DATA = ('<!-- Data, never run here: the built-in example story (JSON), and the code and styles of the game (one piece per optional feature; an exported game gets only the pieces its story uses). -->\n'
         '<script type="application/json" id="starter-story">\n%s\n</script>\n'
         '<script type="application/json" id="game-parts">%s</script>\n'
@@ -211,6 +224,13 @@ standalone = """<!doctype html>
 """ % (BANNER.replace("__STAMP__", STAMP), CSP, STYLE, BODY, DATA, SCRIPT)
 
 artifact = FOUNDRY + "\n<title>Story Editor</title>\n" + STYLE + BODY + "\n" + DATA + SCRIPT
+for _name, _text in (("story-editor.plain.html", standalone), ("story-editor.artifact.html", artifact)):
+    _hi = [(i, c) for i, c in enumerate(_text) if ord(c) > 0xFF]
+    if _hi and os.environ.get("STORY_READABLE"):
+        print("note: STORY_READABLE skips the minifier, so %s keeps %d character(s) above U+00FF (fine for hunting a bug, not for shipping)" % (_name, len(_hi)))
+    elif _hi:
+        raise SystemExit("BUILD STOPPED: %s holds %d character(s) above U+00FF, which make Chromium keep the whole page at 2 bytes per character. First: U+%04X near: %r"
+                         % (_name, len(_hi), ord(_hi[0][1]), _text[max(0, _hi[0][0] - 40):_hi[0][0] + 10]))
 
 # ---- the editor as delivered is a PACKED page: the plain page above, compressed with LZMA (much tighter than zip; it costs build time, a few
 #      seconds) inside a tiny page that unpacks itself when opened and checks a hash of the result first. The compressed bytes are stored as
@@ -227,7 +247,9 @@ import lzma_pack
 os.environ.setdefault("ESBUILD", HERE + "node_modules/.bin/esbuild")   # shrinks the unpacking script; build.py must give the same bytes every run
 _page, _info = lzma_pack.pack(_raw, title="Story Editor", encoding="base64", minifier="esbuild", wasm=True, tune=[(1, 0, 0), (2, 0, 0), (3, 0, 0)])   # three settings, 0.5 s; the full 15-setting search (2.7 s) saved at most 100 bytes more
 _page = _page.replace(b"<!doctype html>", b"<!doctype html>\n" + FOUNDRY.encode("utf8"), 1)   # the header stays readable at the top of the delivered file
-open(HERE + "story-editor.html", "wb").write(_page)   # bytes: the header holds emoji, which must stay UTF-8
+if any(ord(c) > 0xFF for c in _page.decode("utf8")) and not os.environ.get("STORY_READABLE"):
+    raise SystemExit("BUILD STOPPED: the packed story-editor.html holds a character above U+00FF (see round 33 above)")
+open(HERE + "story-editor.html", "wb").write(_page)
 open(HERE + "../play/index.html", "wb").write(_page)   # the copy the site serves at /play/ (tools/play-check.mjs, run by npm test, checks it is this build)
 print("packed story-editor.html with LZMA (lc=%d pb=%d): %d KB plain -> %d KB" % (_info["lc"], _info["pb"], len(_raw) // 1024, len(_page) // 1024))
 open(HERE + "story-editor.artifact.html", "w", encoding="utf8").write(artifact)

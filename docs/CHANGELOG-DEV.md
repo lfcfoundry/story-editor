@@ -2,6 +2,32 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Packed page starts after two frames and decodes base64 natively; every delivered file is Latin-1 (rounds 29 and 33)
+
+### Quick
+- **Round 29 (start script, `lzma/lzma_pack.py`).** The loader decodes its base64 with `Uint8Array.fromBase64` where the browser has it (the `atob` copy loop stays as the fallback). It starts after two animation frames or 100 ms, whichever comes first, instead of a fixed 30 ms `setTimeout`. One frame was too soon: Firefox then painted nothing until the editor was ready. The 100 ms timer covers a tab opened in the background, where frames do not run. The packer's Node self-check gains a `hidden` mode with no animation frames, and every mode must write the page exactly once.
+- **Round 33 (one character above U+00FF doubles a page's text in Chromium).**
+  - The emoji are gone from the license header (`foundry-header.txt`, `core.js foundryHeader`, so exported games too), as the owner chose.
+  - `minify.mjs` writes the script and styles in ASCII (esbuild `charset: 'ascii'`, plus `\u` escapes for the characters esbuild leaves in regular expression literals).
+  - `build.py` escapes the two JSON data blocks (`\u`) and the markup (`&#x...;`).
+  - The build stops if any character above U+00FF is left in the plain page, the artifact page or the packed page (a `STORY_READABLE` build only warns).
+
+### Details
+Time until the editor is ready (`#app` has its parts and the page is complete), fresh tab over http, early-stop A/B (5% limit), new/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Round 29 alone | 0.985 ok (noisy) | 0.81 ok | 0.875 faster |
+| Round 33 alone | 0.98 ok | 1.05 inconclusive (16 rounds) | 0.94 ok |
+| Both | **0.876 faster** | 0.93 ok | 1.006 ok |
+
+First contentful paint stays at the same time ("Opening...": Chromium 40-44 ms, Firefox 39 ms, WebKitGTK 21-23 ms). Chromium renderer memory 4 s after load (memory-infra, median of 3 fresh browsers): `partition_alloc`, where Blink keeps page text, 3.13 to 2.65 MB; total 60.6 to 60.4 MB. Packed page 313,590 to 313,771 bytes (+181).
+
+### Deep
+- **Same page.** In Chromium and Firefox, the editor's visible text, its body HTML, every CSS rule and the two JSON data blocks (parsed) are identical between the old and new plain pages.
+- **Escapes in regular expressions.** A `\u` escape means the same character in a pattern; a character above U+FFFF becomes its two halves, which is what a pattern without the `u` flag sees anyway, and a pair a `u`-flag pattern reads as one. `minify.mjs` refuses to escape a character that follows a backslash, because the escape would change its meaning there.
+- **Exported games.** The header is 18 bytes smaller. Rule functions copied into games by their text keep working; the export suites pass.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `foundry`, `packed`, `csp`, `top10-export` pass. `npm test` passes, with the regenerated story-player package. `build.py`'s self-check of the packed page passes in its plain, wasm, refused-wasm, broken-wasm and hidden-tab modes.
 ## 2026-10-31 · The /play/ page is the current build, and npm test keeps it so
 
 ### Quick
