@@ -2,6 +2,18 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · Page list problem dots follow the newest check
+
+### Quick
+`renderList` (the page list, redrawn after every check since PR 70) read `bad`, the problem set that `renderSide` computed when the whole side panel was last built. The dots therefore showed an old check until something rebuilt the side panel, such as opening a page. `renderList` now takes `problemSet()` itself.
+
+### Details
+- 2,040-page story, Chromium 155.0.8059.39: after start, no row had a dot although the check found problems on 1,989 pages. Opening the first page then rebuilt 1,989 rows (about 22,000 listeners) to add them. With the fix the dots come with the first check's answer, and opening a page rebuilds only the two rows whose selection changed.
+- `problemSet()` walks the check's problem list (about 2,000 entries at 2,040 pages), well under 1 ms.
+
+### Deep
+- Found while tracing why opening a page doubled the page's event listeners in a heap snapshot: the row keys changed in their problem part (`!!bad[p.id]`, false to true on 1,989 rows).
+- New suite `qa/listdots.js` (3 browsers). It uses a story with an unreachable copy of every page (34 problems) and checks that every row's dot matches the newest check, after the first check without opening a page, and after an edit and its Undo. On the previous build the first check reads 34 rows wrong.
 ## 2026-10-31 · The Map keys its layouts by a story version number instead of a fingerprint of the whole text
 
 ### Quick
