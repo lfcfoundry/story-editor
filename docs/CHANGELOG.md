@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Switching pages in a big story: the page list is no longer rebuilt every time you open another page; only the rows that changed are swapped. In a 2,040-page story a page switch takes about a fifth of the time (0.23 times in Chrome and Firefox, 0.20 in Safari-style browsers). The list looks exactly the same.
 - Page list: the dots that mark pages with a problem now appear as soon as a check finishes. They used to show the check from when the list was last built in full, so after opening a story, or after an edit, they could be missing or out of date until you opened another page.
 - Typing in big stories: after each pause the editor no longer reads through the whole story to tell which version of it the Map's prepared drawings belong to; it numbers the versions instead. In a 2,040-page story that takes 42 to 64% off the editor's work after each typing pause (0.58 times in Chrome, 0.51 in Firefox, 0.36 in Safari-style browsers). The Map looks exactly the same.
 - Typing in big stories: the Story Page Map views prepared in the background are no longer prepared again when you only changed the words on a page, since the Map does not show them. In a 2,040-page story this halves the editor's own work after typing pauses in Chrome (0.48 times; Firefox 0.75, Safari-style browsers 0.63), and the background helper works 5 times less. The Map looks exactly the same.
