@@ -3589,9 +3589,9 @@ function foundryHeader(name, note) {
   const nm = String(name || 'Story').replace(/\s+/g, ' ').replace(/-{2,}/g, '- -').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim().slice(0, 120) || 'Story';
   return `<!--
     ===================================================================================
-    🛠️ APPLICATION : ${nm}
-    🏭 FORGED BY : LFC Foundry (https://github.com/lfcfoundry)
-    📜 LICENSE : MIT License
+    APPLICATION : ${nm}
+    FORGED BY : LFC Foundry (https://github.com/lfcfoundry)
+    LICENSE : MIT License
     ===================================================================================
     Copyright (c) 2026 LFC Foundry
 
