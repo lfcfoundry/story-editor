@@ -2045,6 +2045,7 @@ function init() {
     deepPre, // the deep check: how many were started, answered and stopped by an edit (for the test suites)
     checkDeep: () => analyze(project, KL_DEEP_LIMIT), // a deep check made on the page, to compare with the worker's (for the test suites)
     mapPre, // the background Map layout: how many were built and kept, and thrown away (for the test suites)
+    mapCacheSize: () => mapCache.size, // how many Map layouts are kept (for the test suites)
     mapKept: v => mapCache.get(mapLayoutKey(v || mapOpts.view, adv('map') ? mapOpts.color : 'none', adv('map') ? mapAs : {})) || null,
     mapFresh: v => mapBuildFresh(v), // a layout built the usual way, to compare with the background one
     mapView: v => {

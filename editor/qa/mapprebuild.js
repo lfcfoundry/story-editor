@@ -64,6 +64,7 @@ const SAME = v => `(() => {
   ok(await pg.evaluate(() => __editor.mapKept()) === null, 'right after an edit the old layout is not offered');
   ok(await waitBuilt(pg, before + 3), 'new layouts are built for the edited story, all three views');
   ok(await pg.evaluate(SAME('flow')) === 'same', 'and they too equal the usual layout: ' + await pg.evaluate(SAME('flow')));
+  ok(await pg.evaluate(() => __editor.mapCacheSize()) <= 3, 'the layouts built ahead for the story before the edit were let go (' + await pg.evaluate(() => __editor.mapCacheSize()) + ' kept)');
   /* opening the Map uses it and draws */
   const drew = await pg.evaluate(async () => { __editor.setView('map'); for (let t = 0; t < 100 && !document.querySelector('.mapbox g.node'); t++) await new Promise(r => setTimeout(r, 100)); return document.querySelectorAll('.mapbox g.node').length; }); /* waits for the first boxes (up to 10 s), not a fixed 0.6 s */
   ok(drew > 0, 'the Map opens and draws boxes (' + drew + ')');

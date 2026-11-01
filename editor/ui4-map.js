@@ -488,6 +488,7 @@ function mapBuild(viewName) {
   const ck = mapLayoutKey(viewName, mapOpts.color, mapAs);
   if (ck && mapCache.has(ck)) {
     const hit = mapCache.get(ck);
+    mapAhead.delete(hit); // shown now: kept like any other
     mapCache.delete(ck);
     mapCache.set(ck, hit); // most recently used last
     return hit;
@@ -505,7 +506,16 @@ function mapBuild(viewName) {
 const MAP_PRE_MIN = 60; // pages; smaller stories build in a few ms, so the worker is not started
 const MAP_PRE_WAIT = 300; // ms of quiet after a check before the worker is asked
 const mapPre = { worker: null, bad: false, timer: 0, seq: 0, job: null, sent: null, built: 0, dropped: 0, ms: 0, take: 0 };
+/* Layouts built ahead for an older version of the story were never shown, and the Map will never ask for them unless Undo brings that exact
+   story back. While you type in a big story the worker builds two of them after every pause, and the cache keeps up to 16: at 2,000 pages that
+   held about 15 MB of layouts nobody saw. They are dropped as soon as the story changes (a layout that was shown stays, so Undo still finds it). */
+const mapAhead = new WeakMap(); // layout built ahead and not shown yet -> the fingerprint of the story it was built for
+function mapDropAhead() {
+  const now = sigOf(cur);
+  for (const [k, L] of mapCache) if (mapAhead.has(L) && mapAhead.get(L) !== now) mapCache.delete(k);
+}
 function mapPrebuildSoon() {
+  mapDropAhead();
   if (mapPre.bad || window.__mapPrebuild === false || !window.Worker || project.passages.length < (window.__mapPreMin ?? MAP_PRE_MIN)) return;
   clearTimeout(mapPre.timer);
   mapPre.timer = setTimeout(mapPrebuild, MAP_PRE_WAIT);
@@ -577,6 +587,7 @@ function mapPrebuilt(e) {
     return;
   }
   const { G, L } = mapUnpackPlain(m.json);
+  mapAhead.set(L, sigOf(cur)); // built ahead for this version of the story, not shown yet (see mapDropAhead)
   L.view = job.vname;
   L.G = G;
   mapLazyGroups(L, null);
