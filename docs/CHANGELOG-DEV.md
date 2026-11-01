@@ -2,6 +2,28 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-01 · Packed autosave: big stories saved deflated, the worker sent only the changed stretch
+
+### Quick
+A story of 64 K characters or more (`ZSAVE_FROM`) is autosaved as `LFZ1:` + its length + `:` + base64 of the deflated UTF-8 text, about 4 times smaller. A small worker deflates with the browser's `CompressionStream`, inflates the result again and compares it with the text, and only then returns the packed text; the page just writes it. The worker keeps the text it packed last, so after a typing pause the page sends only the stretch that changed (`zsaveSpan`, fed by `pageEdit`: how many characters are kept at the start, how many at the end, and the new middle). Saves that must happen at once (`persistNow`: the tab closing, Undo, another story replacing this one), small stories, the spare copy, and any trouble stay plain text. Opening reads either form (`zsaveText`, inflated before `init`).
+
+### Details
+Page time blocked by autosaving over 4 typing pauses (5 saves: `localStorage` get and set, posting to the worker, reading its answer), 2,040 pages (1.84 M characters, 447 K packed). Early-stop A/B (5% limit), new/old, lower is better:
+
+| Chromium 155.0.8059.39 | Firefox 158 | WebKitGTK 2.52.6 |
+|---|---|---|
+| 0.40x (0.39-0.42), about 87 to 35 ms | 0.26x (0.16-0.33), noisy, about 38 to 10 ms | 0.66x (0.63-0.75), about 21 to 15 ms |
+
+Time until the editor has started (`init` done, before the 4-second splash ends) when reopening that story after an edit, packed against plain: Chromium 0.88x ok (6 rounds), Firefox 1.00x ok (13 rounds), **WebKitGTK 1.14x slower** (median 362 to 400 ms). Unpacking costs WebKitGTK about 17 to 23 ms cold (base64 1 ms, `DecompressionStream` 11 to 18 ms the first time in a page, `TextDecoder` 4 ms); the rest is scheduling around the asynchronous unpack. A first measurement until the splash was gone hid this behind the splash's fixed timing. Starting the unpacking in a worker from a small script in the page's head, so it ran while the browser read the editor's big script, was worse: WebKitGTK 1.22x, Firefox 1.17x, Chromium 0.89x against plain, so it was dropped.
+
+### Deep
+- **What was tried.** Posting the whole text each save: Chromium 0.54x, Firefox 0.49x, but WebKitGTK 1.51x, because its plain `setItem` of 1.8 MB costs only about 2 to 3 ms while posting the string costs about 5. Encoding to bytes on the page and transferring the buffer: Chromium 1.22x (the `TextEncoder` call alone is 9 ms there). Finding the changed stretch by comparing the old and new texts in 64 K slices: 0.7 / 3 / 2 ms per save (Chromium / Firefox / WebKitGTK), more than Firefox's post. `pageEdit` already knows where it splices, so the stretch costs nothing to find.
+- **Safety.** The worker checks that the stretch belongs to the text it holds (the sequence number of the last text it was sent, and the lengths); if not, it asks for the whole text, once. A packed copy that does not inflate back to the same text is never written: the save is made plain and the packed path is switched off for the session. On opening, a packed save is checked against its zlib header and its stated length; a damaged one is kept aside (`-damaged`) and the spare copy opens, with the usual notice.
+- The worker keeps one copy of the story (about 3.7 MB at 2,040 pages), and the page keeps the text it last sent (usually the same string Undo already holds).
+- `Uint8Array.fromBase64` / `toBase64` are used where the browser has them, with `atob` / `btoa` loops as the fallback.
+- New suite `zsave`: a packed save after an edit (holding the story's length, at least 3 times smaller); a reload opens it with no notice; a save made at once is plain and opens; the spare copy is plain; a damaged packed save goes to the spare with its notice; a small story stays plain; after mixed edits (typing in two pages in one pause, Undo, a new page, more typing) every packed save inflates to exactly the story, and saves after typing send only the changed stretch. `crashsafe` now watches the notice from inside the page (the context init-script observer no longer saw it).
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `zsave`, `crashsafe`, `safety`, `twowin`, `nosave`, `curtext`, `fuzz1`, `bugs12`, `top5-safe` pass; `npm test` passes.
+
 ## 2026-11-01 · Page switch keeps the page list element; story order looks pages up through one Map (round 38)
 
 ### Quick
@@ -54,7 +76,6 @@ Page time in all worker answer handlers over 4 typing pauses, 2,040 pages. Early
 - The places that set `cur`: `commit`, `restore`, `undoMany`, `replaceProject`, `applyStamp` and `init`.
 - A `Map` from text to number was also measured: 4 to 6 ms per new text, because the engine still hashes or compares the long string.
 - **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `mapprebuild`, `mapkey`, `curtext`, `fuzz1` pass with the check on.
-
 ## 2026-10-31 · Map views built ahead are reused when only words on pages changed
 
 ### Quick

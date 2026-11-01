@@ -1804,7 +1804,26 @@ function guardStart() {
   }
 }
 
-function init() {
+/** Starts the editor; a packed autosave is inflated first (a few ms; the start screen shows meanwhile). */
+function startEditor(then) {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(STORE);
+  } catch {
+    /* init notes that storage is refused */
+  }
+  const go = text => {
+    init(text);
+    then();
+  };
+  if (raw && raw.startsWith(ZSAVE))
+    zsaveText(raw).then(go, e => {
+      logError('start-up save', e);
+      go(null); // read as damaged: kept aside, and the spare copy is used
+    });
+  else go(undefined);
+}
+function init(unpacked) {
   const gs = document.createElement('style');
   gs.textContent = gameCss(GAME_PARTS.css, KL_FEATURE_ORDER, null); // every feature, every palette: the Play tab can show anything
   document.head.appendChild(gs); // so Play looks like the export
@@ -1813,6 +1832,8 @@ function init() {
   try {
     saved = localStorage.getItem(STORE);
     storeSeen = saved;
+    if (unpacked) saved = unpacked; // the text of a packed save (if it could not be read, its packed text fails below and is kept aside)
+    storePlain = unpacked === null ? undefined : (saved ?? undefined);
     saveSeq = +localStorage.getItem(SEQ_KEY) || 0;
     localStorage.setItem(`${STORE}-t`, '1');
     localStorage.removeItem(`${STORE}-t`);
@@ -2049,6 +2070,8 @@ function init() {
       placeChrome();
     }, // force touch wording (true or false), or null for the device's own answer
     persistNow, // so a test can ask for the autosave a paused window would attempt
+    zsave, // the packed autosave: how many saves were packed, and how many sent only the changed stretch (for the test suites)
+    zsaveText, // a save's story text, packed or plain (for the test suites)
     get project() {
       return project;
     },
@@ -2078,19 +2101,20 @@ function init() {
     startTour
   };
 }
-init();
-requestAnimationFrame(() =>
-  setTimeout(() => {
-    READY_AT = performance.now(); // the first screen has been drawn
-    if (!(analysis && analysisFor === cur)) runCheck(); // now the first check
-    writingWarmSoon();
-    /* the browser closed before its last saves reached the disk: the crash-safe copy holds them */
-    const seq0 = saveSeq,
-      text0 = cur;
-    safeCopy.newer(seq0).then(rec => {
-      if (!rec || rec.text === cur || cur !== text0 || !savable(rec.text)) return; // the same, unusable, or already edited here
-      saveSeq = Math.max(saveSeq, rec.seq);
-      replaceProject(normalizeProject(JSON.parse(rec.text)), 'Your newest changes were brought back: the browser closed before it finished storing them. Undo shows the older copy');
-    });
-  }, 0)
+startEditor(() =>
+  requestAnimationFrame(() =>
+    setTimeout(() => {
+      READY_AT = performance.now(); // the first screen has been drawn
+      if (!(analysis && analysisFor === cur)) runCheck(); // now the first check
+      writingWarmSoon();
+      /* the browser closed before its last saves reached the disk: the crash-safe copy holds them */
+      const seq0 = saveSeq,
+        text0 = cur;
+      safeCopy.newer(seq0).then(rec => {
+        if (!rec || rec.text === cur || cur !== text0 || !savable(rec.text)) return; // the same, unusable, or already edited here
+        saveSeq = Math.max(saveSeq, rec.seq);
+        replaceProject(normalizeProject(JSON.parse(rec.text)), 'Your newest changes were brought back: the browser closed before it finished storing them. Undo shows the older copy');
+      });
+    }, 0)
+  )
 );
