@@ -20,10 +20,18 @@ const NOTE = 'Your newest changes were brought back';
   await ctx.addInitScript(() => { window.__toasts = []; document.addEventListener('DOMContentLoaded', () => { const t = document.getElementById('toast'); if (t) new MutationObserver(() => window.__toasts.push(t.textContent)).observe(t, { childList: true, characterData: true, subtree: true }); }); });
   const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message));
   const ready = async () => { await pg.waitForFunction(() => window.__editor && !document.getElementById('splash'), null, { timeout: 20000 }); await pg.waitForTimeout(700); };
-  const toast = () => pg.evaluate(() => window.__toasts.join(' | '));
+  /* the notices shown in the 4 seconds after the editor exists, watched from inside the page (the watcher set up before the page loads
+     stopped seeing them, on main as well; the notice can come and go quickly) */
+  let shown = '';
+  const toast = async () => shown;
+  const start = async () => {
+    await pg.waitForFunction(() => window.__editor, null, { timeout: 20000 });
+    shown = await pg.evaluate(() => new Promise(done => { const t = document.getElementById('toast'), seen = new Set(); if (t.textContent) seen.add(t.textContent); const mo = new MutationObserver(() => { if (t.textContent) seen.add(t.textContent); }); mo.observe(t, { childList: true, characterData: true, subtree: true }); setTimeout(() => { mo.disconnect(); done([...seen].join(' | ')); }, 4000); }));
+    await ready();
+  };
   await pg.goto(EDITOR);
   await pg.evaluate(([s, st]) => { localStorage.clear(); localStorage.setItem('story-editor-v1-settings', st); localStorage.setItem('story-editor-v1-toured', '1'); localStorage.setItem('story-editor-v1', s); }, [sample, SETTINGS]);
-  await pg.reload(); await ready();
+  await pg.reload(); await start();
   /* an edit, saved to both places */
   const id = await pg.evaluate(() => window.__editor.project.passages[0].id);
   await pg.evaluate(id => window.__editor.openPage(id), id); await pg.waitForTimeout(150);
@@ -33,12 +41,12 @@ const NOTE = 'Your newest changes were brought back';
   const edited = await pg.evaluate(() => localStorage.getItem('story-editor-v1'));
   ok(edited.includes('the newest words'), 'the edit is saved');
   /* 3. a normal reload: nothing changes, no notice */
-  await pg.reload(); await ready(); await pg.waitForTimeout(400);
+  await pg.reload(); await start(); await pg.waitForTimeout(400);
   ok(await pg.evaluate(t => JSON.stringify(window.__editor.project) === t, edited), 'a normal reload opens the same story');
   ok(!(await toast()).includes(NOTE), 'and shows no notice');
   /* 1. the crash: localStorage still holds the save from before the edit, with its older number */
   await pg.evaluate(s => { localStorage.setItem('story-editor-v1', s); localStorage.setItem('story-editor-v1-seq', '1'); Storage.prototype.setItem = () => {}; }, sample); // a crash: no save on the way out
-  await pg.reload(); await ready();
+  await pg.reload(); await start();
   await pg.waitForFunction(() => JSON.stringify(window.__editor.project).includes('the newest words'), null, { timeout: 5000 }).catch(() => {});
   ok(await pg.evaluate(t => JSON.stringify(window.__editor.project) === t, edited), 'after a crash the newest edit is brought back');
   ok((await toast()).includes(NOTE), 'with the notice');
@@ -52,7 +60,7 @@ const NOTE = 'Your newest changes were brought back';
   /* 4. a copy older than the localStorage save is never used: a later save (higher number) only in localStorage */
   const later = await pg.evaluate(() => { const p = JSON.parse(localStorage.getItem('story-editor-v1')); p.passages[0].name += ' later'; return JSON.stringify(p); });
   await pg.evaluate(t => { localStorage.setItem('story-editor-v1', t); localStorage.setItem('story-editor-v1-seq', String(Date.now() + 60000)); Storage.prototype.setItem = () => {}; }, later);
-  await pg.reload(); await ready(); await pg.waitForTimeout(500);
+  await pg.reload(); await start(); await pg.waitForTimeout(500);
   ok(await pg.evaluate(() => window.__editor.project.passages[0].name.endsWith(' later')), 'a copy older than the save is not used');
   ok(!(await toast()).includes(NOTE), 'and no notice shows');
   ok(errs.length === 0, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));

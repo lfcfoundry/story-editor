@@ -37,12 +37,13 @@ const STORE = 'story-editor-v1'; // localStorage key for the autosaved story
    letters change from the fallback. A FontFace made from bytes is ready at once in Chromium, Firefox and WebKitGTK, but costs 2 to 6 ms,
    more than the second layout of a small story, so a small one keeps the plain @font-face. The @font-face text stays in #font-ui for
    exported games. */
+const ZSAVE = 'LFZ1:'; // the start of a packed autosave (see persistPacked); here because the typeface check below reads it
 const UI_FONT_BYTES_FROM = 200000; // saved story length (characters) from which the typeface is made from its bytes
 (function loadUiFont() {
   const el = document.getElementById('font-ui');
   const css = el ? el.textContent : '';
   try {
-    if (!((localStorage.getItem(STORE) || '').length >= UI_FONT_BYTES_FROM)) throw 0;
+    if (!(zsaveLength(localStorage.getItem(STORE)) >= UI_FONT_BYTES_FROM)) throw 0;
     const m = /font-family:'([^']+)'.*?font-weight:([^;]+);.*?base64,([A-Za-z0-9+/=]+)/.exec(css);
     const bin = atob(m[1] && m[3]);
     const bytes = new Uint8Array(bin.length);
@@ -294,6 +295,123 @@ const BACKUP_EVERY = 10 * 60 * 1000;
 let lastBackup = 0;
 let lastLocalSave = 0; // when the autosave last wrote to this browser (shown in the status line)
 let storeSeen; // the save text this window last read from storage or wrote to it; undefined while unknown (storage unreadable)
+let storePlain; // the story text of that save (storeSeen itself may be packed)
+
+/* ----- the packed autosave -----
+   A big story is saved deflated: 'LFZ1:' + the story's length + ':' + base64 of the deflated UTF-8 text, about 3 to 4 times smaller. Writing
+   a 2 MB story to localStorage blocked the page 13 to 17 ms per save in Chromium (and it filled 2 MB of the 5 MB that every page of the site
+   shares). A small worker deflates the text with the browser's own CompressionStream, inflates it again to prove the copy reads back the
+   same, and returns the packed text; the page only writes it. Saves that must happen at once (the tab closing, another story taking this
+   one's place) and stories under ZSAVE_FROM characters are written as plain text, as before. Either form opens. */
+const ZSAVE_FROM = 64 * 1024;
+const zsave = { worker: null, bad: false, seq: 0, job: null, packed: 0, parts: 0, sent: null, sentSeq: 0, span: null };
+/** The story length a save holds (packed or plain), without unpacking it. */
+function zsaveLength(s) {
+  if (!s) return 0;
+  return s.startsWith(ZSAVE) ? +s.slice(ZSAVE.length, s.indexOf(':', ZSAVE.length)) || 0 : s.length;
+}
+/** The story text of a save: plain text as it is, a packed save inflated (a promise either way; rejects if the copy is damaged). */
+async function zsaveText(s) {
+  if (!s || !s.startsWith(ZSAVE)) return s;
+  const at = s.indexOf(':', ZSAVE.length);
+  let z;
+  if (Uint8Array.fromBase64) z = Uint8Array.fromBase64(s.slice(at + 1));
+  else {
+    const bin = atob(s.slice(at + 1));
+    z = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) z[i] = bin.charCodeAt(i);
+  }
+  if (z.length < 6 || (z[0] & 15) !== 8 || ((z[0] << 8) | z[1]) % 31) throw new Error('the packed save is not deflate data'); // the zlib header
+  const ds = new DecompressionStream('deflate');
+  const w = ds.writable.getWriter();
+  w.write(z).catch(() => {}); // a damaged copy fails the read below; these would only repeat it as unhandled errors
+  w.close().catch(() => {});
+  const text = new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+  if (text.length !== zsaveLength(s)) throw new Error('the packed save is not whole');
+  return text;
+}
+function zsaveWorkerSource() {
+  /* The worker keeps the text it packed last. After a typing pause the page sends only the stretch that changed (where it starts, how much
+     of the end is kept, the new middle), not the 1.8 MB story: posting the whole text blocked the page 2 to 5 ms a save. If the worker does
+     not hold the text the stretch belongs to, it asks for the whole text. */
+  return `'use strict';let last=null,lastSeq=0;const run=(s,u)=>{const w=s.writable.getWriter();w.write(u).catch(()=>{});w.close().catch(()=>{});return new Response(s.readable).arrayBuffer()};
+onmessage=async e=>{const m=e.data;let text;try{if(m.text!==undefined)text=m.text;else{if(m.base!==lastSeq||last===null||m.at+m.keep>last.length){last=null;postMessage({seq:m.seq,whole:true});return}
+text=last.slice(0,m.at)+m.mid+last.slice(last.length-m.keep);if(text.length!==m.len){last=null;postMessage({seq:m.seq,whole:true});return}}
+last=text;lastSeq=m.seq;const z=new Uint8Array(await run(new CompressionStream('deflate'),new TextEncoder().encode(text)));
+if(new TextDecoder().decode(await run(new DecompressionStream('deflate'),z))!==text)throw new Error('the packed copy does not read back the same');
+let b;if(z.toBase64)b=z.toBase64();else{b='';for(let i=0;i<z.length;i+=32768)b+=String.fromCharCode.apply(null,z.subarray(i,i+32768));b=btoa(b)}
+postMessage({seq:m.seq,packed:'${ZSAVE}'+text.length+':'+b})}catch(x){postMessage({seq:m.seq,error:String(x&&x.message||x)})}};`;
+}
+/** Notes the stretch a one-page edit changed (from `was` to `now`: `at` characters kept at the start, `keep` at the end), so the next packed
+    save can send just that. Any other change to the story breaks the chain, and the whole text goes. */
+function zsaveSpan(was, now, at, keep) {
+  const sp = zsave.span;
+  if (sp && sp.text === was) {
+    sp.at = Math.min(sp.at, at);
+    sp.keep = Math.min(sp.keep, keep);
+    sp.text = now;
+  } else zsave.span = zsave.sent === was ? { base: was, text: now, at, keep } : null;
+}
+/** The autosave after a pause: big stories go through the packing worker, the rest (and any trouble) is written at once as plain text. */
+function persistPacked() {
+  if (zsave.bad || writerLost || cur.length < ZSAVE_FROM || !window.Worker || typeof CompressionStream !== 'function' || window.__zsave === false) return persistNow();
+  if (!zsave.worker) {
+    try {
+      const url = URL.createObjectURL(new Blob([zsaveWorkerSource()], { type: 'text/javascript' }));
+      const w = new Worker(url);
+      w.onmessage = zsaveDone;
+      w.onerror = () => zsaveFail('the packing worker stopped');
+      zsave.worker = w;
+      zsave.sent = null;
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      zsave.bad = true; // no workers here: plain text, as before
+      return persistNow();
+    }
+  }
+  saveTimer = -1; // a save is still pending (closing the tab now writes it as plain text at once)
+  zsavePost(false);
+}
+function zsavePost(whole) {
+  const sp = zsave.span,
+    seq = ++zsave.seq;
+  zsave.job = { seq, text: cur };
+  if (!whole && sp && zsave.sent !== null && sp.base === zsave.sent && sp.text === cur && zsave.sentSeq) {
+    zsave.worker.postMessage({ seq, base: zsave.sentSeq, at: sp.at, keep: sp.keep, mid: cur.slice(sp.at, cur.length - sp.keep), len: cur.length });
+    zsave.parts++;
+  } else if (zsave.sent === cur && !whole && zsave.sentSeq) {
+    zsave.worker.postMessage({ seq, base: zsave.sentSeq, at: cur.length, keep: 0, mid: '', len: cur.length });
+  } else zsave.worker.postMessage({ seq, text: cur });
+  zsave.sent = cur;
+  zsave.sentSeq = seq;
+  zsave.span = null;
+}
+function zsaveFail(why) {
+  zsave.bad = true;
+  zsave.worker?.terminate();
+  zsave.worker = null;
+  zsave.sent = null;
+  logError('packed autosave', why);
+  if (saveTimer === -1) persistNow(); // the pending save is written as plain text
+}
+function zsaveDone(e) {
+  const m = e.data,
+    job = zsave.job;
+  if (!job || m.seq !== job.seq) return;
+  zsave.job = null;
+  if (m.error) return zsaveFail(m.error);
+  if (m.whole) {
+    /* the worker did not hold the text the changed stretch belonged to: send it all (once; a second miss means something is wrong) */
+    if (job.again) return zsaveFail('the packing worker lost the story');
+    if (saveTimer !== -1 || job.text !== cur) return;
+    zsavePost(true);
+    zsave.job.again = true;
+    return;
+  }
+  if (saveTimer !== -1 || job.text !== cur) return; // an edit, or a save written at once, came after it: that one counts
+  zsave.packed++;
+  persistNow(false, m.packed);
+}
 /** Is this text a whole story the editor could open? Checked before every save so a broken state never overwrites a good one. */
 function savable(text) {
   /* text the editor built from the story itself (storyText, pageEdit) is known whole without reading it back: 26 ms per save at 2,000 pages */
@@ -306,7 +424,7 @@ function savable(text) {
   }
 }
 /** Writes the current story to this browser's storage right now, but only if it is a whole story; the old save becomes the spare. */
-function persistNow(forceSpare) {
+function persistNow(forceSpare, packed) {
   if (writerLost) return;
   clearTimeout(saveTimer);
   saveTimer = 0;
@@ -317,9 +435,11 @@ function persistNow(forceSpare) {
   const keepSpare = before => {
     /* the spare: the save from before this one, renewed at most every ten minutes (and once at the first save of a session);
        always when a whole other story is about to take this one's place */
-    if (before && before !== cur && (forceSpare || Date.now() - lastBackup > BACKUP_EVERY) && savable(before)) {
+    /* the spare is kept as plain text, so it opens even where a packed save could not */
+    const plain = before === storeSeen && storePlain !== undefined ? storePlain : before && !before.startsWith(ZSAVE) ? before : null;
+    if (plain && plain !== cur && (forceSpare || Date.now() - lastBackup > BACKUP_EVERY) && savable(plain)) {
       try {
-        localStorage.setItem(BACKUP_KEY, before);
+        localStorage.setItem(BACKUP_KEY, plain);
         lastBackup = Date.now();
       } catch (e) {
         logError('spare copy', e); // the spare is a bonus: a full disk must not stop the real save
@@ -330,18 +450,20 @@ function persistNow(forceSpare) {
     const before = localStorage.getItem(STORE);
     /* Another window saved since this one last looked (its `storage` event did not reach us, or it does not share our lock): do not write over it.
        A forced save is the person's own choice (Keep mine, New story, Open), and keeps their version as the spare. */
-    if (!forceSpare && storeSeen !== undefined && before !== storeSeen && before !== cur && savable(before)) {
+    const stored = packed || cur;
+    if (!forceSpare && storeSeen !== undefined && before !== storeSeen && before !== cur && before !== stored && (before?.startsWith(ZSAVE) || savable(before))) {
       guardBox('changed');
       return;
     }
     try {
-      localStorage.setItem(STORE, cur);
+      localStorage.setItem(STORE, stored);
     } catch (e) {
       /* a full disk: the spare copy gives up its room first, then one more try */
       localStorage.removeItem(BACKUP_KEY);
-      localStorage.setItem(STORE, cur);
+      localStorage.setItem(STORE, stored);
     }
-    storeSeen = cur;
+    storeSeen = stored;
+    storePlain = cur;
     safeSave(cur);
     keepSpare(before);
     lastLocalSave = Date.now();
@@ -380,7 +502,7 @@ function safeSave(text) {
 /** Saves shortly after the last edit, so typing never waits on the disk. */
 function persistSoon() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(persistNow, SAVE_DELAY);
+  saveTimer = setTimeout(persistPacked, SAVE_DELAY);
 }
 /* Make sure a pending save is never lost when the tab is hidden or closed. */
 window.addEventListener('pagehide', () => {
@@ -501,6 +623,7 @@ function pageEdit(page) {
   c.changed = !(d === 0 && cur.slice(c.at[k], c.at[k] + was) === piece); // compared at the size of one page, not of the story
   if (!c.changed) return cur;
   const s = cur.slice(0, c.at[k]) + piece + cur.slice(c.at[k] + was);
+  zsaveSpan(cur, s, c.at[k], cur.length - c.at[k] - was);
   for (let j = k + 1; j < c.at.length; j++) c.at[j] += d;
   c.text = s;
   return s;
