@@ -38,7 +38,7 @@ Branching stories break in ways rereading cannot catch, like an ending that need
 
 | Works with Twine and your devices | No ads, no accounts, no network | One file that runs almost anywhere | Open source, with a quick tour | Exact checker | Story Page Map |
 |---|---|---|---|---|---|
-| Imports Twine 2 HTML, Twee 3 and Twine 1 stories, turns SugarCube and Harlowe code into rules and tells you in plain words what could not carry over. Runs in Firefox, Chrome, Edge and Safari on computers, Android and iPhone or iPad. Exported games run in somewhat older browsers still. | No ads, no sign-in, no tracking and no data sent anywhere. The editor is not allowed to make a network connection at all, so your story never leaves your device, and everything works offline. | The whole editor is one 298 KB HTML file. Nothing to install, no administrator rights and no special computing knowledge: open it in your browser. It fits phones, tablets and computers at almost any screen size, and a finished game is one small file too, about 25 to 50 KB. | MIT licensed and free to use, change and share. The first time you open the editor a short spotlight tour shows the main areas; replay it from Options, Take the tour, or read the Quick guide inside the editor. | Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story, with your pages, choices and routes drawn as a picture you can search and click. |
+| Imports Twine 2 HTML, Twee 3 and Twine 1 stories, turns SugarCube and Harlowe code into rules and tells you in plain words what could not carry over. Runs in ungoogled Chromium, Firefox, WebKit and Android Chrome. Exported games run in somewhat older browsers still. | No ads, no sign-in, no tracking and no data sent anywhere. The editor is not allowed to make a network connection at all, so your story never leaves your device, and everything works offline. | The whole editor is one 298 KB HTML file. Nothing to install, no administrator rights and no special computing knowledge: open it in your browser. It fits phones, tablets and computers at almost any screen size, and a finished game is one small file too, about 25 to 50 KB. | MIT licensed and free to use, change and share. The first time you open the editor a short spotlight tour shows the main areas; replay it from Options, Take the tour, or read the Quick guide inside the editor. | Tries every combination of items, numbers and dice to find dead ends and unreachable endings. | Several views, from a plain flow to a bird's-eye shape of the whole story, with your pages, choices and routes drawn as a picture you can search and click. |
 
 ## By the numbers
 
@@ -151,7 +151,7 @@ phones, tablets and computers.
 
 ## Works in
 
-Current Firefox, Chrome, Edge and Safari on computers, Android and iPhone/iPad. Exported games work in somewhat older browsers than the
+It runs on ungoogled Chromium, Firefox, WebKit and Android Chrome. Exported games work in somewhat older browsers than the
 editor does (roughly Chrome/Edge 80, Firefox 74, iOS 13.4 for games; Chrome/Edge 98, Firefox 98, iOS 15.4 for the editor).
 
 **Browsers used to test each release.** The latest release was tested in Firefox 158.0, ungoogled Chromium 155.0.8059.39-1 and WebKitGTK 2.52.6, one at a time. The exact browsers for every release are in the maintainers' full technical changelog. The short list of changes is in [docs/CHANGELOG.md](docs/CHANGELOG.md).
