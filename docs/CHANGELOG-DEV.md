@@ -34,6 +34,7 @@ Pages alone and items alone were each measured. The page list carries almost all
 - **Why it was hidden.** Each listener is small, but a 2,040-page list holds them for every row, and in Chromium each one also carries a registration record and a vector slot on the page side. The V8 heap shows only 1.3 MB of it.
 - **New suite `listrows`.** Rows carry no listeners. Clicking a name opens the page. Right-click opens the menu and Escape closes it. Dragging carries the id and name. In written order, a drop on the top half moves the page there and clears the bar, and a drop on itself changes nothing. Clicking an item gives it to the page, and right-clicking an item opens its menu. Where touch events can be made (Chromium), a long press opens the menu and the lifted finger does not open the page. The suite passes against the old build too, apart from the listener count.
 - **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6. Suites: `listrows`, `listdots`, `fix2`, `inter`, `marks`, `opts`, `real`, `round3`, `tools8`, `top10-editor`, `top10-export`, `touch1` (Chromium), `write1`, `write2`, `phone`, `fuzz1`.
+
 ## 2026-11-01 · Undo steps reuse the stretch one-page edits changed instead of comparing whole texts
 
 ### Quick
