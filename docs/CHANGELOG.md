@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- The editor on the website (/play/) is up to date again. It had stayed at the October 29 version, so the changes listed since then (faster typing in big stories, the deep check, lighter memory use and the rest) reach it now, and the site can no longer fall behind the editor.
 - Memory: while you type in a big story, the editor no longer keeps Map drawings it prepared in the background for older versions of the story, which were never shown. In a 2,040-page story that is about 16 MB less (61 to 45 MB in Chrome after a few typing pauses). Drawings you have seen are still kept, so Undo brings back the same picture.
 - Checker: a story too big for the quick check (over 200,000 situations) is now checked fully in the background, up to 5 million. The status line says "Checking further" until the full answer arrives, usually within a second, and any edit starts it again. In test stories the full check found 8 to 16 more problems.
 - Writing notes: after each pause in typing, the notes for a big story are worked out in about 0.6 to 0.75 times the time (2,040 pages: Chrome 2.7 to 1.9 ms, Firefox 4 to 3, Safari-style browsers 7 to 4), and the editor keeps about 1 MB less in memory. The notes are exactly the same.

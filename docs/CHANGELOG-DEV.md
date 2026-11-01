@@ -2,6 +2,18 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-10-31 · The /play/ page is the current build, and npm test keeps it so
+
+### Quick
+`play/index.html`, the page GitHub Pages serves at /play/, was still the copy made in PR 57 (the build from PR 49): `build.py` wrote only `editor/story-editor.html` (not kept in git), and nothing copied it, so PRs 58 to 75 never reached the site. The committed `story-editor.plain.html` and `story-editor.artifact.html` had also stopped at PR 69. `build.py` now writes `play/index.html` too, and this change commits a fresh build of all three.
+
+### Details
+New npm test step `tools/play-check.mjs`: it runs the served page's own two scripts in a bare Node sandbox (no WebAssembly, so the JavaScript LZMA decoder unpacks it) and requires the page they write to be exactly `editor/story-editor.plain.html`; when the editor was built in the same folder it also requires `play/index.html` to be the same bytes as `editor/story-editor.html`. On the old copy it fails (687,939 characters unpacked against 711,544 in the committed plain page); on the fresh build it passes (718,656 both).
+
+### Deep
+- The build stamp (`STAMP`, the build time) changes the bytes on every build, which is why rebuilt files were often left out of commits. From now on every change to the editor commits the built files (`play/index.html`, `story-editor.plain.html`, `story-editor.artifact.html`, `sizes-last.json`); the check keeps the served page and the plain page from the same build.
+- No editor code changes here. **Tested:** `npm test` passes, including the new step; the packed page's own self-check in `build.py` (plain, wasm, refused wasm, broken wasm) passes.
+
 ## 2026-10-31 · Map layouts built ahead are let go when the story changes
 
 ### Quick

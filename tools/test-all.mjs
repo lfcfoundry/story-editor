@@ -3,6 +3,7 @@
      2. the README code samples are identical to the example files
      2a. the example stories repeat no sentence on a page or between neighboring pages (tools/example-prose.mjs)
      2b. every file name the documents mention exists (tools/docs-drift.mjs)
+     2c. the page the site serves at /play/ unpacks to exactly the editor this commit builds (tools/play-check.mjs)
      3. every package's tests (Node's built-in test runner)
      4. the editor's contract test: the checker against brute-force play on random stories
    The browser suites (editor/qa) need Firefox/Chromium and are run separately: see editor/qa/README.md.
@@ -16,6 +17,7 @@ const steps = [
   ['packages up to date', ['node', 'tools/extract-packages.mjs', '--check']],
   ['README samples', ['node', 'tools/docs.mjs', '--check']],
   ['docs drift', ['node', 'tools/docs-drift.mjs']],
+  ['the /play/ page is the editor this commit builds', ['node', 'tools/play-check.mjs']],
   ['example stories: no repeated sentences', ['node', 'tools/example-prose.mjs']],
   ...readdirSync(root + 'packages')
     .filter(p => existsSync(`${root}packages/${p}/test`))
