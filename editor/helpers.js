@@ -213,14 +213,6 @@ function writingPage(p, texts, L, nameOf, mins, q) {
     words = [];
     for (const pw of paraWords) for (let i = 0; i < pw.length; i++) words.push(pw[i]);
   }
-  /* a word typed twice in a row */
-  let reps = 0;
-  const re = /(^|[^\p{L}\p{N}'’])(\p{L}[\p{L}'’]*)[ \t]+\2(?![\p{L}\p{N}'’])/giu;
-  for (const m of all.matchAll(re)) {
-    if (WRITE_OK_TWICE.has(m[2].toLowerCase()) || reps >= 3) continue;
-    reps++;
-    push('repeat', `repeat|${p.id}|${m[2].toLowerCase()}|${reps}`, `On ${nameOf(p)} the word ${q(m[2])} is typed twice in a row: ${q(`${m[2]} ${m[2]}`)}.`);
-  }
   /* a word used again and again on one page */
   if (words.length >= 60) {
     const n = new Map();
@@ -233,11 +225,29 @@ function writingPage(p, texts, L, nameOf, mins, q) {
       .slice(0, 2)
       .forEach(([w, c]) => push('overuse', `overuse|${p.id}|${w}`, `On ${nameOf(p)} the word ${q(w)} comes up ${c} times in ${words.length} words. Is there another way to say it?`));
   }
-  /* capitalized words (for the spelling check below) and which words are ever written in lower case */
-  for (const m of all.matchAll(/\p{L}[\p{L}'’]*/gu)) {
-    const w = m[0];
+  /* one scan: typed-twice, capitalized and lower-case words */
+  let reps = 0;
+  const WL = /\p{L}[\p{L}'’]*/gu, CAP = /^\p{Lu}\p{Ll}{2,}$/u, GAP = /^[ \t]+$/;
+  const DIG = /[\p{L}\p{N}'’]/u;
+  let prev = null, prevEnd = -1, prevOk = false;
+  for (const m of all.matchAll(WL)) {
+    const w = m[0], i = m.index;
     if (w[0] === w[0].toLowerCase()) lower.add(w);
-    else if (/^\p{Lu}\p{Ll}{2,}$/u.test(w)) caps.set(w, (caps.get(w) || 0) + 1);
+    else if (CAP.test(w)) caps.set(w, (caps.get(w) || 0) + 1);
+    if (prev !== null && w.length === prev.length && i > prevEnd && prevOk && GAP.test(all.slice(prevEnd, i)) && w.toLowerCase() === prev.toLowerCase()) {
+      const after = all[i + w.length];
+      if (!(after !== undefined && DIG.test(after))) {
+        if (!(WRITE_OK_TWICE.has(w.toLowerCase()) || reps >= 3)) {
+          reps++;
+          push('repeat', `repeat|${p.id}|${w.toLowerCase()}|${reps}`, `On ${nameOf(p)} the word ${q(prev)} is typed twice in a row: ${q(`${prev} ${prev}`)}.`);
+        }
+        prev = null; // the matched pair is used up
+        continue;
+      }
+    }
+    prev = w; prevEnd = i + w.length;
+    const pc = i > 0 ? all[i - 1] : '';
+    prevOk = !(pc && DIG.test(pc));
   }
   /* long paragraphs and pages */
   let total = 0;

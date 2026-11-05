@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Opening big stories: the writing notes now read each page's words in one pass instead of two, so they take about 7% to 20% less time on top of the earlier saving. The notes themselves are unchanged.
 - Opening big stories: the writing notes (repeated words, long paragraphs, choices that read alike) are worked out with about a quarter less work when a story opens, because each paragraph's words are read once instead of twice. The notes are exactly the same.
 - Big stories use less memory: the page list and the item list now listen for clicks, drags and presses once for the whole list instead of once per row. A 2,040-page story had about 44,700 of these listeners and now has about 300, and the page takes 17% less memory in Chrome after opening it (44.8 to 37.3 MB). The lists look and work exactly the same.
 - Undo in big stories: when you pause typing, the editor no longer compares the whole story with the last Undo step to find what changed; it already knows which stretch your typing touched. This saves under 2 ms per pause in a 2,040-page story, too small to measure in the editor as a whole. Undo works exactly as before.
