@@ -2,6 +2,23 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-05 · Writing notes: one scan for typed-twice and the word lists
+
+### Quick
+- `writingPage` scanned a page's text twice with Unicode patterns: once for a word typed twice in a row and once for capitalized and lower-case words. Now one word scan does both. Same notes.
+
+### Details
+`writingPage` over every page of a 2,040-page story, median of 21 interleaved runs. New/old, lower is better:
+
+| | Chromium 155.0.8059.39 | Firefox 158.0 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| One scan | 0.68x to 0.80x | 0.83x | 0.93x to 0.95x |
+
+### Deep
+- **Same notes.** The bench compares every page's notes and word lists from the old and new code before timing. A 20,000-case random check (mixed case, tabs, digits, apostrophes, accents, three-in-a-row words) found no difference after two fixes: the old pattern uses up the second word of a pair, and it prints the first word's case for both.
+- **Dropped.** A word-kind cache added nothing measurable and grows without limit.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6.
+
 ## 2026-11-01 · Writing notes read each paragraph's words once
 
 ### Quick
