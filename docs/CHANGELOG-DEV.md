@@ -2,6 +2,17 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-05 · Fuzz suites play new stories each full run
+
+### Quick
+- `qa/qa.js` now sets `SEEDBASE` for every suite: an explicit `SEEDBASE=n` wins, the quick tier and `--against` keep 0 (the old fixed stories), every other tier takes a base that changes every hour. It prints `fuzz seed base N` first, and puts it in failure lines and `.first-try.log`.
+
+### Details
+- Same run time; the full run covers new random stories in `fuzz1` and `fuzz2`. Firefox, Chromium and WebKitGTK get the same base, and the retry of a failing suite reuses it, so a pass on retry points at the engine, not the seeds. `SEEDBASE=N node qa.js full --only fuzz` replays.
+
+### Deep
+- Replaces the old routine rotation (`SEEDBASE` from the number of runs in the ledger). Checked: `fuzz2` full run printed base 1966040 and played stories 1966041 on; `SEEDBASE=777` printed 777; quick and `--plan` printed 0. Owner chose this on the QA thread's card (Nov 5).
+
 ## 2026-11-05 · Writing notes: one scan for typed-twice and the word lists
 
 ### Quick

@@ -118,6 +118,10 @@ const against = args.includes('--against') ? args[args.indexOf('--against') + 1]
 const expectFail = args.includes('--expect-fail');
 const since = args.includes('--since') ? args[args.indexOf('--since') + 1] : ''; /* pick by what differs from this git revision, not by the time of the last green run */
 const PLAN = args.includes('--plan'); /* print the suites that would run, run nothing */
+/* The random fuzzers (fuzz1, fuzz2) add SEEDBASE to every seed. An explicit SEEDBASE=n wins (that is how a failure is replayed). Otherwise the quick tier and --against keep the fixed seeds (0, so runs stay
+   comparable), and every other tier takes a base that changes every hour: new stories each full run, the same stories in Firefox, Chromium and WebKitGTK, and the same ones again for the retry of a failing suite. */
+const SEEDBASE = process.env.SEEDBASE !== undefined && process.env.SEEDBASE !== '' ? String(+process.env.SEEDBASE || 0) : (tier === 'quick' || against) ? '0' : String(Math.floor(Date.now() / 3600000) % 100000 * 20);
+process.env.SEEDBASE = SEEDBASE;
 const WEBKIT_ONLY = args.includes('--webkit-only'); /* run just the WebKitGTK lane (no Firefox, no Node-only checks): for looking at that browser alone */
 /* WebKitGTK (the third approved browser) runs after Firefox, and after Chromium in the full check, one browser at a time. The full check includes it;
    the quick, smart and sample tiers add it with --webkit; --no-webkit leaves it out of the full check. */
@@ -242,6 +246,7 @@ const startServer = async () => {
 
 /* First line of every run: the browsers this run really drives, read from the programs themselves (never from a label), so a run cannot be
    reported under the wrong browser. Chromium is only used by the full check, --against and the phone/touch suites. */
+console.log(`fuzz seed base ${SEEDBASE}` + (process.argv.some(a => a === '--plan') ? '' : ` (replay: SEEDBASE=${SEEDBASE} node qa.js ${tier}${only ? ' --only ' + only : ''})`));
 {
   const ver = exe => { try { return (spawnSync(exe, ['--version'], { encoding: 'utf8', timeout: 20000 }).stdout || '').trim().split('\n')[0] || 'version not readable'; } catch (e) { return 'version not readable'; } };
   const ff = process.env.FIREFOX_PATH || process.env.FIREFOX_158 || '';
@@ -272,8 +277,7 @@ if (!only && !against && !WEBKIT_ONLY) jobs.push({ label: 'lines-selftest', cmd:
 /* Routine runs (smart, sample, quick) play half of each random fuzzer (1 of its 2 sequences, 3 of its 6 stories), a different part each run so the runs add up; the full run, the one before a release, plays them all.
    --full-fuzz asks for the whole fuzzers in any tier. */
 const ROUTINE_FUZZ = { fuzz1: ['150', '1'], fuzz2: ['3'] };
-const fuzzTurn = new Set(ledger.map(e => e.run)).size % 4;
-const routineFuzz = (name, cmd) => (tier === 'full' || against || args.includes('--full-fuzz') || !ROUTINE_FUZZ[name]) ? cmd : ['env', `SEEDBASE=${fuzzTurn * 3}`, ...cmd, ...ROUTINE_FUZZ[name]];
+const routineFuzz = (name, cmd) => (tier === 'full' || against || args.includes('--full-fuzz') || !ROUTINE_FUZZ[name]) ? cmd : ['env', `SEEDBASE=${SEEDBASE}`, ...cmd, ...ROUTINE_FUZZ[name]];
 const lane = engine => SUITES.forEach(s => {
   if (WEBKIT_ONLY && engine !== 'webkit') return;
   if (!(s.engines.includes(engine) || (engine === 'webkit' && s.engines.includes('firefox') && !NOT_IN_WEBKIT[s.name])) || !want(s)) return;
@@ -345,7 +349,7 @@ const report = (job, mark, r) => {
   }
   console.log(`${mark.padEnd(5)} ${r.sec.toFixed(1).padStart(6)} s  ${job.label}`);
   if (verbose) console.log(r.out.split('\n').map(l => '        ' + l).join('\n'));
-  if (mark === 'FAIL') console.log(r.fails.slice(0, 8).map(l => '        ' + l.slice(0, 200)).join('\n') + `\n        (full output: qa/logs/${slug}.log)` + (against ? '' : `\n        next: read the failing lines above in qa/logs/${slug}.log; run only this suite with: node qa.js ${tier === 'sample' ? 'quick' : tier} --only ${suite}`));
+  if (mark === 'FAIL') console.log(r.fails.slice(0, 8).map(l => '        ' + l.slice(0, 200)).join('\n') + `\n        (full output: qa/logs/${slug}.log; fuzz seed base ${SEEDBASE})` + (against ? '' : `\n        next: read the failing lines above in qa/logs/${slug}.log; run only this suite with: node qa.js ${tier === 'sample' ? 'quick' : tier} --only ${suite}`));
   if (mark === 'pass*') console.log(`        next: flaky (failed once, passed on the second try); the first try is in qa/logs/${slug}.first-try.log; node qa.js history shows how often`.replace('node qa.js history', 'node qa.js --history'));
 };
 const runOne = async job => {
@@ -353,7 +357,7 @@ const runOne = async job => {
   let mark = 'pass';
   if (!r.ok && against) { mark = 'FAIL'; bad++; } /* against an old build a failure is the answer, not something to retry */
   else if (!r.ok) {
-    fs.writeFileSync(LOGS + job.label.replace(/\W+/g, '-') + '.first-try.log', r.out); /* kept, so a flaky pass* can be looked into */
+    fs.writeFileSync(LOGS + job.label.replace(/\W+/g, '-') + '.first-try.log', `fuzz seed base ${SEEDBASE}\n` + r.out); /* kept, so a flaky pass* can be looked into */
     const r2 = await run(job);
     r2.sec += r.sec;
     if (r2.ok) mark = 'pass*';
