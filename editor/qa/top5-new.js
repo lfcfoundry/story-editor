@@ -38,7 +38,16 @@ ok(/# Speed report/.test(rep)&&/Page: story-editor [\d.]+/.test(rep)&&/Browser:/
   ok(!!m&&+m[1]>0&&+m[5]>=+m[3]&&+m[3]>=+m[2],'speed report says how long the editor took to open, in order (arrived <= code started <= drawn): '+(m?m.slice(1,7).join(' / '):rep.split('\n').find(l=>/Opened/.test(l)))); }
 ok(/### Timings \(milliseconds/.test(rep)&&/draw tab|checker/.test(rep),'speed report lists timings');
 ok(/No frames were recorded/.test(rep),'frames are off until asked for (always-on frames slowed the Map in Firefox)');
-{ await ed.click('dialog button:text-is("Record frames")');await ed.waitForTimeout(1200);
+/* frames start by themselves while the Map is panned or zoomed (field-report 'play' mode), and a still screen costs nothing */
+{ await ed.keyboard.press('Escape');await ed.click('#tabs [data-tab="map"]');await ed.waitForTimeout(600);
+  const bx=await ed.evaluate(()=>{const r=document.querySelector('.mapbox').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2];});
+  await ed.mouse.move(bx[0],bx[1]);await ed.mouse.down();for(let k=1;k<=12;k++){await ed.mouse.move(bx[0]-k*12,bx[1]-k*6);await ed.waitForTimeout(40);}await ed.mouse.up();await ed.waitForTimeout(300);
+  await ed.click('#optbtn');await ed.click('#optpop >> text=Speed report…');await ed.waitForTimeout(200);
+  const r1=await ed.inputValue('dialog textarea');
+  ok(/Frames recorded/.test(r1),'panning the Map starts the frame count by itself');
+  await ed.keyboard.press('Escape');await ed.waitForTimeout(100); }
+{ await ed.click('#optbtn');await ed.click('#optpop >> text=Speed report…');await ed.waitForTimeout(200);
+  await ed.click('dialog button:text-is("Record frames")');await ed.waitForTimeout(1200);
   await ed.click('#optbtn');await ed.click('#optpop >> text=Speed report…');await ed.waitForTimeout(200);
   const r2=await ed.inputValue('dialog textarea');
   ok(/Frames recorded/.test(r2),'Record frames starts the frame count'); rep=r2; }

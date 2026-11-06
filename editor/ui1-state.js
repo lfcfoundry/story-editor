@@ -26,10 +26,11 @@
    this includes unpacking it) and the moment the first screen was drawn, set at the end of init(). */
 const BOOT_AT = performance.now();
 /* The shared field-report module (field-report.js, first in the page): hidden real-device speed report and error log, opened by five quick taps in the top-left corner or from
-   Options -> Speed report. It watches start-up, heavy tasks and every error from here on, and frames once Options -> Speed report -> Record frames is pressed. What it saves is the module's report plus the editor's own lines (speedExtras). */
-/* Frames are off until asked for: a page that never stops asking for frames made the Map take about 4x longer to show its first two frames in Firefox. */
+   Options -> Speed report. It watches start-up, heavy tasks and every error from here on, and frames while the Map is being panned or zoomed (frames 'play' mode, field-report 1.1.0: a still screen costs nothing), or all the time once Options -> Speed report -> Record frames is pressed. What it saves is the module's report plus the editor's own lines (speedExtras). */
+/* Frames never run on their own: a page that never stops asking for frames made the Map take about 4x longer to show its first two frames in Firefox. In 'play' mode they run only between fieldReport.frames(true) and frames(false) (see speedBusy in ui4-speed.js). */
 const startFieldReport = frames => FieldReport.start({ name: 'story-editor', version: '__BUILD_STAMP__', frames, onSave: (text, file, kind) => speedSave(text, file, kind) });
-let fieldReport = startFieldReport(false);
+let fieldReport = startFieldReport('play');
+let framesAlways = false; // true once Record frames was pressed: then frames run all the time and speedBusy leaves them alone
 let READY_AT = 0;
 const STORE = 'story-editor-v1'; // localStorage key for the autosaved story
 /* For a big saved story the typeface is made from its bytes here, before anything is laid out. As a plain @font-face it arrives after the
