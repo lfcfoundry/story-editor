@@ -5,6 +5,7 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
 ## October 31
+- Speed report: the Map now counts frames by itself while you pan or zoom it, so a saved report has smoothness numbers without pressing Record frames first. Nothing runs while the screen is still.
 - Pasting or importing very long runs of spaces (an outline, a Twine file, a translation sheet header) no longer makes the editor slow: a run of 20,000 spaces took up to 0.4 s and a million would have taken minutes; now it is instant. Same results.
 - Big stories open faster and use less memory: with more than 300 pages the page list builds only the rows on screen (and a few either side) and builds more as you scroll. A 2,040-page story reopens in about three quarters of the time. Your browser's find-in-page (Ctrl+F) no longer finds page names that are scrolled out of view; Go to a page (Ctrl+K) still finds every page.
 - Opening big stories: the writing notes now read each page's words in one pass instead of two, so they take about 7% to 20% less time on top of the earlier saving. The notes themselves are unchanged.

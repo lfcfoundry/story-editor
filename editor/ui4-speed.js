@@ -15,6 +15,14 @@ const SPEED_KEEP = 400; // timings kept
 const SPEED_HEAVY = 8; // timings this long (ms) are also passed to the module's heavy-task list
 const speedLog = []; // { at: ms since the page opened, kind, ms, note }
 
+/** Called while the Map is panned or zoomed: counts frames from now until 1.5 s after the last call, so the speed report has smoothness numbers without a still screen paying for them. */
+let speedBusyOff = 0;
+function speedBusy() {
+  if (framesAlways) return;
+  fieldReport.frames(true);
+  clearTimeout(speedBusyOff);
+  speedBusyOff = setTimeout(() => fieldReport.frames(false), 1500);
+}
 /** Records that something called `kind` took `ms`, with a short note (the view, the size). */
 function speedNote(kind, ms, note) {
   speedLog.push({ at: Math.round(performance.now()), kind, ms: Math.round(ms * 10) / 10, note: note || '' });
@@ -129,6 +137,7 @@ function showSpeedReport() {
           onclick: () => {
             fieldReport.stop();
             fieldReport = startFieldReport(true);
+            framesAlways = true;
             close();
             toast('Recording frames. Use the editor, then open Speed report again.');
           }

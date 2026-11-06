@@ -2,6 +2,19 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-06 · Speed report counts frames while the Map is panned or zoomed (field-report 'play' mode)
+
+### Quick
+- `startFieldReport('play')` (field-report 1.1.0 frames mode): the module's frame callback runs only between `fieldReport.frames(true)` and `frames(false)`. `speedBusy()` (`ui4-speed.js`) turns it on from the Map's pan (`mousedown` move) and Ctrl+wheel zoom and off 1.5 s after the last call. Record frames still starts always-on frames (`framesAlways`), and `speedBusy` then leaves them alone.
+- `top5-new` checks that panning the Map gives "Frames recorded" without pressing Record frames.
+
+### Details
+New/old, early-stop A/B: Map open to two frames at 306 pages: Firefox 1.04 (0.93-1.18, noisy), Chromium 1.01 (0.97-1.08), WebKitGTK 0.98 (0.93-1.02); nothing runs at open. Time for 40 scripted pointer moves while panning: Firefox 0.99, Chromium 0.96, WebKitGTK 1.11, then 0.98, 0.99 and 1.05 on repeats (the driver round trips dominate this number).
+
+### Deep
+- Map scroll events are not used as the trigger because the Map scrolls itself when it opens, which would turn frames on during the first frames (the reason frames were off).
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: 92 suites, 92 pass.
+
 ## 2026-11-06 · Five slow (quadratic) text patterns replaced
 
 ### Quick

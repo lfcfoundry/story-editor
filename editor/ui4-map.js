@@ -2685,6 +2685,7 @@ function renderMap(main) {
         dy = ev.clientY - sy;
       if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
       moved = true;
+      speedBusy();
       box.classList.add('panning');
       box.scrollLeft = sl - dx;
       box.scrollTop = st - dy;
@@ -2779,6 +2780,7 @@ function renderMap(main) {
     e => {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
+      speedBusy();
       const r = box.getBoundingClientRect();
       zoomTo(curZoom() * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - r.left, e.clientY - r.top);
     },
