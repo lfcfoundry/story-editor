@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Copied from https://github.com/lfcfoundry/JS-modules (tools/lzma-pack, commit 32ee091); the only changes are the DECODER and WASM_DECODER paths below.
+"""Copied from https://github.com/lfcfoundry/JS-modules (tools/lzma-pack 2.0.3, commit 0da2434); the only changes are the DECODER, WASM_DECODER and latin1.py paths (the decoder and latin1.py are copied beside it).
 lzma-pack: turn one HTML file into a smaller self-unpacking HTML file.  MIT License, Copyright (c) 2026 LFC Foundry. https://github.com/lfcfoundry/JS-modules
 
   python3 tools/lzma-pack/pack.py INPUT.html OUTPUT.html [--title T] [--head HTML] [--encoding bytes|base64] [--tune]
-                                  [--minifier auto|terser|esbuild|none] [--bg auto|none|COLOR] [--skip-node-check]
+                                  [--minifier auto|terser|esbuild|none] [--bg auto|none|COLOR] [--no-wasm] [--skip-node-check]
 
 The output is a tiny page that holds the LZMA-compressed input and a small decoder (modules/lzma-decode/lzma-decode.js). When opened it
 unpacks the input, checks a hash of the result, and replaces itself with it (document.write). If the hash does not match
 (for example the file was opened and saved as text, or cut short) it shows a plain message instead of running anything.
 
+--no-wasm          the page carries the WebAssembly LZMA decoder (4,087 bytes, behind the LZMA data) by default and tries it first, with the JavaScript decoder as the
+                   fallback; --no-wasm leaves it out for a page about 4.5 KB smaller that always decodes in JavaScript. (--wasm is accepted too: it is the default.)
 --encoding bytes   (default) store the compressed bytes raw and declare the page windows-1252 so each byte is one character.
                    Smallest. Works from file:// and from servers that send no charset. Does NOT work from a server that sends
                    'Content-Type: text/html; charset=utf-8' (GitHub Pages does): the header overrides the page's own charset.
@@ -25,11 +27,11 @@ is refused. A leading byte order mark is allowed, but the unpacked page comes ba
 How much smaller the result is depends on the file: 10 to 25 percent smaller than ordinary deflate has been seen.
 Needs only Python 3 (standard library). A minifier (terser or esbuild: on PATH, in a node_modules/.bin, or named by the TERSER or ESBUILD environment variable) shrinks the loader by about 5 KB; without one the loader is embedded as is.
 """
-import argparse, base64, json, lzma, pathlib, re, shutil, subprocess, sys
+import argparse, base64, importlib.util, json, lzma, pathlib, re, shutil, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 DECODER = HERE / "lzma-decode.js"   # (in JS-modules this is modules/lzma-decode/; copied here so this folder stands alone)
-WASM_DECODER = HERE / "wasm" / "lzma-decode.wasm"   # for wasm=True (built from wasm/lzma-decode.c by wasm/build.sh)
+WASM_DECODER = HERE / "wasm" / "lzma-decode.wasm"   # for --wasm
 # What a browser makes of the bytes 0x80-0x9F when a page is read as windows-1252 (the WHATWG table; the five gaps map to the same-numbered control characters)
 CP1252_HI = [8364, 129, 8218, 402, 8222, 8230, 8224, 8225, 710, 8240, 352, 8249, 338, 141, 381, 143, 144, 8216, 8217, 8220, 8221, 8226, 8211, 8212, 732, 8482, 353, 8250, 339, 157, 382, 376]
 
@@ -249,7 +251,7 @@ def minify(src, which):
             raise SystemExit("minifier not found: " + which)
         return to_ascii(src)
     name, path = m
-    cmd = [path, "--ecma", "2020", "--compress", "passes=3,toplevel=true", "--mangle", "toplevel=true"] if name == "terser" else [path, "--minify", "--target=es2020"]
+    cmd = [path, "--ecma", "2020", "--compress", "passes=3,toplevel=true", "--mangle", "toplevel=true", "--format", "ascii_only=true"] if name == "terser" else [path, "--minify", "--target=es2020", "--charset=ascii"]
     r = subprocess.run(cmd, input=src, capture_output=True, text=True)
     if r.returncode != 0:
         raise SystemExit(name + " failed: " + r.stderr[:300])
@@ -267,7 +269,7 @@ def minify_page(text, which="auto"):
     if not m:
         raise SystemExit("--minify-page needs terser or esbuild (on the PATH, in node_modules/.bin, or named by TERSER / ESBUILD)")
     name, path = m
-    cmd = [path, "--ecma", "2020", "--compress", "--mangle"] if name == "terser" else [path, "--minify", "--target=es2020"]
+    cmd = [path, "--ecma", "2020", "--compress", "--mangle", "--format", "ascii_only=true"] if name == "terser" else [path, "--minify", "--target=es2020", "--charset=ascii"]
     stats = [0, 0]
 
     def one(mo):
@@ -284,6 +286,19 @@ def minify_page(text, which="auto"):
         stats[0] += 1
         return mo.group(1) + attrs + mo.group(3) + "\n" + out + "\n" + mo.group(5)
     return SCRIPT_RE.sub(one, text), stats[0], stats[1]
+
+
+def latin1_page(text):
+    """The unpacked page made Latin-1 only (every character at most U+00FF), so the browser keeps its text at 1 byte per character: characters above
+    U+00FF become escapes that mean the same character (single-file-tools/latin1.py). Returns (text, note); the note is empty when nothing changed."""
+    spec = importlib.util.spec_from_file_location("latin1", str(pathlib.Path(__file__).resolve().parent / "latin1.py"))
+    l1 = importlib.util.module_from_spec(spec); spec.loader.exec_module(l1)
+    out, c, left = l1.escape_html(text)
+    n = c["script"] + c["style"] + c["markup"]
+    note = ("%d character(s) above U+00FF escaped (%d in scripts, %d in styles, %d in markup)" % (n, c["script"], c["style"], c["markup"])) if n else ""
+    if left:
+        note += ("; " if note else "") + "left alone in script blocks of type " + ", ".join(left) + " (data the page reads as it is: the page stays 2 bytes per character)"
+    return out, note
 
 
 def decoder_source():
@@ -336,7 +351,7 @@ def allow_wasm(head):
     return re.sub(r"<meta\b[^>]*>", fix_tag, head, flags=re.I)
 
 
-def pack(data, title="", head="", encoding="bytes", minifier="auto", tune=False, bg="auto", check_node=True, minify_pg=False, wasm=False):
+def pack(data, title="", head="", encoding="bytes", minifier="auto", tune=False, bg="auto", check_node=True, minify_pg=False, wasm=None):
     head = allow_wasm(head)   # every page policy carries 'wasm-unsafe-eval' in script-src
     try:
         text = data.decode("utf-8")
@@ -348,6 +363,11 @@ def pack(data, title="", head="", encoding="bytes", minifier="auto", tune=False,
         text2, done, skipped = minify_page(text, minifier)
         page_note = "%d script(s) minified, %d left alone, %d bytes saved before packing" % (done, skipped, len(data) - len(text2.encode("utf-8")))
         data = text2.encode("utf-8")
+        text = text2
+    text, l1note = latin1_page(text)
+    if l1note:
+        data = text.encode("utf-8")
+        page_note = (page_note + "; " if page_note else "") + l1note
     best = None
     grid = [(4, 0, 0)] if not tune else [(lc, 0, pb) for lc in range(0, 5) for pb in range(0, 3)]
     for lc, lp, pb in grid:
@@ -360,9 +380,11 @@ def pack(data, title="", head="", encoding="bytes", minifier="auto", tune=False,
         chk = (chk * 31 + b) & 0xFFFFFFFF
     dec = decoder_source()
     wasm_bytes = b""
+    if wasm is None:   # the default: WebAssembly first whenever the program is there and takes these settings; --no-wasm (wasm=False) leaves it out, --wasm (True) insists
+        wasm = WASM_DECODER.exists() and lc + lp <= 4
     if wasm:   # the wasm decoder rides behind the LZMA stream in the same payload; it cannot be LZMA-packed itself, so it adds its full size to the page
         if not WASM_DECODER.exists():
-            raise SystemExit("wasm=True needs %s (build it with wasm/build.sh)" % WASM_DECODER)
+            raise SystemExit("--wasm needs %s (build it with modules/lzma-decode/wasm/build.sh)" % WASM_DECODER)
         wasm_bytes = WASM_DECODER.read_bytes()
         if lc + lp > 4:
             raise SystemExit("--wasm: the wasm decoder takes lc + lp up to 4")
@@ -374,7 +396,6 @@ def pack(data, title="", head="", encoding="bytes", minifier="auto", tune=False,
         meta = b'<meta charset="windows-1252">'
     elif encoding == "base64":
         payload = base64.b64encode(blob)
-        # the browser's own base64 decoder where there is one (5 to 12 times faster than the atob copy loop), the old loop elsewhere
         read = "var i=0,z=Uint8Array.fromBase64?Uint8Array.fromBase64(s):Uint8Array.from(atob(s),function(c){return c.charCodeAt(0)});"
         meta = b'<meta charset="utf-8">'
     else:
@@ -389,7 +410,7 @@ def pack(data, title="", head="", encoding="bytes", minifier="auto", tune=False,
     first = ("try{o=W()}catch(e){}o=o||" if wasm else "o=")
     # It starts after two animation frames (the "Opening..." line is on screen by then), or after 100 ms where frames do not run (a tab opened in the
     # background), whichever comes first. The fixed 30 ms wait it replaces started later than two frames in all three browsers; one frame was too soon:
-    # Firefox then painted nothing until the editor was ready.
+    # Firefox then painted nothing until the page was ready. (From Story Editor's copy, 2026.11.05.)
     src = ("(function(){var d=0,g=function(){d||(d=1,setTimeout(F,0))};requestAnimationFrame(function(){requestAnimationFrame(g)});setTimeout(g,100);function F(){" + dec + wfun + "var s=" + PAYLOAD_NAME + ";delete window." + PAYLOAD_NAME + ";" + read + "var o,h=0,t;"
            "try{" + first + "lzmaDecode(" + zs + ",%d,{lc:%d,lp:%d,pb:%d});for(i=0;i<o.length;i++)h=(h*31+o[i])>>>0;if(h!=%d)throw 0;t=new TextDecoder().decode(o);document.open();document.write(t);document.close()}"
            "catch(e){document.body.textContent=\"This file was changed (maybe opened and saved as text, or cut short). Please download it again and open the file itself in a browser.\"}}})()") % (len(data), lc, lp, pb, chk)
@@ -417,15 +438,16 @@ def main():
     ap.add_argument("--minifier", default="auto", choices=["auto", "terser", "esbuild", "none"])
     ap.add_argument("--bg", default="auto", help="background color of the 'Opening...' line: auto (read it from the input), none, or a color like #101018")
     ap.add_argument("--minify-page", action="store_true", help="first minify the page's own inline classic scripts (terser or esbuild needed); top-level names are kept")
-    ap.add_argument("--wasm", action="store_true", help="also ship the WebAssembly LZMA decoder (about 4 KB, raw): the page tries it first and falls back to the JavaScript decoder. Off by default; the page then needs wasm-unsafe-eval in its Content-Security-Policy")
+    ap.add_argument("--wasm", action="store_true", help="ship the WebAssembly LZMA decoder (about 4 KB, raw): the page tries it first and falls back to the JavaScript decoder. This is the default since 1.2.0 (the flag is kept so old commands work, and it insists: an error when the settings do not allow it); the page needs wasm-unsafe-eval in its Content-Security-Policy to use it")
+    ap.add_argument("--no-wasm", action="store_true", help="leave the WebAssembly decoder out: about 4.5 KB (3.0%%) smaller page that always decodes in JavaScript, for pages with a tight size limit")
     ap.add_argument("--skip-node-check", action="store_true", help="do not run the packed page's own decoder in Node after packing")
     a = ap.parse_args()
     data = pathlib.Path(a.input).read_bytes()
-    page, info = pack(data, a.title, a.head, a.encoding, a.minifier, a.tune, a.bg, not a.skip_node_check, a.minify_page, a.wasm)
+    page, info = pack(data, a.title, a.head, a.encoding, a.minifier, a.tune, a.bg, not a.skip_node_check, a.minify_page, False if a.no_wasm else (True if a.wasm else None))
     pathlib.Path(a.output).write_bytes(page)
     print("%s: %d bytes -> %d bytes (%.1f%%)  [lzma lc=%d lp=%d pb=%d, payload %d, %sloader %d, %s, opening bg %s, node check %s]" % (a.output, len(data), len(page), 100.0 * len(page) / max(1, len(data)), info["lc"], info["lp"], info["pb"], info["compressed"], ("wasm decoder %d, " % info["wasm"]) if info["wasm"] else "", info["loader"], info["encoding"], info["bg"], info["node"]))
     if info.get("page"):
-        print("page minifier: " + info["page"])
+        print("page: " + info["page"])
 
 
 if __name__ == "__main__":

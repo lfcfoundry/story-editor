@@ -2,6 +2,17 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-06 · The packer is the shared lzma-pack 2.0.3 again
+
+### Quick
+- `editor/lzma/lzma_pack.py` is now JS-modules lzma-pack 2.0.3 (commit 0da2434), which took the editor's two-frame start from this repo; `lzma-decode.js` 1.1.0 to 1.3.1 (label only) and `latin1.py` added beside it. Only the three file paths differ from the shared copy.
+
+### Details
+The packed `story-editor.html` is byte-identical to the one built with the old copy (318,519 bytes), so nothing about size or speed changed.
+
+### Deep
+- The shared packer can also escape characters above U+00FF itself; `build.py` still stops the build on one, which stays as the second guard.
+
 ## 2026-11-06 · field-report 1.1.1 (the shared speed-report module)
 
 ### Quick
