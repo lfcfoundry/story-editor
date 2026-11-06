@@ -1638,7 +1638,19 @@ function twineCleanText(s, dia) {
     s = s.replace(/\*\*(?=\S)([^*\n]*?\S)\*\*/g, "$1").replace(/\*(?=\S)([^*\n]*?\S)\*/g, "$1").replace(/^#{1,6}[ \t]+/gm, "");
   return s;
 }
-var twineTidy = (s) => s.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/^\n+|\s+$/g, "");
+var twineTidy = (s) => {
+  const lines = s.split("\n");
+  for (let i = 0; i < lines.length - 1; i++) {
+    const l = lines[i];
+    let e = l.length;
+    while (e > 0 && (l.charCodeAt(e - 1) === 32 || l.charCodeAt(e - 1) === 9)) e--;
+    if (e < l.length) lines[i] = l.slice(0, e);
+  }
+  let r = lines.join("\n").replace(/\n{3,}/g, "\n\n");
+  let a = 0;
+  while (a < r.length && r.charCodeAt(a) === 10) a++;
+  return r.slice(a).trimEnd();
+};
 function twineVarInfo(cx, name) {
   return cx.vars[name] || (cx.vars[name] = { name, types: {}, nums: [], cmps: [], strs: {}, deltas: [], tested: false, bad: "", kind: "" });
 }

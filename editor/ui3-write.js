@@ -2296,7 +2296,7 @@ function splitPage(p, bi, pos) {
   first.forbid = b.forbid.slice();
   np.blocks = [first].concat(p.blocks.slice(bi + 1));
   np.choices = p.choices;
-  b.text = text.slice(0, pos).replace(/\s+$/, '');
+  b.text = text.slice(0, pos).trimEnd();
   p.blocks = p.blocks.slice(0, bi + 1);
   p.choices = [makeChoice('Continue', np.id)];
   selId = np.id;

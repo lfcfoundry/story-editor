@@ -2,6 +2,9 @@
 
 What changed in each version, newest first, one plain line each. The full technical log, with sizes and test browsers, is kept by the maintainers.
 
+## 1.0.2 · 2026-11-06
+- A very long run of spaces or tabs in a Twine file no longer makes the tidy-up slow (it took minutes for about a million spaces); same text out.
+
 ## 1.0.1 · 2026-10-29
 - A story whose code nests more than 300 levels deep is now refused at once with the same plain message (it used to stop only when the engine ran out of stack, which took 40 ms to 8 seconds). Stories nested less deeply read exactly as before.
 

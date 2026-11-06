@@ -52,8 +52,11 @@ function csvParse(text) {
 
 /** "Español (es)" -> { name: 'Español', code: 'es' }. */
 function langFromHeader(h) {
-  const m = /^(.*?)\s*\(([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?)\)\s*$/.exec(String(h).trim());
-  return m ? { name: m[1].trim() || m[2], code: m[2] } : { name: String(h).trim(), code: '' };
+  const t = String(h).trim();
+  const m = /\(([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?)\)$/.exec(t); // the code in brackets at the end; no lazy .*? in front of it (that took time growing with the square of a long header)
+  const pre = m ? t.slice(0, m.index).trimEnd() : '';
+  if (m && !/[\n\r\u2028\u2029]/.test(pre)) return { name: pre.trim() || m[1], code: m[1] };
+  return { name: t, code: '' };
 }
 
 /** The sheet for translators: columns "Where first used", the original, then one per language (an empty "New language" column if there is none yet). */

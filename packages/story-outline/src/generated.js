@@ -733,7 +733,8 @@ const OUTLINE_MAX_LINES = 3000;
 
 const OUTLINE_NAME_MAX = 80;
 
-const OUTLINE_ARROW = /\s*(?:→|->|=>)\s*/;
+/* the arrow alone: a pattern with \s* on both sides took time growing with the square of a run of spaces; the pieces are trimmed after the split */
+const OUTLINE_ARROW = /→|->|=>/;
 
 
 /**
@@ -766,7 +767,7 @@ function parseOutline(text) {
       let name = body;
       let ending = false;
       let valence = '';
-      const m = /\s*\((?:(good|bad)\s+)?(?:ending|end)\)\s*$/i.exec(name);
+      const m = /\((?:(good|bad)\s+)?(?:ending|end)\)$/i.exec(name.trimEnd()); // no \s* around it: a run of spaces made this take time growing with its square
       if (m) {
         ending = true;
         valence = (m[1] || '').toLowerCase();
@@ -797,7 +798,7 @@ function parseOutline(text) {
       return;
     }
     if (!page) return; // under a skipped page
-    const parts = body.split(OUTLINE_ARROW);
+    const parts = body.split(OUTLINE_ARROW).map(x => x.trim());
     if (parts.length >= 2) {
       const to = parts.pop().trim().slice(0, OUTLINE_NAME_MAX);
       const label = parts.join(' → ').trim();
