@@ -1,6 +1,6 @@
 {
   "name": "story-outline",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turns an indented outline into pages and choices, or into a whole branching story. Zero dependencies.",
   "license": "MIT",
   "author": "LFC Foundry",

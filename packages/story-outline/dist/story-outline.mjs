@@ -545,7 +545,7 @@ function pruneVirtual(project) {
 }
 var OUTLINE_MAX_LINES = 3e3;
 var OUTLINE_NAME_MAX = 80;
-var OUTLINE_ARROW = /\s*(?:→|->|=>)\s*/;
+var OUTLINE_ARROW = /→|->|=>/;
 function parseOutline(text) {
   const issues = [];
   const raw = String(text || "").replace(/^﻿/, "").split(/\r\n|\r|\n/);
@@ -567,7 +567,7 @@ function parseOutline(text) {
       let name = body;
       let ending = false;
       let valence = "";
-      const m = /\s*\((?:(good|bad)\s+)?(?:ending|end)\)\s*$/i.exec(name);
+      const m = /\((?:(good|bad)\s+)?(?:ending|end)\)$/i.exec(name.trimEnd());
       if (m) {
         ending = true;
         valence = (m[1] || "").toLowerCase();
@@ -598,7 +598,7 @@ function parseOutline(text) {
       return;
     }
     if (!page) return;
-    const parts = body.split(OUTLINE_ARROW);
+    const parts = body.split(OUTLINE_ARROW).map((x) => x.trim());
     if (parts.length >= 2) {
       const to = parts.pop().trim().slice(0, OUTLINE_NAME_MAX);
       const label = parts.join(" → ").trim();

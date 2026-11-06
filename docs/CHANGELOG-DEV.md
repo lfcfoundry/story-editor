@@ -2,6 +2,18 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-06 · Five slow (quadratic) text patterns replaced
+
+### Quick
+- From the JS-modules sweep (REGEX-SWEEP-2026.11.06): `OUTLINE_ARROW` now splits on the arrow alone and trims the pieces (`helpers.js`); the ending-suffix pattern drops its leading `\s*` and trims first (`helpers.js`); `twineTidy` trims line ends and the ends of the text by hand (`twine.js`); `langFromHeader` finds the bracketed code at the end without a lazy `.*?` (`translate.js`); the split-page trim is `trimEnd()` (`ui3-write.js`). `packages/story-outline` 1.0.1 and `packages/twine-import` 1.0.2 regenerated.
+
+### Details
+Node 22, 20,000-character run of spaces then a break: outline split 169 to 0.0 ms, ending suffix 159 to 0.0 ms, `twineTidy` 389 to 0.0 ms, language header 0.1 ms either way (needs a different crafted run). A million-character run would have taken tens of minutes.
+
+### Deep
+- **Same results.** 2,000,000 random checks (arrows, brackets, tabs, line breaks, U+2028, no-break spaces) old pattern against new code: 0 differences; two differences found on the way and fixed (the old header pattern's `.` stops at a line break but its `\s*` crosses one).
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: 92 suites (`virtlist` webkit passed on the retry after the known first-load "timeout: HTTP 500"); `npm test` green.
+
 ## 2026-11-06 · The packer is the shared lzma-pack 2.0.3 again
 
 ### Quick

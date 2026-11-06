@@ -1255,11 +1255,21 @@ function twineCleanText(s, dia) {
   return s;
 }
 
-const twineTidy = s =>
-  s
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/^\n+|\s+$/g, '');
+/* Trailing spaces and tabs off every line, three or more line breaks made two, no line breaks at the start and no white space at the end. By hand: patterns like /[ \t]+\n/ and /\s+$/
+   took time growing with the square of a long run of spaces (20,000 characters: about 0.4 s; 1 MB would be tens of minutes). */
+const twineTidy = s => {
+  const lines = s.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+    const l = lines[i];
+    let e = l.length;
+    while (e > 0 && (l.charCodeAt(e - 1) === 32 || l.charCodeAt(e - 1) === 9)) e--;
+    if (e < l.length) lines[i] = l.slice(0, e);
+  }
+  let r = lines.join('\n').replace(/\n{3,}/g, '\n\n');
+  let a = 0;
+  while (a < r.length && r.charCodeAt(a) === 10) a++;
+  return r.slice(a).trimEnd();
+};
 
 /* ----- reading what the variables are ----- */
 
