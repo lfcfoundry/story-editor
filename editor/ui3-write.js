@@ -773,6 +773,7 @@ function problemSet() {
 let sideRows = new WeakMap();
 /** How far the page list and the item list are scrolled, kept across redraws. */
 let pagesScroll = 0;
+let rowH = 0, rowMeasured = false, virtWin = null, virtEnts = null, virtSoon = 0, listDragging = false;
 let sideScrollSoon = 0;
 /** Done just before the next frame is drawn, where the browser lays the page out anyway: done right in renderSide, it forced an
     extra layout of the whole page (about 20 ms at start with 2,000 pages). */
@@ -780,7 +781,9 @@ function sideScrollFix() {
   sideScrollSoon = 0;
   const ul = $('#pages');
   if (!ul) return;
+  if (virtWin && !rowMeasured) renderSide.list(); // the row height is read once the rows have been laid out
   if (pagesScroll) ul.scrollTop = pagesScroll;
+  if (virtEnts && virtWin) { const ci = virtEnts.findIndex(e => e.p.id === selId); if (ci >= 0 && (ci < virtWin[0] + 30 || ci >= virtWin[1] - 30)) { const want = ci * rowH - (ul.clientHeight || 800) / 2; if (ci * rowH < ul.scrollTop || ci * rowH > ul.scrollTop + (ul.clientHeight || 800) - rowH) { ul.scrollTop = Math.max(0, want); pagesScroll = ul.scrollTop; renderSide.list(); } } }
   const curBtn = ul.querySelector('button[aria-current="true"]');
   if (curBtn) {
     const r = curBtn.getBoundingClientRect();
@@ -1023,8 +1026,11 @@ function renderSide() {
       listRows(
         h('ul', {
           id: 'pages',
+          ondragstart: () => { listDragging = true; }, // while a row is dragged the window stays put, so the dragged row is not taken out of the page
+          ondragend: () => { listDragging = false; if (virtWin) renderSide.list(); },
           onscroll: function (e) {
             pagesScroll = e.target.scrollTop;
+            if (virtWin && !virtSoon && !listDragging) { const t = Math.floor(pagesScroll / rowH), vis = Math.ceil((e.target.clientHeight || 800) / rowH); if (t < virtWin[0] + 10 && virtWin[0] > 0 || t + vis > virtWin[1] - 10 && virtWin[1] < virtWin[2]) virtSoon = requestAnimationFrame(() => { virtSoon = 0; renderSide.list(); }); }
           }
         })
       )
@@ -1038,15 +1044,29 @@ function renderSide() {
     const ul = $('#pages');
     const bad = problemSet(); // the newest check's: the list is redrawn after every check (it was the check from when the side was last built, so the dots were stale)
     const dragOrder = prefs.sort === 'written';
-    const lis = [];
+    const ents = [];
     listedPages().forEach(({ p, depth }) => {
       if (filter && !pname(p).toLowerCase().includes(filter.toLowerCase())) return;
+      ents.push({ p, depth });
+    });
+    /* VIRTUAL PROTOTYPE: above 300 rows only the rows on screen (and 30 either side) are built; two spacers hold the scroll height */
+    const virt = ents.length > 300;
+    if (virt && !rowH) rowH = 22.5;
+    const vh = ul.clientHeight || 800;
+    const first = virt ? Math.max(0, Math.floor(ul.scrollTop / rowH) - 30) : 0;
+    const last = virt ? Math.min(ents.length, Math.ceil((ul.scrollTop + vh) / rowH) + 30) : ents.length;
+    virtWin = virt ? [first, last, ents.length] : null;
+    virtEnts = ents;
+    const lis = [];
+    if (virt) lis.push(h('li', { 'aria-hidden': 'true', style: `height:${first * rowH}px;padding:0;margin:0;list-style:none` }));
+    for (let ei = first; ei < last; ei++) {
+      const { p, depth } = ents[ei];
       /* a row is made again only when something it shows changed: a 2,000-page list was rebuilt after every check and every key in a name */
       const key = `${p.id === selId}\u0001${depth}\u0001${pname(p)}\u0001${p.id === project.start}\u0001${p.ending}\u0001${p.valence}\u0001${p.color}\u0001${p.note}\u0001${p.todo}\u0001${pageEmpty(p)}\u0001${!!bad[p.id]}\u0001${dragOrder}`;
       const kept = sideRows.get(p);
       if (kept && kept.key === key) {
         lis.push(kept.li);
-        return;
+        continue;
       }
       const pbtn = listRow(h(
         'button',
@@ -1086,7 +1106,12 @@ function renderSide() {
       const li = h('li', {}, [pbtn]);
       sideRows.set(p, { key, li });
       lis.push(li);
-    });
+    }
+    if (virt) {
+      lis.push(h('li', { 'aria-hidden': 'true', style: `height:${(ents.length - last) * rowH}px;padding:0;margin:0;list-style:none` }));
+      const r0 = ul.querySelector('li:not([aria-hidden]) button');
+      if (r0 && !rowMeasured) { const hh = r0.parentNode.getBoundingClientRect().height; if (hh > 5) { rowMeasured = true; const was = rowH; rowH = hh; if (Math.abs(was - hh) > 0.3) return renderList(); } }
+    }
     const kids = ul.children;
     if (kids.length !== lis.length) ul.replaceChildren(...lis);
     else

@@ -2,6 +2,26 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-06 · The page list builds only the rows on screen (over 300 pages)
+
+### Quick
+- `renderList` collected every page's row (2,040 at the test size). Now above 300 rows it builds the rows in view plus 30 either side, and two spacer items (`li[aria-hidden]`) hold the scroll height; the scroll handler builds more when the view comes within 10 rows of an edge. Row height is read once from the first built row. Opening a far page scrolls the list to it (`sideScrollFix`). While a row is dragged the window stays put.
+- New suite `virtlist`.
+
+### Details
+2,040 pages, reopen to a ready editor, new/old (early-stop A/B, 90% range):
+
+| | Chromium 155.0.8059.39 | Firefox 158.0 | WebKitGTK 2.52.6 |
+|---|---|---|---|
+| Reopen | 0.758 (0.64-0.82) | 0.803 (0.74-0.88) | 0.672 (0.58-0.74) |
+
+Chromium heap snapshot of the open page: 37.5 to 22.3 MB (native 20.8 to 7.3 MB); rows in the page 2,040 to 45-76.
+
+### Deep
+- **Look.** Scroll height is unchanged (74,472 px at 2,040 pages); top, middle and end show the right rows. Visible change: browser find-in-page cannot find names that are not built; Tab and arrows work along the built rows.
+- **Stacking.** `content-visibility:auto` on the rows added nothing on top of this (Chromium 0.79, Firefox 0.86, WebKitGTK 0.61 stacked, against 0.76 / 0.80 / 0.64 alone), and alone it made WebKitGTK 1.69x slower.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: 92 suites (`smart --since origin/main --webkit --chromium`), `virtlist`, `npm test`.
+
 ## 2026-11-05 · Fuzz suites play new stories each full run
 
 ### Quick
