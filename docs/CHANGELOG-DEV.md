@@ -2,6 +2,18 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-06 · field-report 1.1.1 (the shared speed-report module)
+
+### Quick
+- `editor/field-report.js` is the JS-modules file again, unchanged: 1.0.2 to 1.1.1. It drops the one character above U+00FF (an ellipsis) that kept the page text at 2 bytes per character, and adds frame modes `'play'` and `'external'` (not used by the editor yet; they could let Speed report record frames without the Map-open cost that keeps frames off until Record frames).
+
+### Details
+Plain page +526 bytes (730,443; ceiling 740,000). Reopen to ready at 2,040 pages, new/old: Firefox 0.94 (0.85-1.02), Chromium 0.87 (0.86-1.05), WebKitGTK 1.00 and 0.99 on repeat (a first run read 1.13 and did not reproduce).
+
+### Deep
+- **Checked against JS-modules main (15e9087):** `lzma-decode.js` differs only in its version label (code identical, wasm source identical); `savekit-durable.js` is the same code as save-kit's durable part (1.4.0 to 1.6.0 changed other parts); `lzma/lzma_pack.py` is behind 2.0.2 on one item (it does not escape characters above U+00FF itself; `build.py` stops the build on one instead) and ahead on two (two-frame start, native base64), so it stays.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: 64 suites (`smart --since origin/main --webkit --chromium`).
+
 ## 2026-11-06 · The page list builds only the rows on screen (over 300 pages)
 
 ### Quick
