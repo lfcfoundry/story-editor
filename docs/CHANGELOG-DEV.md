@@ -2,6 +2,18 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-07 · Faster LZMA WebAssembly unpacking program, run in short calls
+
+### Quick
+- `editor/lzma/wasm/lzma-decode.c` is the faster kernel from JS-modules research (`kernel-2026.11.07/ibcx.c`, changes i, b, c, x); the built `lzma-decode.wasm` is byte-identical to its `ibcx.wasm` (5,024 bytes). `editor/lzma/lzma_pack.py` is lzma-pack 2.0.4 (commit 4897da0), whose loader unpacks in 64 KB `lzma_begin` / `lzma_more` calls (one long call is 1.18x slower in Firefox). Only the three file paths differ from the shared packer.
+
+### Details
+Packed `story-editor.html` 318,803 to 320,114 bytes (+1.3 KB). Reopen to ready at 2,040 pages, new/old: Firefox 0.93 (0.82-1.04, noisy), Chromium 0.98 (0.89-1.05) and 0.92 on the small story, WebKitGTK 0.97 (0.93-1.02). Research measured the first 3 MB unpack at 0.73 / 0.67 / 0.90 (Chromium / Firefox / WebKitGTK); the editor's page is 0.7 MB, so the share of its start-up that is unpacking is smaller.
+
+### Deep
+- **Wasm really used.** The 5,024-byte module is compiled in Chromium 155, Firefox 158 and WebKitGTK 2.52.6 (a counting `WebAssembly.Module` hook saw it in all three); the packer's own self-check (modes plain, wasm, blocked, broken, hidden) passes in the build. The old "under 4,096 bytes" note was about Chromium's synchronous compile limit; Chromium 155 compiles 5,024 bytes synchronously without error.
+- **Tested in:** Firefox 158.0, ungoogled Chromium 155.0.8059.39, WebKitGTK 2.52.6: `packed`, `csp`, `landing`, `nosave`; `npm test` green.
+
 ## 2026-11-06 · Speed report counts frames while the Map is panned or zoomed (field-report 'play' mode)
 
 ### Quick
