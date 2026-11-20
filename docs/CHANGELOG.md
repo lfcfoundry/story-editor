@@ -4,6 +4,9 @@ Newest first, one plain line for each change you will notice. Dates are 2026 (mo
 
 Releases since October 17 are tested in Firefox, Chromium, WebKitGTK and GNOME Web.
 
+## November 20
+- The size shown on the landing page and in the README is corrected: the whole editor is about 320 KB, not 298 KB. The file itself is unchanged.
+
 ## October 31
 - The editor unpacks itself a little faster when it opens (a faster unpacking program, run in short steps). The file is about 1.6 KB bigger.
 - Speed report: the Map now counts frames by itself while you pan or zoom it, so a saved report has smoothness numbers without pressing Record frames first. Nothing runs while the screen is still.
