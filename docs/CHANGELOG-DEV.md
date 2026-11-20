@@ -2,6 +2,17 @@
 
 What changed in each release, newest first, for developers, in three depths: **Quick** (what changed), **Details** (the numbers with the browsers named) and **Deep** (design reasons, tests, what was tried). Users read [CHANGELOG.md](CHANGELOG.md) instead: one plain line per change. Releases since October 17 are tested in Firefox, Chromium and WebKitGTK; the browsers and versions are named in each Deep entry.
 
+## 2026-11-20 · Landing page and README: editor size corrected to 320 KB
+
+### Quick
+- Text only. The landing page (`index.html`, two places) and `README.md` (two places) said the editor was 298 KB. The shipped file is 320,114 bytes (`play/index.html`, the same as `sizes-last.json` "Editor as delivered (packed)"), so both now say 320 KB. No code or built file changed.
+
+### Details
+The 298 KB figure was out of date: the packed file was 318,803 bytes before the 2026-11-07 release and 320,114 bytes after it. Measured on `main` at f094fd0. Game sizes (42 KB, 45 KB) were not changed.
+
+### Deep
+`AGENTS.md` asks that landing page and README text follow each change. Checked with a shallow clone and grep; `sizes-last.json` is the record used for the number. Not rebuilt and not browser-tested: the change is text in two HTML/Markdown files, so no speed or picture gate applies.
+
 ## 2026-11-07 · Faster LZMA WebAssembly unpacking program, run in short calls
 
 ### Quick
